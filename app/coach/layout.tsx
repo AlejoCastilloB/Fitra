@@ -37,6 +37,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
 
           <NavItem href="/coach" icon={<Home size={17} />} label="Hoy" />
           <NavItem href="/coach/clients" icon={<Users size={17} />} label="Clientes" />
+          <NavItem href="/coach/routines" icon={<Dumbbell size={17} />} label="Rutinas" />
           <NavItem href="/coach/exercises" icon={<Dumbbell size={17} />} label="Ejercicios" />
           <NavItem href="/coach/messages" icon={<MessageSquare size={17} />} label="Mensajes" />
 
