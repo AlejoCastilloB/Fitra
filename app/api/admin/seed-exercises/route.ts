@@ -39,7 +39,8 @@ export async function GET(request: Request) {
     if (!r.ok) {
       return NextResponse.json({ error: `jsDelivr respondió ${r.status} para ${muscle}` }, { status: 502 });
     }
-    const exercises: any[] = await r.json();
+    const raw = await r.json();
+    const exercises: any[] = Array.isArray(raw) ? raw : (raw.exercises ?? []);
 
     const rows = exercises.map((ex) => ({
       slug: ex.slug,
@@ -54,6 +55,10 @@ export async function GET(request: Request) {
       media_url: ex.gifUrl,
       trainer_id: null,
     }));
+
+    if (rows.length === 0) {
+      return NextResponse.json({ ok: true, muscle, inserted: 0, note: "sin ejercicios o formato inesperado" });
+    }
 
     const { error } = await supabase.from("exercises").upsert(rows, { onConflict: "slug" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
