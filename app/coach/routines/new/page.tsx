@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Search, Plus, Trash2, X } from "lucide-react";
+import GifThumb from "@/components/GifThumb";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
-type PickedExercise = { id: string; name: string; measurement_type: string; sets: SetRow[] };
+type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[] };
 
 function emptySet(measurementType: string): SetRow {
   if (measurementType === "time") return { set_type: "normal", time_sec: 30 };
@@ -44,7 +45,7 @@ export default function NewRoutinePage() {
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from("exercises")
-        .select("id, name, measurement_type, muscle_group")
+        .select("id, name, measurement_type, muscle_group, media_url")
         .ilike("name", `%${search}%`)
         .limit(8);
       setResults(data ?? []);
@@ -54,7 +55,7 @@ export default function NewRoutinePage() {
 
   function addExercise(ex: any) {
     if (picked.some((p) => p.id === ex.id)) return;
-    setPicked([...picked, { id: ex.id, name: ex.name, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)] }]);
+    setPicked([...picked, { id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)] }]);
     setSearch("");
     setResults([]);
   }
@@ -131,17 +132,18 @@ export default function NewRoutinePage() {
           style={{ ...inputStyle, paddingLeft: 36 }}
         />
         {results.length > 0 && (
-          <div style={{ ...glassPanel, position: "absolute", top: "110%", left: 0, right: 0, zIndex: 10, maxHeight: 220, overflowY: "auto" }}>
+          <div style={{ ...glassPanel, position: "absolute", top: "110%", left: 0, right: 0, zIndex: 10, maxHeight: 260, overflowY: "auto" }}>
             {results.map((r) => (
               <button
                 key={r.id}
                 onClick={() => addExercise(r)}
                 style={{
-                  display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: "none",
-                  border: "none", color: palette.ink, cursor: "pointer", fontSize: 13.5,
+                  display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "8px 14px",
+                  background: "none", border: "none", color: palette.ink, cursor: "pointer", fontSize: 13.5,
                 }}
               >
-                {r.name} <span style={{ color: palette.inkDim, fontSize: 11.5 }}>· {r.muscle_group}</span>
+                <GifThumb src={r.media_url} size={32} />
+                <span>{r.name} <span style={{ color: palette.inkDim, fontSize: 11.5 }}>· {r.muscle_group}</span></span>
               </button>
             ))}
           </div>
@@ -157,7 +159,10 @@ export default function NewRoutinePage() {
           {picked.map((ex) => (
             <div key={ex.id} style={{ ...glassPanel, padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <GifThumb src={ex.media_url} size={36} />
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{ex.name}</span>
+                </div>
                 <button onClick={() => removeExercise(ex.id)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                   <X size={16} />
                 </button>
