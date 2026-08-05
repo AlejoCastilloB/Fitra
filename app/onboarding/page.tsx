@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dumbbell, Users, ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 
 const palette = {
   bg: "#0A0C10",
@@ -26,16 +25,23 @@ const GOALS = [
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingForm />
+    </Suspense>
+  );
+}
+
+function OnboardingForm() {
   const router = useRouter();
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get("invite");
-  const supabase = createClient();
 
   const [role, setRole] = useState<"trainer" | "client" | null>(null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // anamnesis state
   const [goal, setGoal] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [daysAvailable, setDaysAvailable] = useState(3);
@@ -47,7 +53,7 @@ export default function OnboardingPage() {
   function toggleSport(sport: string) {
     setSports((prev) => {
       if (prev.includes(sport)) return prev.filter((s) => s !== sport);
-      if (prev.length >= 2) return prev; // máximo 2
+      if (prev.length >= 2) return prev;
       return [...prev, sport];
     });
   }
@@ -108,7 +114,6 @@ export default function OnboardingPage() {
         backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", borderRadius: 20, padding: "32px 28px",
         boxShadow: "0 20px 60px -20px rgba(0,0,0,0.35)",
       }}>
-        {/* paso 0: rol */}
         {role === null && (
           <>
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>¿Cómo entrás a FitTrack?</h2>
@@ -120,7 +125,6 @@ export default function OnboardingPage() {
           </>
         )}
 
-        {/* anamnesis del cliente */}
         {role === "client" && step === 0 && (
           <Step title="¿Cuál es tu objetivo principal?" onNext={() => setStep(1)} nextDisabled={!goal}>
             {GOALS.map((g) => (
