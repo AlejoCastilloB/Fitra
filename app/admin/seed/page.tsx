@@ -25,19 +25,21 @@ export default function SeedAdminPage() {
 
     const { muscles } = musclesData;
     let sum = 0;
-    for (const muscle of muscles) {
+
+    for (const m of muscles) {
+      const muscleId = typeof m === "string" ? m : (m.id ?? m.slug ?? m.name);
       try {
-        const res = await fetch(`/api/admin/seed-exercises?secret=${encodeURIComponent(secret)}&muscle=${muscle}`);
+        const res = await fetch(`/api/admin/seed-exercises?secret=${encodeURIComponent(secret)}&muscle=${muscleId}`);
         const data = await res.json();
         if (data.ok) {
           sum += data.inserted;
           setTotal(sum);
-          setLog((l) => [...l, `✅ ${muscle}: ${data.inserted} ejercicios`]);
+          setLog((l) => [...l, `✅ ${muscleId}: ${data.inserted} ejercicios`]);
         } else {
-          setLog((l) => [...l, `⚠️ ${muscle}: ${data.error ?? "error desconocido"}`]);
+          setLog((l) => [...l, `⚠️ ${muscleId}: ${data.error ?? "error desconocido"}`]);
         }
       } catch {
-        setLog((l) => [...l, `⚠️ ${muscle}: fallo de red`]);
+        setLog((l) => [...l, `⚠ ${muscleId}: fallo de red`]);
       }
     }
 
