@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const maxDuration = 60;
-
 const BASE = "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0";
 
 export async function GET(request: Request) {
-  const secret = new URL(request.url).searchParams.get("secret");
+  const url = new URL(request.url);
+  const secret = url.searchParams.get("secret");
+  const muscle = url.searchParams.get("muscle");
+
   if (secret !== process.env.SEED_SECRET) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -16,16 +17,15 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const muscles: string[] = await fetch(`${BASE}/api/es/muscles.json`).then((r) => r.json());
+  // sin ?muscle= devuelve la lista de músculos para que el admin sepa qué pedir
+  if (!muscle) {
+    const muscles = await fetch(`${BASE}/api/es/muscles.json`).then((r) => r.json());
+    return NextResponse.json({ muscles });
+  }
 
-  // descarga todos los grupos musculares en paralelo
-  const results = await Promise.all(
-    muscles.map((muscle) =>
-      fetch(`${BASE}/api/es/muscles/${muscle}.json`).then((r) => r.json())
-    )
-  );
+  const exercises: any[] = await fetch(`${BASE}/api/es/muscles/${muscle}.json`).then((r) => r.json());
 
-  const rows = results.flat().map((ex: any) => ({
+  const rows = exercises.map((ex) => ({
     slug: ex.slug,
     name: ex.name,
     muscle_group: ex.muscle,
@@ -39,14 +39,8 @@ export async function GET(request: Request) {
     trainer_id: null,
   }));
 
-  // upsert en lotes de 300 para no pasarnos de tamaño por request
-  let inserted = 0;
-  for (let i = 0; i < rows.length; i += 300) {
-    const batch = rows.slice(i, i + 300);
-    const { error } = await supabase.from("exercises").upsert(batch, { onConflict: "slug" });
-    if (error) return NextResponse.json({ error: error.message, insertedSoFar: inserted }, { status: 500 });
-    inserted += batch.length;
-  }
+  const { error } = await supabase.from("exercises").upsert(rows, { onConflict: "slug" });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, inserted });
+  return NextResponse.json({ ok: true, muscle, inserted: rows.length });
 }
