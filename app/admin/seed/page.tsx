@@ -24,10 +24,23 @@ export default function SeedAdminPage() {
     }
 
     const { muscles } = musclesData;
+
+    // debug: mostramos la forma real del primer elemento
+    setLog((l) => [...l, `🔍 Ejemplo crudo: ${JSON.stringify(muscles[0])}`, `🔍 Tipo: ${typeof muscles[0]}`, `🔍 Total recibidos: ${muscles.length}`]);
+
     let sum = 0;
 
     for (const m of muscles) {
-      const muscleId = typeof m === "string" ? m : (m.id ?? m.slug ?? m.name);
+      const muscleId =
+        typeof m === "string"
+          ? m
+          : (m.id ?? m.slug ?? m.name ?? m.muscle ?? m.value ?? m.key ?? null);
+
+      if (!muscleId) {
+        setLog((l) => [...l, `⚠️ No pude extraer el id de: ${JSON.stringify(m)}`]);
+        continue;
+      }
+
       try {
         const res = await fetch(`/api/admin/seed-exercises?secret=${encodeURIComponent(secret)}&muscle=${muscleId}`);
         const data = await res.json();
@@ -39,7 +52,7 @@ export default function SeedAdminPage() {
           setLog((l) => [...l, `⚠️ ${muscleId}: ${data.error ?? "error desconocido"}`]);
         }
       } catch {
-        setLog((l) => [...l, `⚠ ${muscleId}: fallo de red`]);
+        setLog((l) => [...l, `⚠️ ${muscleId}: fallo de red`]);
       }
     }
 
@@ -71,9 +84,9 @@ export default function SeedAdminPage() {
           {running ? `Cargando... (${total} hasta ahora)` : "Iniciar seed"}
         </button>
 
-        <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {log.map((l, i) => (
-            <div key={i} style={{ fontSize: 12.5, color: palette.inkDim, fontFamily: "monospace" }}>{l}</div>
+            <div key={i} style={{ fontSize: 11.5, color: palette.inkDim, fontFamily: "monospace", wordBreak: "break-all" }}>{l}</div>
           ))}
         </div>
       </div>
