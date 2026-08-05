@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dumbbell, Users, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 const palette = {
   bg: "#0A0C10",
@@ -26,6 +27,8 @@ const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteCode = searchParams.get("invite");
   const supabase = createClient();
 
   const [role, setRole] = useState<"trainer" | "client" | null>(null);
@@ -54,9 +57,25 @@ export default function OnboardingPage() {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
 
+    let trainerId: string | null = null;
+
+    if (inviteCode) {
+      const { data: invite } = await supabase
+        .from("invites")
+        .select("id, trainer_id, used_by")
+        .eq("code", inviteCode)
+        .single();
+
+      if (invite && !invite.used_by) {
+        trainerId = invite.trainer_id;
+        await supabase.from("invites").update({ used_by: uid }).eq("id", invite.id);
+      }
+    }
+
     await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client" });
     await supabase.from("clients").insert({
       user_id: uid,
+      trainer_id: trainerId,
       lifestyle: { goal, level, days_available: daysAvailable },
       injuries: { notes: injuries },
       medical_notes: medicalNotes,
