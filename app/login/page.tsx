@@ -88,9 +88,23 @@ export default function LoginPage() {
             <h2 style={{ fontSize: 23, fontWeight: 700, margin: "8px 0 4px" }}>Bienvenido de vuelta</h2>
 
             <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
-              <Field icon={<Mail size={16} />} type="email" placeholder="tucorreo@ejemplo.com" label="Correo" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Field
+                icon={<Mail size={16} />}
+                type="email"
+                placeholder="tucorreo@ejemplo.com"
+                label="Correo"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              />
               <div style={{ position: "relative" }}>
-                <Field icon={<Lock size={16} />} type={showPw ? "text" : "password"} placeholder="••••••••" label="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Field
+                  icon={<Lock size={16} />}
+                  type={showPw ? "text" : "password"}
+                  placeholder="••••••••"
+                  label="Contraseña"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                />
                 <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 12, top: 34, background: "none", border: "none", cursor: "pointer", color: palette.inkDim }}>
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -133,7 +147,11 @@ function RoleCard({ icon, title, sub, onClick }: { icon: React.ReactNode; title:
   );
 }
 
-function Field({ icon, label, ...props }: any) {
+function Field({
+  icon,
+  label,
+  ...props
+}: { icon: React.ReactNode; label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, color: palette.inkDim }}>
       {label}
