@@ -45,10 +45,6 @@ export default function SeedAdminPage() {
     setRunning(false);
   }
 
-    setLog((l) => [...l, `🎉 Listo — ${sum} ejercicios cargados en total`]);
-    setRunning(false);
-  }
-
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "system-ui, sans-serif" }}>
       <div style={{ ...glassPanel, padding: 28, width: "100%", maxWidth: 460 }}>
