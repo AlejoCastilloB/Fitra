@@ -41,24 +41,40 @@ export default function SeedAdminPage() {
         continue;
       }
 
-      try {
-        const res = await fetch(`/api/admin/seed-exercises?secret=${encodeURIComponent(secret)}&muscle=${muscleId}`);
-        const data = await res.json();
-        if (data.ok) {
-          sum += data.inserted;
-          setTotal(sum);
-          setLog((l) => [...l, `✅ ${muscleId}: ${data.inserted} ejercicios`]);
-        } else {
-          setLog((l) => [...l, `⚠️ ${muscleId}: ${data.error ?? "error desconocido"}`]);
-        }
-      } catch {
-        setLog((l) => [...l, `⚠️ ${muscleId}: fallo de red`]);
-      }
+        try {
+    const r = await fetch(`${BASE}/api/es/muscles/${muscle}.json`);
+    if (!r.ok) {
+      return NextResponse.json({ error: `jsDelivr respondió ${r.status} para ${muscle}` }, { status: 502 });
+    }
+    const raw = await r.json();
+    const exercises: any[] = Array.isArray(raw) ? raw : (raw.exercises ?? []);
+
+    const rows = exercises.map((ex) => ({
+      slug: ex.slug,
+      name: ex.name,
+      muscle_group: ex.muscle,
+      body_part: ex.bodyPart,
+      equipment: ex.equipment,
+      category: ex.category,
+      secondary_muscles: ex.secondaryMuscles ?? [],
+      instructions: ex.instructions ?? [],
+      measurement_type: "reps_weight",
+      media_url: ex.gifUrl,
+      trainer_id: null,
+    }));
+
+    if (rows.length === 0) {
+      return NextResponse.json({ ok: true, muscle, inserted: 0, note: "sin ejercicios o formato inesperado" });
     }
 
-    setLog((l) => [...l, `🎉 Listo — ${sum} ejercicios cargados en total`]);
-    setRunning(false);
+    const { error } = await supabase.from("exercises").upsert(rows, { onConflict: "slug" });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ ok: true, muscle, inserted: rows.length });
+  } catch (e: any) {
+    return NextResponse.json({ error: `excepción: ${e.message}` }, { status: 500 });
   }
+
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "system-ui, sans-serif" }}>
