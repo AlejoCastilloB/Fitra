@@ -15,13 +15,15 @@ export default function SeedAdminPage() {
     setTotal(0);
 
     const musclesRes = await fetch(`/api/admin/seed-exercises?secret=${encodeURIComponent(secret)}`);
+    const musclesData = await musclesRes.json();
+
     if (!musclesRes.ok) {
-      setLog(["❌ Secreto incorrecto o error al obtener músculos."]);
+      setLog([`❌ Error (${musclesRes.status}): ${musclesData.error ?? "desconocido"}`]);
       setRunning(false);
       return;
     }
-    const { muscles } = await musclesRes.json();
 
+    const { muscles } = musclesData;
     let sum = 0;
     for (const muscle of muscles) {
       try {
@@ -38,6 +40,10 @@ export default function SeedAdminPage() {
         setLog((l) => [...l, `⚠️ ${muscle}: fallo de red`]);
       }
     }
+
+    setLog((l) => [...l, `🎉 Listo — ${sum} ejercicios cargados en total`]);
+    setRunning(false);
+  }
 
     setLog((l) => [...l, `🎉 Listo — ${sum} ejercicios cargados en total`]);
     setRunning(false);
