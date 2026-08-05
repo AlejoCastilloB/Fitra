@@ -13,7 +13,6 @@ export default function GifThumb({ src, size = 40 }: { src?: string; size?: numb
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
-      // dibuja el primer frame antes de que el gif empiece a animar
       ctx?.drawImage(img, 0, 0, size, size);
     };
     img.src = src;
@@ -21,10 +20,7 @@ export default function GifThumb({ src, size = 40 }: { src?: string; size?: numb
 
   if (!src) {
     return (
-      <div style={{
-        width: size, height: size, borderRadius: 8, background: palette.inputBg,
-        flexShrink: 0,
-      }} />
+      <div style={{ width: size, height: size, borderRadius: 8, background: palette.inputBg, flexShrink: 0 }} />
     );
   }
 
