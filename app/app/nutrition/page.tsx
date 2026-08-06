@@ -11,6 +11,11 @@ const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 const WATER_GOAL = 2500;
 const WATER_STEP = 250;
 
+const modalInput: React.CSSProperties = {
+  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
+  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
+};
+
 export default function NutritionPage() {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -128,10 +133,6 @@ export default function NutritionPage() {
     } catch { setError("Fallo de red, inténtalo de nuevo"); }
     finally { setAnalyzing(false); if (fileRef.current) fileRef.current.value = ""; }
   }
-  const modalInput: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
-  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
-};
 
 
   async function saveMealAsFavorite(log: any) {
