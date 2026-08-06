@@ -31,8 +31,26 @@ export default function NutritionPage() {
 
   function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
+      const img = new Image();
       const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+
+      reader.onload = () => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 900;
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          resolve(dataUrl.split(",")[1]);
+        };
+        img.onerror = reject;
+        img.src = reader.result as string;
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
