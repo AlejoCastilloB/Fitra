@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "falta GEMINI_API_KEY en Vercel" }, { status: 500 });
   }
 
-  const { imageBase64, mimeType, note } = await request.json();
+  const { imageBase64, mimeType, note, audioBase64, audioMimeType } = await request.json();
 
   const { data: usageRow } = await supabase
     .from("ai_usage")
@@ -26,15 +26,19 @@ export async function POST(request: Request) {
   }
 
   const parts: any[] = [
-    { text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number, "food_name": string}. Estima lo mejor posible.` },
+    {
+      text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}. "portion" debe describir la cantidad estimada de forma clara y breve (ej: "1 plato mediano, ~350g" o "2 unidades, ~180g"). Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación (por ejemplo, cantidad exacta, ingredientes ocultos, tipo de preparación). Estima lo mejor posible.`,
+    },
   ];
+
   if (imageBase64) parts.push({ inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } });
-  if (note) parts.push({ text: `Nota del usuario: ${note}` });
+  if (audioBase64) parts.push({ inline_data: { mime_type: audioMimeType || "audio/webm", data: audioBase64 } });
+  if (note) parts.push({ text: `Nota adicional del usuario: ${note}` });
 
   let geminiRes;
   try {
     geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,6 +70,8 @@ export async function POST(request: Request) {
   const { data: log, error } = await supabase.from("nutrition_logs").insert({
     client_id: user.id,
     photo_url: null,
+    food_name: parsed.food_name,
+    portion: parsed.portion,
     kcal: parsed.kcal,
     protein: parsed.protein,
     carbs: parsed.carbs,
@@ -80,5 +86,5 @@ export async function POST(request: Request) {
 
   const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
-  return NextResponse.json({ ok: true, log: { ...log, food_name: parsed.food_name }, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+  return NextResponse.json({ ok: true, log, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
 }
