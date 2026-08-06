@@ -67,7 +67,7 @@ export default function NutritionPage() {
       const res = await fetch("/api/ai/log-food", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, mimeType: file.type }),
+        body: JSON.stringify({ imageBase64, mimeType: "image/jpeg" }),
       });
       const data = await res.json();
 
@@ -78,7 +78,7 @@ export default function NutritionPage() {
         await loadLogs();
       }
     } catch {
-      setError("Fallo de red, intentá de nuevo");
+      setError("Fallo de red, inténtalo de nuevo");
     } finally {
       setAnalyzing(false);
       if (fileRef.current) fileRef.current.value = "";
