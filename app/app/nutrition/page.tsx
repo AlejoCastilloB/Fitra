@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
+import Modal from "@/components/Modal";
 
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 const WATER_GOAL = 2500;
@@ -127,6 +128,11 @@ export default function NutritionPage() {
     } catch { setError("Fallo de red, inténtalo de nuevo"); }
     finally { setAnalyzing(false); if (fileRef.current) fileRef.current.value = ""; }
   }
+  const modalInput: React.CSSProperties = {
+  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
+  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
+};
+
 
   async function saveMealAsFavorite(log: any) {
     const { data: auth } = await supabase.auth.getUser();
@@ -164,17 +170,24 @@ export default function NutritionPage() {
       `}</style>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Nutrición</h1>
-      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 18 }}>Hoy</p>
+            <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 6 }}>Hoy</p>
+      <p style={{ color: palette.inkDim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 18 }}>
+        Toma una foto, escríbelo o graba una nota — la IA de Alejo se encarga del resto.
+      </p>
 
       {/* anillos de macros */}
-      <div className="ft-pop" style={{ ...glassPanel, padding: 20, marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <MacroRing value={totals.kcal} max={DAILY_GOALS.kcal} size={130} stroke={11} color={palette.accent} label="kcal" sublabel={`/ ${DAILY_GOALS.kcal}`} />
+            <div className="ft-pop" style={{
+        ...glassPanel, padding: 22, marginBottom: 14, position: "relative", overflow: "hidden",
+        border: "1px solid transparent", backgroundImage: `linear-gradient(${palette.panel}, ${palette.panel}), ${palette.metallicBorder}`,
+        backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <MacroRing value={totals.kcal} max={DAILY_GOALS.kcal} size={130} stroke={11} colorFrom="#EDEFF3" colorTo="#8A93A0" label="Calorías" sublabel={`de ${DAILY_GOALS.kcal}`} />
         </div>
         <div style={{ display: "flex", justifyContent: "space-around" }}>
-          <MacroRing value={totals.protein} max={DAILY_GOALS.protein} size={68} stroke={6} color="#7DD8C6" label="Proteína" />
-          <MacroRing value={totals.carbs} max={DAILY_GOALS.carbs} size={68} stroke={6} color="#E8B86D" label="Carbos" />
-          <MacroRing value={totals.fat} max={DAILY_GOALS.fat} size={68} stroke={6} color="#E88D8D" label="Grasa" />
+          <MacroRing value={totals.protein} max={DAILY_GOALS.protein} size={70} stroke={6} colorFrom="#A8EEDC" colorTo="#5EBBA0" label="Proteína" />
+          <MacroRing value={totals.carbs} max={DAILY_GOALS.carbs} size={70} stroke={6} colorFrom="#F5D89A" colorTo="#D19A4A" label="Carbos" />
+          <MacroRing value={totals.fat} max={DAILY_GOALS.fat} size={70} stroke={6} colorFrom="#F3AFAF" colorTo="#C56767" label="Grasa" />
         </div>
       </div>
 
@@ -324,58 +337,43 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
-      <div className="ft-pop" style={{ ...glassPanel, width: "100%", maxWidth: 480, padding: 22, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Comida manual</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={18} /></button>
+    <Modal title="Comida manual" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={modalInput} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <input value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" type="number" style={modalInput} />
+          <input value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="Proteína (g)" type="number" style={modalInput} />
+          <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput} />
+          <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={modalInput} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <input value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" type="number" style={modalInput} />
-            <input value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="Proteína (g)" type="number" style={modalInput} />
-            <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput} />
-            <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput} />
-          </div>
-          <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
-            {saving ? "Guardando..." : "Registrar"}
-          </button>
-        </div>
+        <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
+          {saving ? "Guardando..." : "Registrar"}
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: () => void; onPick: (m: any) => void }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
-      <div className="ft-pop" style={{ ...glassPanel, width: "100%", maxWidth: 480, padding: 22, maxHeight: "70vh", overflowY: "auto", borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Comidas guardadas</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={18} /></button>
+    <Modal title="Comidas guardadas" onClose={onClose}>
+      {meals.length === 0 ? (
+        <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", padding: 20 }}>
+          Todavía no guardaste ninguna comida. Toca la estrella ⭐ en cualquier registro para guardarla.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {meals.map((m) => (
+            <button key={m.id} onClick={() => onPick(m)} style={{ ...glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
+              </div>
+              <Plus size={16} color={palette.accent} />
+            </button>
+          ))}
         </div>
-        {meals.length === 0 ? (
-          <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", padding: 20 }}>Todavía no guardaste ninguna comida. Tocá la estrella ⭐ en cualquier registro para guardarla.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {meals.map((m) => (
-              <button key={m.id} onClick={() => onPick(m)} style={{ ...glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
-                  <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
-                </div>
-                <Plus size={16} color={palette.accent} />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }
-
-const modalInput: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
-  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
-};
