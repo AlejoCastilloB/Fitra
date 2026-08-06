@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
+import Link from "next/link";
 import Modal from "@/components/Modal";
 
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
@@ -239,6 +240,9 @@ export default function NutritionPage() {
         <button onClick={() => setShowManual(true)} style={secondaryBtn}><Plus size={14} /> Manual</button>
         <button onClick={() => setShowSaved(true)} style={secondaryBtn}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
       </div>
+<Link href="/app/nutrition/recipes" style={{ ...secondaryBtn, textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
+        <Sparkles size={14} color={palette.accent} /> Preguntarle a la IA de Alejo por recetas
+      </Link>
 
       {remaining !== null && (
         <p style={{ textAlign: "center", fontSize: 11.5, color: palette.inkDim, marginBottom: 16 }}>
