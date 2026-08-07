@@ -13,23 +13,46 @@ const ITEMS = [
   { href: "/app/profile", icon: User, label: "Perfil" },
 ];
 
+function getScrollY() {
+  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const lastY = useRef(0);
+  const ticking = useRef(false);
 
   useEffect(() => {
-    lastY.current = window.scrollY;
-    function onScroll() {
-      const y = window.scrollY;
+    lastY.current = getScrollY();
+
+    function update() {
+      const y = getScrollY();
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
       const diff = y - lastY.current;
-      if (y < 40) setVisible(true);
-      else if (diff > 6) setVisible(false);
-      else if (diff < -6) setVisible(true);
+
+      if (y <= 24) setVisible(true);
+      else if (y >= maxY - 4) setVisible(true); // siempre visible al llegar al final
+      else if (diff > 5) setVisible(false);
+      else if (diff < -5) setVisible(true);
+
       lastY.current = y;
+      ticking.current = false;
     }
+
+    function onScroll() {
+      if (!ticking.current) {
+        ticking.current = true;
+        requestAnimationFrame(update);
+      }
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("touchmove", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("touchmove", onScroll);
+    };
   }, []);
 
   return (
