@@ -11,6 +11,8 @@ import GifThumb from "@/components/GifThumb";
 import SwipeableRow from "@/components/SwipeableRow";
 import SetTypeSheet from "@/components/SetTypeSheet";
 import RestTimerRing from "@/components/RestTimerRing";
+import { equipmentLabel } from "@/lib/equipmentLabels";
+import { getSetBadge } from "@/lib/setBadges";
 
 const REST_SECONDS = 90;
 
@@ -179,7 +181,7 @@ export default function WorkoutPage() {
               {isOpen && (
                 <div style={{ padding: "0 14px 14px" }}>
                   {ex.notes && <p style={{ fontSize: 12.5, color: palette.accent, marginBottom: 10 }}>📝 {ex.notes}</p>}
-                  {ex.equipment && <InfoLine label="Equipo" value={ex.equipment} />}
+                  {ex.equipment && <InfoLine label="Equipo" value={equipmentLabel(ex.equipment)} />}
                   {ex.description && <InfoLine label="Descripción" value={ex.description} />}
                   {ex.instructions && ex.instructions.length > 0 && (
                     <div style={{ marginTop: 8, marginBottom: 12 }}>
@@ -192,38 +194,57 @@ export default function WorkoutPage() {
                 </div>
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 14px 14px" }}>
-                {ex.sets.map((s, i) => (
-                  <SwipeableRow key={i} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => removeSet(exIdx, i) }}>
-                    <div style={{ ...glassPanel, padding: 10, display: "flex", alignItems: "center", gap: 8, opacity: s.done ? 0.55 : 1 }}>
-                      <button onClick={() => setEditingType({ exIdx, setIdx: i })} style={{
-                        fontSize: 11, color: palette.accent, width: 22, height: 22, borderRadius: 7,
-                        background: `${palette.accent}18`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
-                      }}>{i + 1}</button>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 14px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px", marginBottom: 2 }}>
+                  <span style={{ width: 22, fontSize: 9, color: palette.inkDim, textAlign: "center" }}>Serie</span>
+                  {ex.measurement_type === "reps_weight" && (
+                    <>
+                      <span style={{ width: 52, fontSize: 9, color: palette.inkDim, textAlign: "center" }}>Peso</span>
+                      <span style={{ width: 52, fontSize: 9, color: palette.inkDim, textAlign: "center" }}>Reps</span>
+                    </>
+                  )}
+                  {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 52, fontSize: 9, color: palette.inkDim, textAlign: "center" }}>Segundos</span>
+                  )}
+                  {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 52, fontSize: 9, color: palette.inkDim, textAlign: "center" }}>Metros</span>
+                  )}
+                </div>
 
-                      {ex.measurement_type === "reps_weight" && (
-                        <>
-                          <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} placeholder="kg" />
-                          <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} placeholder="reps" />
-                        </>
-                      )}
-                      {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-                        <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} placeholder="seg" />
-                      )}
-                      {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-                        <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} placeholder="m" />
-                      )}
+                {ex.sets.map((s, i) => {
+                  const badge = getSetBadge(ex.sets, i, palette.accent);
+                  return (
+                    <SwipeableRow key={i} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => removeSet(exIdx, i) }}>
+                      <div style={{ ...glassPanel, padding: 10, display: "flex", alignItems: "center", gap: 8, opacity: s.done ? 0.55 : 1 }}>
+                        <button onClick={() => setEditingType({ exIdx, setIdx: i })} style={{
+                          fontSize: 11, color: badge.color, width: 22, height: 22, borderRadius: 7,
+                          background: `${badge.color}22`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
+                        }}>{badge.text}</button>
 
-                      <div style={{ flex: 1 }} />
-                      <button onClick={() => toggleSetDone(exIdx, i, REST_SECONDS)} style={{
-                        width: 28, height: 28, borderRadius: 8, border: `1px solid ${s.done ? palette.accent : palette.panelBorder}`,
-                        background: s.done ? palette.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                      }}>
-                        <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
-                      </button>
-                    </div>
-                  </SwipeableRow>
-                ))}
+                        {ex.measurement_type === "reps_weight" && (
+                          <>
+                            <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} placeholder="kg" />
+                            <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} placeholder="reps" />
+                          </>
+                        )}
+                        {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                          <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} placeholder="seg" />
+                        )}
+                        {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                          <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} placeholder="m" />
+                        )}
+
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => toggleSetDone(exIdx, i, REST_SECONDS)} style={{
+                          width: 28, height: 28, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
+                          background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                        }}>
+                          <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
+                        </button>
+                      </div>
+                    </SwipeableRow>
+                  );
+                })}
               </div>
             </div>
           );
