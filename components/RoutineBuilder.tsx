@@ -26,7 +26,8 @@ export default function RoutineBuilder({
   initialName = "",
   initialClientId = "",
   initialNotes = "",
-  initialExercises = [],
+    initialExercises = [],
+  initialDays = [],
   role = "trainer",
 }: {
   routineId?: string;
@@ -34,6 +35,7 @@ export default function RoutineBuilder({
   initialClientId?: string;
   initialNotes?: string;
   initialExercises?: PickedExercise[];
+  initialDays?: number[];
   role?: "trainer" | "client";
 }) {
   const supabase = createClient();
@@ -43,6 +45,7 @@ export default function RoutineBuilder({
   const [name, setName] = useState(initialName);
   const [clientId, setClientId] = useState(initialClientId);
   const [routineNotes, setRoutineNotes] = useState(initialNotes);
+  const [days, setDays] = useState<number[]>(initialDays);
   const [clients, setClients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
@@ -116,7 +119,9 @@ export default function RoutineBuilder({
     setDragIndex(idx);
   }
   function handleDragEnd() { setDragIndex(null); }
-
+  function toggleDay(day: number) {
+    setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
+  }
   function handleAIGenerated(result: { name: string; exercises: any[] }) {
     setName(result.name);
     setPicked(result.exercises.map((e: any) => ({
@@ -133,19 +138,20 @@ export default function RoutineBuilder({
 
     let currentRoutineId = routineId;
 
-    if (isEditing) {
+        if (isEditing) {
       await supabase.from("routines").update({
-        name, client_id: role === "client" ? auth.user!.id : (clientId || null), notes: routineNotes,
+        name, client_id: role === "client" ? auth.user!.id : (clientId || null), notes: routineNotes, days_of_week: days,
       }).eq("id", routineId);
       await supabase.from("routine_exercises").delete().eq("routine_id", routineId);
     } else {
-      const { data: routine, error } = await supabase.from("routines").insert({
+            const { data: routine, error } = await supabase.from("routines").insert({
         trainer_id: role === "trainer" ? auth.user!.id : null,
         created_by: auth.user!.id,
         client_id: role === "client" ? auth.user!.id : (clientId || null),
         source: role,
         name,
         notes: routineNotes,
+        days_of_week: days,
       }).select().single();
 
       if (error || !routine) { setSaving(false); return; }
@@ -306,6 +312,20 @@ export default function RoutineBuilder({
             </select>
           </label>
         )}
+        
+        <label style={fieldLabel}>
+          Días de la semana (opcional)
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {["D", "L", "M", "M", "J", "V", "S"].map((label, i) => (
+              <button key={i} onClick={() => toggleDay(i)} style={{
+                width: 30, height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                border: `1px solid ${days.includes(i) ? palette.accent : palette.panelBorder}`,
+                background: days.includes(i) ? `${palette.accent}22` : palette.inputBg,
+                color: days.includes(i) ? palette.accent : palette.inkDim,
+              }}>{label}</button>
+            ))}
+          </div>
+        </label>
 
         <label style={fieldLabel}>
           Notas generales de la rutina
