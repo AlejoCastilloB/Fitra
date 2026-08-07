@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
-import { Flame, Play } from "lucide-react";
 import { Flame, Play, MessageSquare } from "lucide-react";
 
 export default async function ClientToday() {
