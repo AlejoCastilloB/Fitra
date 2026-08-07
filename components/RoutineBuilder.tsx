@@ -7,6 +7,7 @@ import { palette, glassPanel } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { Search, Plus, Trash2, X, GripVertical } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
+import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string };
@@ -24,12 +25,14 @@ export default function RoutineBuilder({
   initialClientId = "",
   initialNotes = "",
   initialExercises = [],
+  role = "trainer",
 }: {
   routineId?: string;
   initialName?: string;
   initialClientId?: string;
   initialNotes?: string;
   initialExercises?: PickedExercise[];
+  role?: "trainer" | "client";
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -47,17 +50,21 @@ export default function RoutineBuilder({
   const [saving, setSaving] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
+  const [showAI, setShowAI] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
-      const { data: cli } = await supabase.from("clients").select("user_id, users(email)").eq("trainer_id", auth.user!.id);
-      setClients(cli ?? []);
+
+      if (role === "trainer") {
+        const { data: cli } = await supabase.from("clients").select("user_id, users(email)").eq("trainer_id", auth.user!.id);
+        setClients(cli ?? []);
+      }
 
       const { data: mus } = await supabase.from("exercises").select("muscle_group").not("muscle_group", "is", null);
       setMuscles(Array.from(new Set(mus?.map((m) => m.muscle_group))).sort());
     })();
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -107,6 +114,15 @@ export default function RoutineBuilder({
   }
   function handleDragEnd() { setDragIndex(null); }
 
+  function handleAIGenerated(result: { name: string; exercises: any[] }) {
+    setName(result.name);
+    setPicked(result.exercises.map((e: any) => ({
+      id: e.id, name: e.name, media_url: e.media_url, measurement_type: e.measurement_type,
+      sets: e.sets, notes: "",
+    })));
+    setShowAI(false);
+  }
+
   async function handleSave() {
     if (!name || picked.length === 0) return;
     setSaving(true);
@@ -116,15 +132,15 @@ export default function RoutineBuilder({
 
     if (isEditing) {
       await supabase.from("routines").update({
-        name, client_id: clientId || null, notes: routineNotes,
+        name, client_id: role === "client" ? auth.user!.id : (clientId || null), notes: routineNotes,
       }).eq("id", routineId);
       await supabase.from("routine_exercises").delete().eq("routine_id", routineId);
     } else {
       const { data: routine, error } = await supabase.from("routines").insert({
-        trainer_id: auth.user!.id,
+        trainer_id: role === "trainer" ? auth.user!.id : null,
         created_by: auth.user!.id,
-        client_id: clientId || null,
-        source: "trainer",
+        client_id: role === "client" ? auth.user!.id : (clientId || null),
+        source: role,
         name,
         notes: routineNotes,
       }).select().single();
@@ -142,7 +158,7 @@ export default function RoutineBuilder({
     }));
 
     await supabase.from("routine_exercises").insert(rows);
-    router.push("/coach/routines");
+    router.push(role === "client" ? "/app/routines" : "/coach/routines");
   }
 
   return (
@@ -184,11 +200,20 @@ export default function RoutineBuilder({
 
       {/* ── rutina editable ── */}
       <div>
-        <h2 style={sectionTitle}>Rutina {picked.length > 0 && `· ${picked.length} ejercicios`}</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Rutina {picked.length > 0 && `· ${picked.length} ejercicios`}</h2>
+          <button onClick={() => setShowAI(true)} style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 10,
+            border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
+            fontSize: 12, fontWeight: 700, cursor: "pointer",
+          }}>
+            ✨ IA de Alejo
+          </button>
+        </div>
 
         {picked.length === 0 ? (
           <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>
-            Agregá ejercicios desde la biblioteca de la izquierda.
+            Agrega ejercicios desde la biblioteca de la izquierda o pídele a la IA de Alejo que arme la rutina.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -267,13 +292,15 @@ export default function RoutineBuilder({
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Push Day A" style={inputStyle} />
         </label>
 
-        <label style={fieldLabel}>
-          Asignar a
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
-            <option value="">Plantilla (sin asignar)</option>
-            {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
-          </select>
-        </label>
+        {role === "trainer" && (
+          <label style={fieldLabel}>
+            Asignar a
+            <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
+              <option value="">Plantilla (sin asignar)</option>
+              {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
+            </select>
+          </label>
+        )}
 
         <label style={fieldLabel}>
           Notas generales de la rutina
@@ -294,6 +321,8 @@ export default function RoutineBuilder({
           {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}
         </button>
       </div>
+
+      {showAI && <AIRoutineGenerator onClose={() => setShowAI(false)} onGenerated={handleAIGenerated} />}
     </div>
   );
 }
