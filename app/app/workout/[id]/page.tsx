@@ -35,11 +35,13 @@ export default function WorkoutPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: re } = await supabase
+      const { data: re, error: reError } = await supabase
         .from("routine_exercises")
         .select("order_index, target_sets, notes, exercises(id, name, media_url, measurement_type)")
         .eq("routine_id", id)
         .order("order_index");
+
+      if (reError) console.error("Error cargando ejercicios de la rutina:", reError);
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
       setRoutineName(routine?.name ?? "Entrenamiento");
@@ -177,7 +179,12 @@ export default function WorkoutPage() {
   }
 
   const ex = exercises[current];
-  if (!ex) return <p style={{ color: palette.inkDim, textAlign: "center", marginTop: 60 }}>Esta rutina no tiene ejercicios.</p>;
+  if (!ex) return (
+    <div style={{ textAlign: "center", marginTop: 60, padding: "0 20px" }}>
+      <p style={{ color: palette.inkDim, marginBottom: 12 }}>Esta rutina no tiene ejercicios disponibles (o no se pudieron cargar). Revisa la consola del navegador (Inspeccionar → Console) para ver el error exacto si esto se repite.</p>
+      <button onClick={() => router.push("/app/routines")} style={{ padding: "10px 18px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, cursor: "pointer" }}>Volver a rutinas</button>
+    </div>
+  );
 
   return (
     <div>
