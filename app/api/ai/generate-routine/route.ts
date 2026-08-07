@@ -21,12 +21,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con la IA de Alejo hoy. Vuelve mañana.` }, { status: 429 });
   }
 
-  // candidatos: hasta 150 ejercicios de la biblioteca (base + propios del que pide)
-  const { data: candidates } = await supabase
+  // mapea palabras en español a los grupos musculares reales guardados (en inglés)
+  const MUSCLE_KEYWORDS: Record<string, string[]> = {
+    pierna: ["quads", "hamstrings", "glutes", "calves", "adductors", "abductors"],
+    cuadriceps: ["quads"], isquios: ["hamstrings"], gluteo: ["glutes"], gemelo: ["calves"], pantorrilla: ["calves"],
+    espalda: ["lats", "traps", "upper-back", "spine"], dorsal: ["lats"], trapecio: ["traps"],
+    pecho: ["pectorals"], hombro: ["delts"], biceps: ["biceps"], triceps: ["triceps"], brazo: ["biceps", "triceps", "forearms"],
+    antebrazo: ["forearms"], abdomen: ["abs"], core: ["abs"], cardio: ["cardio"], gemelos: ["calves"],
+  };
+
+  const promptLower = (prompt || "").toLowerCase();
+  const targetMuscles = new Set<string>();
+  for (const [es, ens] of Object.entries(MUSCLE_KEYWORDS)) {
+    if (promptLower.includes(es)) ens.forEach((e) => targetMuscles.add(e));
+  }
+
+  let candidatesQuery = supabase
     .from("exercises")
     .select("id, name, muscle_group, equipment, measurement_type")
-    .or(`trainer_id.is.null,trainer_id.eq.${user.id}`)
-    .limit(150);
+    .or(`trainer_id.is.null,trainer_id.eq.${user.id}`);
+
+  if (targetMuscles.size > 0) {
+    candidatesQuery = candidatesQuery.in("muscle_group", Array.from(targetMuscles));
+  }
+
+  const { data: filtered } = await candidatesQuery.limit(200);
+  // si el filtro dejó muy pocos candidatos, sumamos una muestra general como respaldo
+  let candidates = filtered ?? [];
+  if (candidates.length < 15) {
+    const { data: fallback } = await supabase
+      .from("exercises").select("id, name, muscle_group, equipment, measurement_type")
+      .or(`trainer_id.is.null,trainer_id.eq.${user.id}`).limit(150);
+    candidates = [...candidates, ...(fallback ?? [])].filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
+  }
 
   if (!candidates || candidates.length === 0) {
     return NextResponse.json({ error: "Tu biblioteca de ejercicios está vacía, no puedo armar una rutina todavía." }, { status: 400 });
@@ -42,7 +69,7 @@ ${candidateList}
 Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto:
 {"name": string, "exercises": [{"exercise_id": string, "sets": [{"set_type": "normal", "reps": number, "weight": number}]}]}
 
-Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para distancia {"set_type":"normal","distance_m":number}, para tiempo y distancia ambos campos. El "exercise_id" debe ser EXACTAMENTE uno de los ids de la lista. Arma entre 4 y 8 ejercicios según lo pedido, con 3-4 series cada uno salvo que el usuario pida otra cosa. Responde en español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`;
+Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para distancia {"set_type":"normal","distance_m":number}, para tiempo y distancia ambos campos. El "exercise_id" debe ser EXACTAMENTE uno de los ids de la lista. Elige ejercicios variados dentro de lo disponible, no repitas el mismo patrón de movimiento salvo que el usuario lo pida. Arma entre 4 y 8 ejercicios según lo pedido, con 3-4 series cada uno salvo que el usuario pida otra cosa. Responde en español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`;
 
   const parts: any[] = [{ text: prompt || "Arma una rutina general de cuerpo completo." }];
   if (imageBase64) parts.push({ inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } });
@@ -54,7 +81,11 @@ Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para dist
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts }] }),
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts }],
+          generationConfig: { temperature: 0.9 },
+        }),
       }
     );
   } catch (e: any) {
