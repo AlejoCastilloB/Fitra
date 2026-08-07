@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
-import { Plus, Play } from "lucide-react";
+import { Plus, Play, Pencil } from "lucide-react";
 
 export default async function ClientRoutinesPage() {
   const supabase = await createClient();
@@ -38,20 +38,24 @@ export default async function ClientRoutinesPage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {routines.map((r) => (
-            <Link key={r.id} href={`/app/workout/${r.id}`} style={{
-              ...glassPanel, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between",
-              textDecoration: "none", color: palette.ink,
-            }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
-                <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
-                  {r.source === "platform" ? "Sugerida por FitTrack" : r.source === "client" ? "Creada por ti" : "Asignada por tu coach"}
+            <div key={r.id} style={{ ...glassPanel, padding: 16, display: "flex", alignItems: "center", gap: 10 }}>
+              <Link href={`/app/workout/${r.id}`} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: palette.ink }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
+                  <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
+                    {r.source === "platform" ? "Sugerida por FitTrack" : r.source === "client" ? "Creada por ti" : "Asignada por tu coach"}
+                  </div>
                 </div>
-              </div>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: palette.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              </Link>
+              {r.source === "client" && (
+                <Link href={`/app/routines/${r.id}/edit`} style={{ color: palette.inkDim, display: "flex" }}>
+                  <Pencil size={16} />
+                </Link>
+              )}
+              <Link href={`/app/workout/${r.id}`} style={{ width: 32, height: 32, borderRadius: "50%", background: palette.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Play size={13} color="#0A0C10" fill="#0A0C10" />
-              </div>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
       )}
