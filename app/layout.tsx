@@ -1,14 +1,20 @@
 import "./globals.css";
+import PWARegister from "@/components/PWARegister";
 
 export const metadata = {
   title: "FitTrack",
   description: "Entrenamiento, nutrición y seguimiento de coach en una sola plataforma.",
+  manifest: "/manifest.json",
+  themeColor: "#0A0C10",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <PWARegister />
+        {children}
+      </body>
     </html>
   );
 }
