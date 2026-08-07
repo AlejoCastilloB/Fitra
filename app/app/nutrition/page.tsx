@@ -154,13 +154,21 @@ export default function NutritionPage() {
     await loadAll();
   }
 
-  async function saveMealAsFavorite(log: any) {
-    const { data: auth } = await supabase.auth.getUser();
-    await supabase.from("saved_meals").insert({
-      client_id: auth.user!.id, name: log.food_name || "Comida guardada",
-      kcal: log.kcal, protein: log.protein, carbs: log.carbs, fat: log.fat,
-      fiber: log.fiber, sugar: log.sugar, sodium: log.sodium,
-    });
+    async function toggleFavorite(log: any) {
+    if (log.saved_meal_id) {
+      // ya estaba guardada → la desmarca
+      await supabase.from("saved_meals").delete().eq("id", log.saved_meal_id);
+      await supabase.from("nutrition_logs").update({ saved_meal_id: null }).eq("id", log.id);
+    } else {
+      // no estaba guardada → la marca
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: saved } = await supabase.from("saved_meals").insert({
+        client_id: auth.user!.id, name: log.food_name || "Comida guardada",
+        kcal: log.kcal, protein: log.protein, carbs: log.carbs, fat: log.fat,
+        fiber: log.fiber, sugar: log.sugar, sodium: log.sodium,
+      }).select().single();
+      await supabase.from("nutrition_logs").update({ saved_meal_id: saved!.id }).eq("id", log.id);
+    }
     await loadAll();
   }
 
@@ -300,9 +308,9 @@ export default function NutritionPage() {
                     </div>
                     <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
                   </button>
-                  <button onClick={() => saveMealAsFavorite(l)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: "0 14px" }} title="Guardar como favorita">
-                    <Star size={15} />
-                  </button>
+                  <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
+                    <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
+                    </button>
                 </div>
 
                 {isOpen && (
