@@ -6,6 +6,7 @@ export type LiveSet = { set_type: string; reps?: number; weight?: number; time_s
 export type LiveExercise = {
   id: string; name: string; media_url?: string; measurement_type: string; notes?: string;
   description?: string; equipment?: string; muscle_group?: string; instructions?: string[];
+  restSeconds?: number;
   sets: LiveSet[];
 };
 
@@ -18,13 +19,24 @@ type Ctx = {
   startSession: (routineId: string, routineName: string, exercises: LiveExercise[]) => void;
   toggleSetDone: (exIdx: number, setIdx: number, restSeconds: number) => void;
   updateSet: (exIdx: number, setIdx: number, field: string, value: any) => void;
+  addSet: (exIdx: number) => void;
   removeSet: (exIdx: number, setIdx: number) => void;
+  updateExerciseRest: (exIdx: number, seconds: number) => void;
   skipRest: () => void;
   clearSession: () => void;
 };
 
 const WorkoutSessionContext = createContext<Ctx | null>(null);
 const STORAGE_KEY = "fittrack_active_workout";
+
+function emptySetFor(ex: LiveExercise): LiveSet {
+  const last = ex.sets[ex.sets.length - 1];
+  if (last) return { ...last, done: false };
+  if (ex.measurement_type === "time") return { set_type: "normal", time_sec: 30, done: false };
+  if (ex.measurement_type === "time_distance") return { set_type: "normal", time_sec: 60, distance_m: 200, done: false };
+  if (ex.measurement_type === "distance") return { set_type: "normal", distance_m: 100, done: false };
+  return { set_type: "normal", reps: 10, weight: 0, done: false };
+}
 
 export function WorkoutSessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session>(null);
@@ -48,17 +60,22 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   }, []);
 
   const startSession = useCallback((routineId: string, routineName: string, exercises: LiveExercise[]) => {
-    setSession({ routineId, routineName, exercises, startedAt: Date.now(), restEndAt: null });
+    setSession({
+      routineId, routineName,
+      exercises: exercises.map((e) => ({ restSeconds: 90, ...e })),
+      startedAt: Date.now(), restEndAt: null,
+    });
   }, []);
 
   const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
     setSession((prev) => {
       if (!prev) return prev;
       const wasDone = prev.exercises[exIdx].sets[setIdx].done;
+      const exRest = prev.exercises[exIdx].restSeconds ?? restSeconds;
       const exercises = prev.exercises.map((ex, i) => i !== exIdx ? ex : {
         ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, done: !s.done }),
       });
-      return { ...prev, exercises, restEndAt: wasDone ? prev.restEndAt : Date.now() + restSeconds * 1000 };
+      return { ...prev, exercises, restEndAt: wasDone ? prev.restEndAt : Date.now() + exRest * 1000 };
     });
   }, []);
 
@@ -71,10 +88,24 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const addSet = useCallback((exIdx: number) => {
+    setSession((prev) => prev && {
+      ...prev,
+      exercises: prev.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: [...ex.sets, emptySetFor(ex)] }),
+    });
+  }, []);
+
   const removeSet = useCallback((exIdx: number, setIdx: number) => {
     setSession((prev) => prev && {
       ...prev,
       exercises: prev.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx) }),
+    });
+  }, []);
+
+  const updateExerciseRest = useCallback((exIdx: number, seconds: number) => {
+    setSession((prev) => prev && {
+      ...prev,
+      exercises: prev.exercises.map((ex, i) => i !== exIdx ? ex : { ...ex, restSeconds: seconds }),
     });
   }, []);
 
@@ -85,7 +116,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   const clearSession = useCallback(() => setSession(null), []);
 
   return (
-    <WorkoutSessionContext.Provider value={{ session, now, startSession, toggleSetDone, updateSet, removeSet, skipRest, clearSession }}>
+    <WorkoutSessionContext.Provider value={{ session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, skipRest, clearSession }}>
       {children}
     </WorkoutSessionContext.Provider>
   );
