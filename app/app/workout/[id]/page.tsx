@@ -31,6 +31,7 @@ export default function WorkoutPage() {
   const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[] }>(null);
   const [timerSound, setTimerSound] = useState("clasico");
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function WorkoutPage() {
         .eq("routine_id", id)
         .order("order_index");
 
-      if (reError) console.error("Error cargando ejercicios de la rutina:", reError);
+      if (reError) setLoadError(reError.message);
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
       setRoutineName(routine?.name ?? "Entrenamiento");
@@ -178,10 +179,11 @@ export default function WorkoutPage() {
     return <SummaryScreen routineName={routineName} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} onDone={() => router.push("/app")} />;
   }
 
-  const ex = exercises[current];
+    const ex = exercises[current];
   if (!ex) return (
     <div style={{ textAlign: "center", marginTop: 60, padding: "0 20px" }}>
-      <p style={{ color: palette.inkDim, marginBottom: 12 }}>Esta rutina no tiene ejercicios disponibles (o no se pudieron cargar). Revisa la consola del navegador (Inspeccionar → Console) para ver el error exacto si esto se repite.</p>
+      <p style={{ color: palette.inkDim, marginBottom: 8 }}>Esta rutina no tiene ejercicios disponibles.</p>
+      {loadError && <p style={{ color: "#f87171", fontSize: 12, marginBottom: 12, fontFamily: "monospace" }}>{loadError}</p>}
       <button onClick={() => router.push("/app/routines")} style={{ padding: "10px 18px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, cursor: "pointer" }}>Volver a rutinas</button>
     </div>
   );
