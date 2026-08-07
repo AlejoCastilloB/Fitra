@@ -28,6 +28,7 @@ export default function WorkoutPage() {
   const [startedAt] = useState(Date.now());
   const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[] }>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const [timerSound, setTimerSound] = useState("clasico");
 
   useEffect(() => {
     (async () => {
@@ -39,6 +40,10 @@ export default function WorkoutPage() {
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
       setRoutineName(routine?.name ?? "Entrenamiento");
+
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: userRow } = await supabase.from("users").select("timer_sound").eq("id", auth.user!.id).single();
+      if (userRow) setTimerSound(userRow.timer_sound);
 
       const built: LiveExercise[] = (re ?? []).map((r: any) => ({
         id: r.exercises.id,
@@ -68,18 +73,28 @@ export default function WorkoutPage() {
     return () => clearInterval(t);
   }, [restLeft]);
 
-  function playBeep() {
+    function playBeep() {
+    const sounds: Record<string, { freq: number; pattern: number[] }> = {
+      clasico: { freq: 880, pattern: [0.35] },
+      suave: { freq: 660, pattern: [0.5] },
+      energico: { freq: 990, pattern: [0.12, 0.12, 0.12] },
+    };
+    const s = sounds[timerSound] || sounds.clasico;
     try {
       const ctx = audioRef.current ?? new (window.AudioContext || (window as any).webkitAudioContext)();
       audioRef.current = ctx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 880;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
+      let t = ctx.currentTime;
+      s.pattern.forEach((dur) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = s.freq;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.15, t);
+        osc.start(t);
+        osc.stop(t + dur);
+        t += dur + 0.08;
+      });
     } catch {}
   }
 
