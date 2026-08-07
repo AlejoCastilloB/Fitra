@@ -7,25 +7,25 @@ import { palette, glassPanel } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
+import { computeStreakUpdate } from "@/lib/streak";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
-import { Check, X, Trophy, Flame, ChevronDown, Trash2 } from "lucide-react";
+import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SwipeableRow from "@/components/SwipeableRow";
 import SetTypePopover from "@/components/SetTypePopover";
 import RestTimerRing from "@/components/RestTimerRing";
 
-const REST_SECONDS = 90;
-
 export default function WorkoutPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
-  const { session, now, startSession, toggleSetDone, updateSet, removeSet, skipRest, clearSession } = useWorkoutSession();
+  const { session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, skipRest, clearSession } = useWorkoutSession();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [timerSound, setTimerSound] = useState("clasico");
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
+  const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number> }>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -53,6 +53,7 @@ export default function WorkoutPage() {
         measurement_type: r.exercises.measurement_type, notes: r.notes,
         description: r.exercises.description, equipment: r.exercises.equipment,
         muscle_group: r.exercises.muscle_group, instructions: r.exercises.instructions,
+        restSeconds: 90,
         sets: (r.target_sets ?? []).map((s: any) => ({ ...s, done: false })),
       }));
 
@@ -126,8 +127,9 @@ export default function WorkoutPage() {
     await supabase.from("workout_logs").update({ total_volume: totalVolume }).eq("id", workoutLog!.id);
 
     const { data: streakRow } = await supabase.from("streaks").select("*").eq("client_id", uid).single();
-    if (streakRow) await supabase.from("streaks").update({ current_weeks: streakRow.current_weeks + 1, last_workout_date: new Date().toISOString() }).eq("client_id", uid);
-    else await supabase.from("streaks").insert({ client_id: uid, current_weeks: 1, last_workout_date: new Date().toISOString() });
+    const streakUpdate = computeStreakUpdate(streakRow?.last_workout_date ?? null, streakRow?.current_weeks ?? 0);
+    if (streakRow) await supabase.from("streaks").update(streakUpdate).eq("client_id", uid);
+    else await supabase.from("streaks").insert({ client_id: uid, ...streakUpdate });
 
     setFinished({ volume: totalVolume, durationSec, prs: prsHit, breakdown });
     clearSession();
@@ -141,11 +143,12 @@ export default function WorkoutPage() {
   if (loading) return <p style={{ color: palette.inkDim, textAlign: "center", marginTop: 60 }}>Cargando entrenamiento...</p>;
 
   if (finished) {
-    return <SummaryScreen routineName={session?.routineName ?? "Entrenamiento"} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} breakdown={finished.breakdown} routineId={id} onDone={() => router.push("/app")} />;
+    return <SummaryScreen routineName={session?.routineName ?? "Entrenamiento"} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} breakdown={finished.breakdown} onDone={() => router.push("/app")} />;
   }
 
   const hasExercises = session && session.exercises.length > 0;
   const restLeft = session?.restEndAt ? Math.max(0, Math.ceil((session.restEndAt - now) / 1000)) : 0;
+  const activeExRest = session?.exercises.find((_, i) => session.restEndAt)?.restSeconds ?? 90;
 
   return (
     <div>
@@ -155,7 +158,7 @@ export default function WorkoutPage() {
         <button onClick={() => setConfirmCancel(true)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer" }}><Trash2 size={18} /></button>
       </div>
 
-      {restLeft > 0 && <RestTimerRing secondsLeft={restLeft} totalSeconds={REST_SECONDS} onSkip={skipRest} />}
+      {restLeft > 0 && <RestTimerRing secondsLeft={restLeft} totalSeconds={activeExRest} onSkip={skipRest} />}
 
       {!hasExercises ? (
         <div style={{ ...glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
@@ -203,12 +206,33 @@ export default function WorkoutPage() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 14px 14px" }}>
+                {/* descanso editable por ejercicio */}
+                <div style={{ padding: "0 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Timer size={12} color={palette.inkDim} />
+                  {editingRestFor === exIdx ? (
+                    <input
+                      type="number" autoFocus defaultValue={ex.restSeconds}
+                      onBlur={(e) => { updateExerciseRest(exIdx, +e.target.value || 90); setEditingRestFor(null); }}
+                      style={{ width: 50, padding: "2px 6px", borderRadius: 6, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 11 }}
+                    />
+                  ) : (
+                    <button onClick={() => setEditingRestFor(exIdx)} style={{ background: "none", border: "none", color: palette.inkDim, fontSize: 11, cursor: "pointer" }}>
+                      Descanso: {ex.restSeconds}s
+                    </button>
+                  )}
+                </div>
+
+                {/* series — filas limpias, sin burbujas */}
+                <div style={{ padding: "0 14px 8px" }}>
                   {ex.sets.map((s, i) => {
                     const badge = getSetBadge(ex.sets, i, palette.accent);
                     return (
                       <SwipeableRow key={i} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => removeSet(exIdx, i) }}>
-                        <div style={{ ...glassPanel, padding: 10, display: "flex", alignItems: "center", gap: 8, opacity: s.done ? 0.55 : 1 }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
+                          borderBottom: i < ex.sets.length - 1 ? `1px solid ${palette.panelBorder}` : "none",
+                          opacity: s.done ? 0.55 : 1,
+                        }}>
                           <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
                             fontSize: 11, color: badge.color, width: 22, height: 22, borderRadius: 7,
                             background: `${badge.color}22`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
@@ -228,8 +252,8 @@ export default function WorkoutPage() {
                           )}
 
                           <div style={{ flex: 1 }} />
-                          <button onClick={() => toggleSetDone(exIdx, i, REST_SECONDS)} style={{
-                            width: 28, height: 28, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
+                          <button onClick={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)} style={{
+                            width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
                             background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
                           }}>
                             <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
@@ -238,6 +262,13 @@ export default function WorkoutPage() {
                       </SwipeableRow>
                     );
                   })}
+
+                  <button onClick={() => addSet(exIdx)} style={{
+                    display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
+                    color: palette.accent, fontSize: 12, cursor: "pointer", padding: "8px 0 4px",
+                  }}>
+                    <Plus size={13} /> Agregar serie
+                  </button>
                 </div>
               </div>
             );
@@ -296,28 +327,18 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 function SetInput({ value, onChange, placeholder }: { value?: number; onChange: (v: number) => void; placeholder: string }) {
   return (
     <input type="number" value={value ?? ""} onChange={(e) => onChange(+e.target.value)} placeholder={placeholder}
-      style={{ width: 52, padding: "6px 7px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
+      style={{ width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
   );
 }
 
-function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, routineId, onDone }: {
-  routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number>; routineId: string; onDone: () => void;
+function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDone }: {
+  routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number>; onDone: () => void;
 }) {
   const minutes = Math.floor(durationSec / 60);
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
-  const [customName, setCustomName] = useState(capitalized);
-  const [saving, setSaving] = useState(false);
-  const supabase = createClient();
-
-  async function saveCustomName() {
-    if (!customName.trim() || customName === capitalized) return;
-    setSaving(true);
-    await supabase.from("workout_logs").update({ }).eq("routine_id", routineId); // el nombre visible viene de la rutina; guardamos el nombre personalizado como nota del log más reciente
-    setSaving(false);
-  }
 
   async function share() {
-    const text = `Completé "${customName}" en FitTrack 💪\n${volume.toLocaleString()} kg de volumen total en ${minutes} min${prs.length ? `\n🏆 ${prs.length} nuevo(s) PR: ${prs.join(", ")}` : ""}`;
+    const text = `Completé "${capitalized}" en FitTrack 💪\n${volume.toLocaleString()} kg de volumen total en ${minutes} min${prs.length ? `\n🏆 ${prs.length} nuevo(s) PR: ${prs.join(", ")}` : ""}`;
     if (navigator.share) await navigator.share({ text });
     else { await navigator.clipboard.writeText(text); alert("Copiado al portapapeles"); }
   }
@@ -334,14 +355,8 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, routi
       <div style={{ width: 64, height: 64, borderRadius: "50%", background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", color: palette.accent }}>
         <Flame size={28} />
       </div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>¡Entreno completado!</h1>
-
-      <input
-        value={customName}
-        onChange={(e) => setCustomName(e.target.value)}
-        onBlur={saveCustomName}
-        style={{ textAlign: "center", fontSize: 14, fontWeight: 600, padding: "8px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, marginBottom: 24, width: "80%" }}
-      />
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>¡Entreno completado!</h1>
+      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 24 }}>{capitalized}</p>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
         <div style={{ ...glassPanel, flex: 1, padding: 16 }}>
