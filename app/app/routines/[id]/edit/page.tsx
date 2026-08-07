@@ -25,12 +25,13 @@ export default async function EditClientRoutinePage({ params }: { params: { id: 
   }));
 
   return (
-    <RoutineBuilder
+        <RoutineBuilder
       role="client"
       routineId={routine.id}
       initialName={routine.name}
       initialNotes={routine.notes || ""}
       initialExercises={initialExercises}
+      initialDays={routine.days_of_week || []}
     />
   );
 }
