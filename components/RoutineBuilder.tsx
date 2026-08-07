@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { POPULAR_EXERCISE_KEYWORDS } from "@/lib/popularExercises";
 import { getSetBadge } from "@/lib/setBadges";
-import { Search, Plus, Trash2, X, GripVertical } from "lucide-react";
+import { Search, Plus, Trash2, X, GripVertical, Mic, Square, Loader2 } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypePopover from "@/components/SetTypePopover";
@@ -58,6 +58,10 @@ export default function RoutineBuilder({
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [editingType, setEditingType] = useState<{ exId: string; setIdx: number; x: number; y: number } | null>(null);
+  const [recordingFor, setRecordingFor] = useState<string | null>(null);
+  const [transcribingFor, setTranscribingFor] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -125,6 +129,40 @@ export default function RoutineBuilder({
     setDragIndex(idx);
   }
   function handleDragEnd() { setDragIndex(null); }
+
+  async function toggleNoteRecording(exId: string) {
+    if (recordingFor === exId) {
+      mediaRecorderRef.current?.stop();
+      setRecordingFor(null);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setTranscribingFor(exId);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = (reader.result as string).split(",")[1];
+          const res = await fetch("/api/ai/transcribe-note", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audioBase64: base64, audioMimeType: "audio/webm" }),
+          });
+          const data = await res.json();
+          if (res.ok && data.text) updateExerciseNotes(exId, data.text);
+          setTranscribingFor(null);
+        };
+        reader.readAsDataURL(blob);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecordingFor(exId);
+    } catch {}
+  }
 
   function toggleDay(day: number) {
     setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
@@ -244,19 +282,49 @@ export default function RoutineBuilder({
                     <span style={{ fontWeight: 600, fontSize: 13.5 }}>{ex.name}</span>
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setOpenNotesFor(openNotesFor === ex.id ? null : ex.id)} style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      color: ex.notes ? palette.accent : palette.inkDim, fontSize: 11, fontWeight: 700,
-                    }}>
-                      {ex.notes ? "Nota ✓" : "+ Nota"}
-                    </button>
+                    {role === "client" && (
+                      <button onClick={() => setOpenNotesFor(openNotesFor === ex.id ? null : ex.id)} style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        color: ex.notes ? palette.accent : palette.inkDim, fontSize: 11, fontWeight: 700,
+                      }}>
+                        {ex.notes ? "Nota ✓" : "+ Nota"}
+                      </button>
+                    )}
                     <button onClick={() => removeExercise(ex.id)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <X size={16} />
                     </button>
                   </div>
                 </div>
 
-                {openNotesFor === ex.id && (
+                {role === "trainer" && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ position: "relative" }}>
+                      <textarea
+                        value={ex.notes}
+                        onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
+                        placeholder="Notas para el cliente: técnica, tempo, foco..."
+                        style={{ ...inputStyle, minHeight: 50, resize: "vertical", fontSize: 12.5, paddingRight: 38 }}
+                      />
+                      <button
+                        onClick={() => toggleNoteRecording(ex.id)}
+                        title="Díselo a la IA para que lo escriba por ti"
+                        style={{
+                          position: "absolute", right: 8, top: 8, width: 26, height: 26, borderRadius: 8, border: "none",
+                          background: recordingFor === ex.id ? "#f8717122" : `${palette.accent}18`,
+                          color: recordingFor === ex.id ? "#f87171" : palette.accent, cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                      >
+                        {transcribingFor === ex.id ? <Loader2 size={13} /> : recordingFor === ex.id ? <Square size={12} /> : <Mic size={13} />}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 10, color: palette.inkDim, marginTop: 4 }}>
+                      {transcribingFor === ex.id ? "La IA de Alejo está escribiendo tu nota..." : "🎙️ Díselo a la IA para que lo escriba por ti"}
+                    </p>
+                  </div>
+                )}
+
+                {role === "client" && openNotesFor === ex.id && (
                   <textarea
                     value={ex.notes}
                     onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
