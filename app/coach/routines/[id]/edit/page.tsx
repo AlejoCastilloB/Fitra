@@ -24,12 +24,13 @@ export default async function EditRoutinePage({ params }: { params: { id: string
   }));
 
   return (
-    <RoutineBuilder
+        <RoutineBuilder
       routineId={routine.id}
       initialName={routine.name}
       initialClientId={routine.client_id || ""}
       initialNotes={routine.notes || ""}
       initialExercises={initialExercises}
+      initialDays={routine.days_of_week || []}
     />
   );
 }
