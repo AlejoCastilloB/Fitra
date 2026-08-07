@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 10;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -22,12 +22,12 @@ export async function POST(request: Request) {
     .single();
 
   if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
-    return NextResponse.json({ error: "quota_exceeded", message: "Ya usaste tus 5 análisis de la IA de Alejo hoy. Vuelve mañana o regístralo manual." }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis de la IA de Alejo hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
   }
 
   const parts: any[] = [
     {
-      text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}. "portion" debe describir la cantidad estimada de forma clara y breve (ej: "1 plato mediano, ~350g" o "2 unidades, ~180g"). Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación (por ejemplo, cantidad exacta, ingredientes ocultos, tipo de preparación). Estima lo mejor posible.`,
+      text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}. "portion" debe describir la cantidad estimada de forma clara y breve (ej: "1 plato mediano, ~350g" o "2 unidades, ~180g"). Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación. Estima lo mejor posible. Si necesitas escribir texto para el usuario, usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos (nada de "vos", "dale", "che", "sos").`,
     },
   ];
 
