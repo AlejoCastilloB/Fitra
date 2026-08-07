@@ -9,6 +9,7 @@ import { Search, Plus, Trash2, X, GripVertical } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypeSheet from "@/components/SetTypeSheet";
+import { getSetBadge } from "@/lib/setBadges";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string };
@@ -250,11 +251,14 @@ export default function RoutineBuilder({
                   />
                 )}
 
-                {ex.sets.map((s, i) => (
+               {ex.sets.map((s, i) => {
+                  const badge = getSetBadge(ex.sets, i, palette.accent);
+                  return (
                   <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => setEditingType({ exId: ex.id, setIdx: i })} style={{ ...smallSelect, textAlign: "left", cursor: "pointer" }}>
-                      {{ warmup: "Calentamiento", normal: "Normal", dropset: "Dropset", failure: "Al fallo" }[s.set_type]}
-                    </button>
+                    <button onClick={() => setEditingType({ exId: ex.id, setIdx: i })} style={{
+                      width: 26, height: 26, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11,
+                      color: badge.color, background: `${badge.color}22`, flexShrink: 0,
+                    }}>{badge.text}</button>
                     {ex.measurement_type === "reps_weight" && (
                       <>
                         <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.id, i, "reps", +e.target.value)} placeholder="reps" style={smallInput} />
@@ -267,11 +271,13 @@ export default function RoutineBuilder({
                     {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
                       <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.id, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput} />
                     )}
-                    <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
+                  <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
+
 
                 <button onClick={() => addSet(ex.id)} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: palette.accent, fontSize: 12, cursor: "pointer", marginTop: 4, padding: 0 }}>
                   <Plus size={12} /> Agregar serie
