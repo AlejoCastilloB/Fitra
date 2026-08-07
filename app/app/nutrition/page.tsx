@@ -298,52 +298,54 @@ export default function NutritionPage() {
         <div style={{ ...glassPanel, padding: 24, textAlign: "center", color: palette.inkDim }}>Todavía no registraste nada hoy.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {logs.map((l, idx) => {
+                    {logs.map((l, idx) => {
             const isOpen = expandedId === l.id;
             return (
-             <div key={l.id} className="ft-pop" style={{ animationDelay: `${idx * 0.04}s` }}>
-              <SwipeableRow rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => deleteLog(l.id) }}>
-              <div style={{ ...glassPanel, borderRadius: 14 }}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  {l.photo_url && (
-                    <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
-                  )}
-                  <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 14px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
-                    <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.food_name || `${Math.round(l.kcal)} kcal`}</div>
-                      <div style={{ fontSize: 11, color: palette.inkDim }}>{l.portion || `P: ${Math.round(l.protein)}g · C: ${Math.round(l.carbs)}g · G: ${Math.round(l.fat)}g`}</div>
-                    </div>
-                    <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
-                  </button>
-                  <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
-                    <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
+              <SwipeableRow
+                key={l.id}
+                rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => deleteLog(l.id) }}
+              >
+                <div className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    {l.photo_url && (
+                      <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
+                    )}
+                    <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 14px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.food_name || `${Math.round(l.kcal)} kcal`}</div>
+                        <div style={{ fontSize: 11, color: palette.inkDim }}>{l.portion || `P: ${Math.round(l.protein)}g · C: ${Math.round(l.carbs)}g · G: ${Math.round(l.fat)}g`}</div>
+                      </div>
+                      <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
                     </button>
-                </div>
-
-                {isOpen && (
-                  <div style={{ padding: "0 16px 16px" }}>
-                    <input
-                      defaultValue={l.food_name || ""}
-                      onBlur={(e) => e.target.value !== l.food_name && updateFoodName(l.id, e.target.value)}
-                      placeholder="Nombre de la comida"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, marginBottom: 12 }}
-                    />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12.5 }}>
-                      <MacroRow label="Calorías" value={`${Math.round(l.kcal)} kcal`} />
-                      <MacroRow label="Proteína" value={`${Math.round(l.protein)} g`} />
-                      <MacroRow label="Carbohidratos" value={`${Math.round(l.carbs)} g`} />
-                      <MacroRow label="Grasa" value={`${Math.round(l.fat)} g`} />
-                      <MacroRow label="Fibra" value={`${Math.round(l.fiber ?? 0)} g`} />
-                      <MacroRow label="Azúcar" value={`${Math.round(l.sugar ?? 0)} g`} />
-                      <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
-                    </div>
+                    <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
+                      <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
+                    </button>
                   </div>
-                                )}
-              </div>
+
+                  {isOpen && (
+                    <div style={{ padding: "0 16px 16px" }}>
+                      <input
+                        defaultValue={l.food_name || ""}
+                        onBlur={(e) => e.target.value !== l.food_name && updateFoodName(l.id, e.target.value)}
+                        placeholder="Nombre de la comida"
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, marginBottom: 12 }}
+                      />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12.5 }}>
+                        <MacroRow label="Calorías" value={`${Math.round(l.kcal)} kcal`} />
+                        <MacroRow label="Proteína" value={`${Math.round(l.protein)} g`} />
+                        <MacroRow label="Carbohidratos" value={`${Math.round(l.carbs)} g`} />
+                        <MacroRow label="Grasa" value={`${Math.round(l.fat)} g`} />
+                        <MacroRow label="Fibra" value={`${Math.round(l.fiber ?? 0)} g`} />
+                        <MacroRow label="Azúcar" value={`${Math.round(l.sugar ?? 0)} g`} />
+                        <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </SwipeableRow>
-              </div>
             );
           })}
+
 
         </div>
       )}
