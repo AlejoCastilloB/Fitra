@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Check, ChevronLeft, ChevronRight, X, Trophy, Flame } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
+import SwipeableRow from "@/components/SwipeableRow";
+import SetTypeSheet from "@/components/SetTypeSheet";
 
 const REST_SECONDS = 90;
 
@@ -27,8 +29,9 @@ export default function WorkoutPage() {
   const [restLeft, setRestLeft] = useState(0);
   const [startedAt] = useState(Date.now());
   const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[] }>(null);
-  const audioRef = useRef<AudioContext | null>(null);
   const [timerSound, setTimerSound] = useState("clasico");
+  const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number } | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -73,7 +76,7 @@ export default function WorkoutPage() {
     return () => clearInterval(t);
   }, [restLeft]);
 
-    function playBeep() {
+  function playBeep() {
     const sounds: Record<string, { freq: number; pattern: number[] }> = {
       clasico: { freq: 880, pattern: [0.35] },
       suave: { freq: 660, pattern: [0.5] },
@@ -102,6 +105,10 @@ export default function WorkoutPage() {
     setExercises((prev) => prev.map((ex, i) => i !== exIdx ? ex : {
       ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, [field]: value }),
     }));
+  }
+
+  function removeSet(exIdx: number, setIdx: number) {
+    setExercises((prev) => prev.map((ex, i) => i !== exIdx ? ex : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx) }));
   }
 
   function toggleDone(exIdx: number, setIdx: number) {
@@ -197,33 +204,38 @@ export default function WorkoutPage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {ex.sets.map((s, i) => (
-          <div key={i} style={{
-            ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10,
-            opacity: s.done ? 0.6 : 1,
-          }}>
-            <span style={{ fontSize: 11, color: palette.inkDim, width: 20 }}>{i + 1}</span>
-
-            {ex.measurement_type === "reps_weight" && (
-              <>
-                <SetInput value={s.weight} onChange={(v) => updateSet(current, i, "weight", v)} placeholder="kg" />
-                <SetInput value={s.reps} onChange={(v) => updateSet(current, i, "reps", v)} placeholder="reps" />
-              </>
-            )}
-            {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-              <SetInput value={s.time_sec} onChange={(v) => updateSet(current, i, "time_sec", v)} placeholder="seg" />
-            )}
-            {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-              <SetInput value={s.distance_m} onChange={(v) => updateSet(current, i, "distance_m", v)} placeholder="m" />
-            )}
-
-            <div style={{ flex: 1 }} />
-            <button onClick={() => toggleDone(current, i)} style={{
-              width: 30, height: 30, borderRadius: 9, border: `1px solid ${s.done ? palette.accent : palette.panelBorder}`,
-              background: s.done ? palette.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          <SwipeableRow key={i} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => removeSet(current, i) }}>
+            <div style={{
+              ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10,
+              opacity: s.done ? 0.6 : 1,
             }}>
-              <Check size={15} color={s.done ? "#0A0C10" : palette.inkDim} />
-            </button>
-          </div>
+              <button onClick={() => setEditingType({ exIdx: current, setIdx: i })} style={{
+                fontSize: 11, color: palette.accent, width: 22, height: 22, borderRadius: 7,
+                background: `${palette.accent}18`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
+              }}>{i + 1}</button>
+
+              {ex.measurement_type === "reps_weight" && (
+                <>
+                  <SetInput value={s.weight} onChange={(v) => updateSet(current, i, "weight", v)} placeholder="kg" />
+                  <SetInput value={s.reps} onChange={(v) => updateSet(current, i, "reps", v)} placeholder="reps" />
+                </>
+              )}
+              {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                <SetInput value={s.time_sec} onChange={(v) => updateSet(current, i, "time_sec", v)} placeholder="seg" />
+              )}
+              {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                <SetInput value={s.distance_m} onChange={(v) => updateSet(current, i, "distance_m", v)} placeholder="m" />
+              )}
+
+              <div style={{ flex: 1 }} />
+              <button onClick={() => toggleDone(current, i)} style={{
+                width: 30, height: 30, borderRadius: 9, border: `1px solid ${s.done ? palette.accent : palette.panelBorder}`,
+                background: s.done ? palette.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+                <Check size={15} color={s.done ? "#0A0C10" : palette.inkDim} />
+              </button>
+            </div>
+          </SwipeableRow>
         ))}
       </div>
 
@@ -235,6 +247,14 @@ export default function WorkoutPage() {
           <NavBtn primary onClick={finishWorkout}>Terminar entreno</NavBtn>
         )}
       </div>
+
+      {editingType && (
+        <SetTypeSheet
+          current={exercises[editingType.exIdx].sets[editingType.setIdx].set_type}
+          onSelect={(type) => updateSet(editingType.exIdx, editingType.setIdx, "set_type", type)}
+          onClose={() => setEditingType(null)}
+        />
+      )}
     </div>
   );
 }
