@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
-import Link from "next/link";
 import Modal from "@/components/Modal";
+import Link from "next/link";
 
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 const WATER_GOAL = 2500;
@@ -31,6 +31,7 @@ export default function NutritionPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [coachTip, setCoachTip] = useState("");
   const [note, setNote] = useState("");
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -96,6 +97,15 @@ export default function NutritionPage() {
     });
   }
 
+  async function uploadPhoto(file: File): Promise<string | null> {
+    const { data: auth } = await supabase.auth.getUser();
+    const path = `${auth.user!.id}/${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("food-photos").upload(path, file, { contentType: file.type });
+    if (error) return null;
+    const { data } = supabase.storage.from("food-photos").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   async function toggleRecording() {
     if (recording) { mediaRecorderRef.current?.stop(); setRecording(false); return; }
     try {
@@ -115,9 +125,12 @@ export default function NutritionPage() {
     if (!file) return;
     setAnalyzing(true);
     setError("");
+    setCoachTip("");
+
     try {
       const imageBase64 = await fileToBase64(file, true);
-      const body: any = { imageBase64, mimeType: "image/jpeg" };
+      const photoUrl = await uploadPhoto(file);
+      const body: any = { imageBase64, mimeType: "image/jpeg", photoUrl };
       if (note) body.note = note;
       if (audioBlob) { body.audioBase64 = await fileToBase64(audioBlob, false); body.audioMimeType = "audio/webm"; }
 
@@ -128,6 +141,7 @@ export default function NutritionPage() {
       else {
         setRemaining(data.remaining);
         setExpandedId(data.log.id);
+        setCoachTip(data.coachTip || "");
         setNote(""); setAudioBlob(null);
         await loadAll();
       }
@@ -135,6 +149,10 @@ export default function NutritionPage() {
     finally { setAnalyzing(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
+  async function updateFoodName(logId: string, newName: string) {
+    await supabase.from("nutrition_logs").update({ food_name: newName }).eq("id", logId);
+    await loadAll();
+  }
 
   async function saveMealAsFavorite(log: any) {
     const { data: auth } = await supabase.auth.getUser();
@@ -172,13 +190,13 @@ export default function NutritionPage() {
       `}</style>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Nutrición</h1>
-            <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 6 }}>Hoy</p>
+      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 6 }}>Hoy</p>
       <p style={{ color: palette.inkDim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 18 }}>
         Toma una foto, escríbelo o graba una nota — la IA de Alejo se encarga del resto.
       </p>
 
       {/* anillos de macros */}
-            <div className="ft-pop" style={{
+      <div className="ft-pop" style={{
         ...glassPanel, padding: 22, marginBottom: 14, position: "relative", overflow: "hidden",
         border: "1px solid transparent", backgroundImage: `linear-gradient(${palette.panel}, ${palette.panel}), ${palette.metallicBorder}`,
         backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box",
@@ -240,7 +258,7 @@ export default function NutritionPage() {
         <button onClick={() => setShowManual(true)} style={secondaryBtn}><Plus size={14} /> Manual</button>
         <button onClick={() => setShowSaved(true)} style={secondaryBtn}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
       </div>
-<Link href="/app/nutrition/recipes" style={{ ...secondaryBtn, textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
+      <Link href="/app/nutrition/recipes" style={{ ...secondaryBtn, textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
         <Sparkles size={14} color={palette.accent} /> Preguntarle a la IA de Alejo por recetas
       </Link>
 
@@ -249,6 +267,14 @@ export default function NutritionPage() {
           <Sparkles size={11} style={{ verticalAlign: -1, marginRight: 3 }} /> {remaining} análisis gratis restantes hoy
         </p>
       )}
+
+      {coachTip && (
+        <div className="ft-pop" style={{ ...glassPanel, padding: 14, marginBottom: 14, border: `1px solid ${palette.accent}55`, display: "flex", gap: 10 }}>
+          <Sparkles size={16} color={palette.accent} style={{ flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 12.5, lineHeight: 1.5 }}>{coachTip}</p>
+        </div>
+      )}
+
       {error && <p style={{ color: "#f87171", fontSize: 13, textAlign: "center", marginBottom: 16 }}>{error}</p>}
 
       <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10, marginTop: 24 }}>Registro de hoy</h2>
@@ -264,7 +290,10 @@ export default function NutritionPage() {
             return (
               <div key={l.id} className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
                 <div style={{ display: "flex", alignItems: "center" }}>
-                  <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 16px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
+                  {l.photo_url && (
+                    <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
+                  )}
+                  <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 14px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.food_name || `${Math.round(l.kcal)} kcal`}</div>
                       <div style={{ fontSize: 11, color: palette.inkDim }}>{l.portion || `P: ${Math.round(l.protein)}g · C: ${Math.round(l.carbs)}g · G: ${Math.round(l.fat)}g`}</div>
@@ -278,6 +307,12 @@ export default function NutritionPage() {
 
                 {isOpen && (
                   <div style={{ padding: "0 16px 16px" }}>
+                    <input
+                      defaultValue={l.food_name || ""}
+                      onBlur={(e) => e.target.value !== l.food_name && updateFoodName(l.id, e.target.value)}
+                      placeholder="Nombre de la comida"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, marginBottom: 12 }}
+                    />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12.5 }}>
                       <MacroRow label="Calorías" value={`${Math.round(l.kcal)} kcal`} />
                       <MacroRow label="Proteína" value={`${Math.round(l.protein)} g`} />
@@ -296,9 +331,7 @@ export default function NutritionPage() {
       )}
 
       {showManual && <ManualMealModal onClose={() => setShowManual(false)} onSaved={loadAll} />}
-      {showSaved && (
-        <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />
-      )}
+      {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
     </div>
   );
 }
