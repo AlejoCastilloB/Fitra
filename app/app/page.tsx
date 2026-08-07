@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
 import { Flame, Play } from "lucide-react";
+import { Flame, Play, MessageSquare } from "lucide-react";
 
 export default async function ClientToday() {
   const supabase = await createClient();
@@ -19,8 +20,19 @@ export default async function ClientToday() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Hoy</h1>
-      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 20 }}>Listo para entrenar</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Hoy</h1>
+          <p style={{ color: palette.inkDim, fontSize: 14 }}>Listo para entrenar</p>
+        </div>
+        <Link href="/app/messages" style={{
+          width: 40, height: 40, borderRadius: 12, background: palette.panel, border: `1px solid ${palette.panelBorder}`,
+          display: "flex", alignItems: "center", justifyContent: "center", color: palette.ink, textDecoration: "none",
+        }}>
+          <MessageSquare size={17} />
+        </Link>
+      </div>
+
 
       <div style={{ ...glassPanel, padding: 18, display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent }}>
