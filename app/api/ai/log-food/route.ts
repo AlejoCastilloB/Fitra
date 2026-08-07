@@ -12,7 +12,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "falta GEMINI_API_KEY en Vercel" }, { status: 500 });
   }
 
-  const { imageBase64, mimeType, note, audioBase64, audioMimeType } = await request.json();
+    const { imageBase64, mimeType, note, audioBase64, audioMimeType, photoUrl } = await request.json();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
+  const { data: todayLogs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", user.id).gte("date", `${today}T00:00:00`);
+  const consumed = (todayLogs ?? []).reduce((a, l) => ({
+    kcal: a.kcal + (l.kcal ?? 0), protein: a.protein + (l.protein ?? 0), carbs: a.carbs + (l.carbs ?? 0), fat: a.fat + (l.fat ?? 0),
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
 
   const { data: usageRow } = await supabase
     .from("ai_usage")
@@ -27,7 +34,7 @@ export async function POST(request: Request) {
 
   const parts: any[] = [
     {
-      text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}. "portion" debe describir la cantidad estimada de forma clara y breve (ej: "1 plato mediano, ~350g" o "2 unidades, ~180g"). Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación. Estima lo mejor posible. Si necesitas escribir texto para el usuario, usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos (nada de "vos", "dale", "che", "sos").`,
+        text: `Eres la IA de Alejo, el asistente nutricional de FitTrack. Tu tono es siempre positivo, cercano y motivador — nunca juzgas al usuario. Analiza esta comida y devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number, "coach_tip": string}. "portion" describe la cantidad estimada de forma clara y breve. "coach_tip" es un mensaje corto (máximo 2 líneas), cálido y motivador, considerando que al usuario le quedan hoy aproximadamente ${Math.round(DAILY_GOALS.kcal - consumed.kcal)} kcal, ${Math.round(DAILY_GOALS.protein - consumed.protein)}g de proteína, ${Math.round(DAILY_GOALS.carbs - consumed.carbs)}g de carbohidratos y ${Math.round(DAILY_GOALS.fat - consumed.fat)}g de grasa por consumir — sugiere algo simple para su próxima comida si tiene sentido. Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación. Usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`,
     },
   ];
 
@@ -67,9 +74,9 @@ export async function POST(request: Request) {
 
   await supabase.rpc("increment_ai_usage", { p_user_id: user.id });
 
-  const { data: log, error } = await supabase.from("nutrition_logs").insert({
+    const { data: log, error } = await supabase.from("nutrition_logs").insert({
     client_id: user.id,
-    photo_url: null,
+    photo_url: photoUrl || null,
     food_name: parsed.food_name,
     portion: parsed.portion,
     kcal: parsed.kcal,
@@ -86,5 +93,5 @@ export async function POST(request: Request) {
 
   const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
-  return NextResponse.json({ ok: true, log, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+    return NextResponse.json({ ok: true, log, coachTip: parsed.coach_tip, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
 }
