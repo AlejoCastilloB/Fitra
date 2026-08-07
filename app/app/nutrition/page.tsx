@@ -7,6 +7,7 @@ import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Sta
 import MacroRing from "@/components/MacroRing";
 import Modal from "@/components/Modal";
 import Link from "next/link";
+import SwipeableRow from "@/components/SwipeableRow";
 
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 const WATER_GOAL = 2500;
@@ -153,6 +154,10 @@ export default function NutritionPage() {
     await supabase.from("nutrition_logs").update({ food_name: newName }).eq("id", logId);
     await loadAll();
   }
+    async function deleteLog(logId: string) {
+    await supabase.from("nutrition_logs").delete().eq("id", logId);
+    await loadAll();
+  }
 
     async function toggleFavorite(log: any) {
     if (log.saved_meal_id) {
@@ -296,7 +301,9 @@ export default function NutritionPage() {
           {logs.map((l, idx) => {
             const isOpen = expandedId === l.id;
             return (
-              <div key={l.id} className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
+             <div key={l.id} className="ft-pop" style={{ animationDelay: `${idx * 0.04}s` }}>
+              <SwipeableRow rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => deleteLog(l.id) }}>
+              <div style={{ ...glassPanel, borderRadius: 14 }}>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {l.photo_url && (
                     <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
@@ -331,15 +338,18 @@ export default function NutritionPage() {
                       <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
                     </div>
                   </div>
-                )}
+                                )}
+              </div>
+              </SwipeableRow>
               </div>
             );
           })}
+
         </div>
       )}
 
       {showManual && <ManualMealModal onClose={() => setShowManual(false)} onSaved={loadAll} />}
-      {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
+      {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} onDelete={async (id) => { await supabase.from("saved_meals").delete().eq("id", id); await loadAll(); }} />}
     </div>
   );
 }
@@ -400,7 +410,7 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
   );
 }
 
-function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: () => void; onPick: (m: any) => void }) {
+function SavedMealsModal({ meals, onClose, onPick, onDelete }: { meals: any[]; onClose: () => void; onPick: (m: any) => void; onDelete: (id: string) => void }) {
   return (
     <Modal title="Comidas guardadas" onClose={onClose}>
       {meals.length === 0 ? (
@@ -410,13 +420,15 @@ function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: ()
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {meals.map((m) => (
-            <button key={m.id} onClick={() => onPick(m)} style={{ ...glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
-                <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
-              </div>
-              <Plus size={16} color={palette.accent} />
-            </button>
+            <SwipeableRow key={m.id} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => onDelete(m.id) }}>
+              <button onClick={() => onPick(m)} style={{ ...glassPanel, borderRadius: 14, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
+                  <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
+                </div>
+                <Plus size={16} color={palette.accent} />
+              </button>
+            </SwipeableRow>
           ))}
         </div>
       )}
