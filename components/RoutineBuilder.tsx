@@ -8,6 +8,7 @@ import { muscleLabel } from "@/lib/muscleLabels";
 import { Search, Plus, Trash2, X, GripVertical } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
+import SetTypeSheet from "@/components/SetTypeSheet";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string };
@@ -51,6 +52,7 @@ export default function RoutineBuilder({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
+  const [editingType, setEditingType] = useState<{ exId: string; setIdx: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -250,12 +252,9 @@ export default function RoutineBuilder({
 
                 {ex.sets.map((s, i) => (
                   <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-                    <select value={s.set_type} onChange={(e) => updateSet(ex.id, i, "set_type", e.target.value)} style={smallSelect}>
-                      <option value="warmup">Calentamiento</option>
-                      <option value="normal">Normal</option>
-                      <option value="dropset">Dropset</option>
-                      <option value="failure">Al fallo</option>
-                    </select>
+                    <button onClick={() => setEditingType({ exId: ex.id, setIdx: i })} style={{ ...smallSelect, textAlign: "left", cursor: "pointer" }}>
+                      {{ warmup: "Calentamiento", normal: "Normal", dropset: "Dropset", failure: "Al fallo" }[s.set_type]}
+                    </button>
                     {ex.measurement_type === "reps_weight" && (
                       <>
                         <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.id, i, "reps", +e.target.value)} placeholder="reps" style={smallInput} />
@@ -323,6 +322,14 @@ export default function RoutineBuilder({
       </div>
 
       {showAI && <AIRoutineGenerator onClose={() => setShowAI(false)} onGenerated={handleAIGenerated} />}
+
+      {editingType && (
+        <SetTypeSheet
+          current={picked.find((p) => p.id === editingType.exId)!.sets[editingType.setIdx].set_type}
+          onSelect={(type) => updateSet(editingType.exId, editingType.setIdx, "set_type", type)}
+          onClose={() => setEditingType(null)}
+        />
+      )}
     </div>
   );
 }
