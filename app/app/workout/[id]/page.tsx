@@ -9,11 +9,12 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
 import { computeStreakUpdate } from "@/lib/streak";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
-import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer } from "lucide-react";
+import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SwipeableRow from "@/components/SwipeableRow";
 import SetTypePopover from "@/components/SetTypePopover";
 import RestTimerRing from "@/components/RestTimerRing";
+import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 
 export default function WorkoutPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,10 @@ export default function WorkoutPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number> }>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [defaultRest, setDefaultRest] = useState(90);
+  const [keepAwake, setKeepAwake] = useState(false);
+  const [trackRpe, setTrackRpe] = useState(false);
 
   useEffect(() => {
     if (session && session.routineId === id) { setLoading(false); return; }
@@ -45,8 +50,13 @@ export default function WorkoutPage() {
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
 
       const { data: auth } = await supabase.auth.getUser();
-      const { data: userRow } = await supabase.from("users").select("timer_sound").eq("id", auth.user!.id).single();
-      if (userRow) setTimerSound(userRow.timer_sound);
+      const { data: userRow } = await supabase.from("users").select("timer_sound, default_rest_seconds, keep_screen_awake, track_rpe").eq("id", auth.user!.id).single();
+      if (userRow) {
+        setTimerSound(userRow.timer_sound);
+        setDefaultRest(userRow.default_rest_seconds ?? 90);
+        setKeepAwake(userRow.keep_screen_awake ?? false);
+        setTrackRpe(userRow.track_rpe ?? false);
+      }
 
       const built: LiveExercise[] = (re ?? []).map((r: any) => ({
         id: r.exercises.id, name: r.exercises.name, media_url: r.exercises.media_url,
@@ -61,6 +71,13 @@ export default function WorkoutPage() {
       setLoading(false);
     })();
   }, [id]);
+
+  useEffect(() => {
+    if (!keepAwake || !("wakeLock" in navigator)) return;
+    let lock: any;
+    (navigator as any).wakeLock.request("screen").then((l: any) => { lock = l; }).catch(() => {});
+    return () => { lock?.release?.(); };
+  }, [keepAwake]);
 
   useEffect(() => {
     if (session?.restEndAt && session.restEndAt - now <= 0) {
@@ -155,7 +172,10 @@ export default function WorkoutPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <button onClick={() => router.push("/app")} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={20} /></button>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{session?.routineName}</span>
-        <button onClick={() => setConfirmCancel(true)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer" }}><Trash2 size={18} /></button>
+        <div style={{ display: "flex", gap: 14 }}>
+          <button onClick={() => setShowSettings(true)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><Settings size={18} /></button>
+          <button onClick={() => setConfirmCancel(true)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer" }}><Trash2 size={18} /></button>
+        </div>
       </div>
 
       {restLeft > 0 && <RestTimerRing secondsLeft={restLeft} totalSeconds={activeExRest} onSkip={skipRest} />}
@@ -206,7 +226,6 @@ export default function WorkoutPage() {
                   </div>
                 )}
 
-                {/* descanso editable por ejercicio */}
                 <div style={{ padding: "0 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
                   <Timer size={12} color={palette.inkDim} />
                   {editingRestFor === exIdx ? (
@@ -222,7 +241,6 @@ export default function WorkoutPage() {
                   )}
                 </div>
 
-                {/* series — filas limpias, sin burbujas */}
                 <div style={{ padding: "0 14px 8px" }}>
                   {ex.sets.map((s, i) => {
                     const badge = getSetBadge(ex.sets, i, palette.accent);
@@ -296,6 +314,18 @@ export default function WorkoutPage() {
           x={editingType.x} y={editingType.y}
           onSelect={(type) => updateSet(editingType.exIdx, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
+        />
+      )}
+
+      {showSettings && (
+        <WorkoutSettingsSheet
+          onClose={() => setShowSettings(false)}
+          defaultRest={defaultRest} keepAwake={keepAwake} trackRpe={trackRpe}
+          onUpdated={(v) => {
+            if (v.defaultRest !== undefined) setDefaultRest(v.defaultRest);
+            if (v.keepAwake !== undefined) setKeepAwake(v.keepAwake);
+            if (v.trackRpe !== undefined) setTrackRpe(v.trackRpe);
+          }}
         />
       )}
 
