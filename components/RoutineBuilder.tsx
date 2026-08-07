@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
+import { POPULAR_EXERCISE_KEYWORDS } from "@/lib/popularExercises";
+import { getSetBadge } from "@/lib/setBadges";
 import { Search, Plus, Trash2, X, GripVertical } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
-import SetTypeSheet from "@/components/SetTypeSheet";
-import { getSetBadge } from "@/lib/setBadges";
+import SetTypePopover from "@/components/SetTypePopover";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string };
@@ -26,7 +27,7 @@ export default function RoutineBuilder({
   initialName = "",
   initialClientId = "",
   initialNotes = "",
-    initialExercises = [],
+  initialExercises = [],
   initialDays = [],
   role = "trainer",
 }: {
@@ -56,7 +57,7 @@ export default function RoutineBuilder({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
-  const [editingType, setEditingType] = useState<{ exId: string; setIdx: number } | null>(null);
+  const [editingType, setEditingType] = useState<{ exId: string; setIdx: number; x: number; y: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,9 +75,14 @@ export default function RoutineBuilder({
 
   useEffect(() => {
     const t = setTimeout(async () => {
-      let query = supabase.from("exercises").select("id, name, measurement_type, muscle_group, media_url").limit(30);
-      if (search) query = query.ilike("name", `%${search}%`);
-      if (muscleFilter) query = query.eq("muscle_group", muscleFilter);
+      let query = supabase.from("exercises").select("id, name, measurement_type, muscle_group, media_url");
+      if (search) {
+        query = query.ilike("name", `%${search}%`).limit(30);
+      } else if (muscleFilter) {
+        query = query.eq("muscle_group", muscleFilter).limit(30);
+      } else {
+        query = query.or(POPULAR_EXERCISE_KEYWORDS.map((k) => `name.ilike.%${k}%`).join(",")).limit(15);
+      }
       const { data } = await query;
       setResults(data ?? []);
     }, 250);
@@ -119,9 +125,11 @@ export default function RoutineBuilder({
     setDragIndex(idx);
   }
   function handleDragEnd() { setDragIndex(null); }
+
   function toggleDay(day: number) {
     setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
   }
+
   function handleAIGenerated(result: { name: string; exercises: any[] }) {
     setName(result.name);
     setPicked(result.exercises.map((e: any) => ({
@@ -138,13 +146,13 @@ export default function RoutineBuilder({
 
     let currentRoutineId = routineId;
 
-        if (isEditing) {
+    if (isEditing) {
       await supabase.from("routines").update({
         name, client_id: role === "client" ? auth.user!.id : (clientId || null), notes: routineNotes, days_of_week: days,
       }).eq("id", routineId);
       await supabase.from("routine_exercises").delete().eq("routine_id", routineId);
     } else {
-            const { data: routine, error } = await supabase.from("routines").insert({
+      const { data: routine, error } = await supabase.from("routines").insert({
         trainer_id: role === "trainer" ? auth.user!.id : null,
         created_by: auth.user!.id,
         client_id: role === "client" ? auth.user!.id : (clientId || null),
@@ -257,11 +265,11 @@ export default function RoutineBuilder({
                   />
                 )}
 
-               {ex.sets.map((s, i) => {
+                {ex.sets.map((s, i) => {
                   const badge = getSetBadge(ex.sets, i, palette.accent);
                   return (
                   <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => setEditingType({ exId: ex.id, setIdx: i })} style={{
+                    <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exId: ex.id, setIdx: i, x: r.left, y: r.bottom }); }} style={{
                       width: 26, height: 26, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11,
                       color: badge.color, background: `${badge.color}22`, flexShrink: 0,
                     }}>{badge.text}</button>
@@ -277,13 +285,12 @@ export default function RoutineBuilder({
                     {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
                       <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.id, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput} />
                     )}
-                  <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
+                    <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
                   );
                 })}
-
 
                 <button onClick={() => addSet(ex.id)} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: palette.accent, fontSize: 12, cursor: "pointer", marginTop: 4, padding: 0 }}>
                   <Plus size={12} /> Agregar serie
@@ -312,7 +319,7 @@ export default function RoutineBuilder({
             </select>
           </label>
         )}
-        
+
         <label style={fieldLabel}>
           Días de la semana (opcional)
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -350,8 +357,9 @@ export default function RoutineBuilder({
       {showAI && <AIRoutineGenerator onClose={() => setShowAI(false)} onGenerated={handleAIGenerated} />}
 
       {editingType && (
-        <SetTypeSheet
+        <SetTypePopover
           current={picked.find((p) => p.id === editingType.exId)!.sets[editingType.setIdx].set_type}
+          x={editingType.x} y={editingType.y}
           onSelect={(type) => updateSet(editingType.exId, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
         />
@@ -364,4 +372,3 @@ const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color
 const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: palette.inkDim };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit" };
 const smallInput: React.CSSProperties = { width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 };
-const smallSelect: React.CSSProperties = { ...smallInput, width: 112 };
