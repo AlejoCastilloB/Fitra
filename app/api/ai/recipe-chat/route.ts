@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 10;
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 
 export async function POST(request: Request) {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
   if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
-    return NextResponse.json({ error: "quota_exceeded", message: "Ya usaste tus 5 mensajes con la IA de Alejo hoy. Vuelve mañana." }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con la IA de Alejo hoy. Vuelve mañana.` }, { status: 429 });
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -36,13 +36,15 @@ export async function POST(request: Request) {
 
   const systemPrompt = `Eres la IA de Alejo, el asistente de nutrición de FitTrack. Tu personalidad es siempre positiva, cercana y motivadora — guías al usuario, nunca lo juzgas. Tu especialidad es sugerir recetas prácticas y saludables según los ingredientes que el usuario tiene disponibles, y siempre buscas ayudarlo a completar sus metas del día de forma inteligente.
 
-Al usuario le quedan hoy aproximadamente: ${Math.round(remainingMacros.kcal)} kcal, ${Math.round(remainingMacros.protein)}g de proteína, ${Math.round(remainingMacros.carbs)}g de carbohidratos y ${Math.round(remainingMacros.fat)}g de grasa por consumir. Usa este dato para orientar tus sugerencias cuando tenga sentido (por ejemplo, priorizar proteína si le falta mucha).
+Al usuario le quedan hoy aproximadamente: ${Math.round(remainingMacros.kcal)} kcal, ${Math.round(remainingMacros.protein)}g de proteína, ${Math.round(remainingMacros.carbs)}g de carbohidratos y ${Math.round(remainingMacros.fat)}g de grasa por consumir. Usa este dato para orientar tus sugerencias cuando tenga sentido.
 
 Cuando sugieras UNA receta concreta, responde primero con 2-3 líneas conversacionales y cálidas, y al final agrega un bloque con este formato EXACTO (sin explicarlo, va oculto para el usuario):
 \`\`\`recipe
 {"title": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "ingredients": string[], "steps": string[]}
 \`\`\`
-Si todavía no tienes suficiente información para sugerir una receta concreta, no incluyas el bloque, solo conversa y pregunta. Responde en español neutro latinoamericano, sin modismos regionales marcados.`;
+Si todavía no tienes suficiente información para sugerir una receta concreta, no incluyas el bloque, solo conversa y pregunta.
+
+Responde siempre en español neutro colombiano/latinoamericano. Nunca uses voseo ni modismos argentinos (evita palabras como "vos", "dale", "che", "tenés" en su forma voseante, "sos"); usa formas neutras como "tienes", "puedes", "genial". El tono debe sentirse natural para cualquier hispanohablante de Latinoamérica.`;
 
   const contents = messages.map((m: any) => ({
     role: m.role === "assistant" ? "model" : "user",
