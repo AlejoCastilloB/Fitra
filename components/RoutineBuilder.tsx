@@ -13,7 +13,7 @@ import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypePopover from "@/components/SetTypePopover";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
-type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string };
+type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetWith?: string };
 
 function emptySet(measurementType: string): SetRow {
   if (measurementType === "time") return { set_type: "normal", time_sec: 30 };
@@ -281,6 +281,21 @@ export default function RoutineBuilder({
                     <GifThumb src={ex.media_url} size={34} />
                     <span style={{ fontWeight: 600, fontSize: 13.5 }}>{ex.name}</span>
                   </div>
+                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                  {picked.filter((p) => p.id !== ex.id).map((other) => (
+                    <button key={other.id} onClick={() => setPicked(picked.map((p) => p.id === ex.id ? { ...p, supersetWith: p.supersetWith === other.id ? undefined : other.id } : p))} style={{
+                      fontSize: 10.5, padding: "4px 9px", borderRadius: 999, cursor: "pointer", fontWeight: 600,
+                      border: `1px solid ${ex.supersetWith === other.id ? "#C77DFF" : palette.panelBorder}`,
+                      background: ex.supersetWith === other.id ? "#C77DFF22" : palette.inputBg,
+                      color: ex.supersetWith === other.id ? "#C77DFF" : palette.inkDim,
+                    }}>
+                      🔗 {ex.supersetWith === other.id ? "Vinculado con" : "Vincular con"} {other.name}
+                    </button>
+                  ))}
+                </div>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    {role === "client" && (
                   <div style={{ display: "flex", gap: 10 }}>
                     {role === "client" && (
                       <button onClick={() => setOpenNotesFor(openNotesFor === ex.id ? null : ex.id)} style={{
