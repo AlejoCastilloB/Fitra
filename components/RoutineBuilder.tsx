@@ -106,6 +106,10 @@ export default function RoutineBuilder({
     setPicked(picked.map((p) => p.id === id ? { ...p, notes } : p));
   }
 
+  function toggleSuperset(exId: string, otherId: string) {
+    setPicked(picked.map((p) => p.id === exId ? { ...p, supersetWith: p.supersetWith === otherId ? undefined : otherId } : p));
+  }
+
   function addSet(exId: string) {
     setPicked(picked.map((p) => p.id === exId ? { ...p, sets: [...p.sets, emptySet(p.measurement_type)] } : p));
   }
@@ -210,6 +214,7 @@ export default function RoutineBuilder({
       order_index: i,
       target_sets: p.sets,
       notes: p.notes || null,
+      superset_with: p.supersetWith || null,
     }));
 
     await supabase.from("routine_exercises").insert(rows);
@@ -219,7 +224,6 @@ export default function RoutineBuilder({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 260px", gap: 20, alignItems: "start" }}>
 
-      {/* ── biblioteca ── */}
       <div style={{ position: "sticky", top: 20 }}>
         <h2 style={sectionTitle}>Biblioteca</h2>
 
@@ -253,7 +257,6 @@ export default function RoutineBuilder({
         </div>
       </div>
 
-      {/* ── rutina editable ── */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Rutina {picked.length > 0 && `· ${picked.length} ejercicios`}</h2>
@@ -281,21 +284,6 @@ export default function RoutineBuilder({
                     <GifThumb src={ex.media_url} size={34} />
                     <span style={{ fontWeight: 600, fontSize: 13.5 }}>{ex.name}</span>
                   </div>
-                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                  {picked.filter((p) => p.id !== ex.id).map((other) => (
-                    <button key={other.id} onClick={() => setPicked(picked.map((p) => p.id === ex.id ? { ...p, supersetWith: p.supersetWith === other.id ? undefined : other.id } : p))} style={{
-                      fontSize: 10.5, padding: "4px 9px", borderRadius: 999, cursor: "pointer", fontWeight: 600,
-                      border: `1px solid ${ex.supersetWith === other.id ? "#C77DFF" : palette.panelBorder}`,
-                      background: ex.supersetWith === other.id ? "#C77DFF22" : palette.inputBg,
-                      color: ex.supersetWith === other.id ? "#C77DFF" : palette.inkDim,
-                    }}>
-                      🔗 {ex.supersetWith === other.id ? "Vinculado con" : "Vincular con"} {other.name}
-                    </button>
-                  ))}
-                </div>
-
-                  <div style={{ display: "flex", gap: 10 }}>
-                    {role === "client" && (
                   <div style={{ display: "flex", gap: 10 }}>
                     {role === "client" && (
                       <button onClick={() => setOpenNotesFor(openNotesFor === ex.id ? null : ex.id)} style={{
@@ -310,6 +298,24 @@ export default function RoutineBuilder({
                     </button>
                   </div>
                 </div>
+
+                {picked.length > 1 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                    {picked.filter((p) => p.id !== ex.id).map((other) => {
+                      const linked = ex.supersetWith === other.id;
+                      return (
+                        <button key={other.id} onClick={() => toggleSuperset(ex.id, other.id)} style={{
+                          fontSize: 10.5, padding: "4px 9px", borderRadius: 999, cursor: "pointer", fontWeight: 600,
+                          border: `1px solid ${linked ? "#C77DFF" : palette.panelBorder}`,
+                          background: linked ? "#C77DFF22" : palette.inputBg,
+                          color: linked ? "#C77DFF" : palette.inkDim,
+                        }}>
+                          🔗 {linked ? "Vinculado con" : "Vincular con"} {other.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {role === "trainer" && (
                   <div style={{ marginBottom: 10 }}>
@@ -384,7 +390,6 @@ export default function RoutineBuilder({
         )}
       </div>
 
-      {/* ── detalles + guardar ── */}
       <div style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 14 }}>
         <h2 style={sectionTitle}>Detalles</h2>
 
