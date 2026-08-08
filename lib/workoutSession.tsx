@@ -6,7 +6,7 @@ export type LiveSet = { set_type: string; reps?: number; weight?: number; time_s
 export type LiveExercise = {
   id: string; name: string; media_url?: string; measurement_type: string; notes?: string;
   description?: string; equipment?: string; muscle_group?: string; instructions?: string[];
-  restSeconds?: number;
+  restSeconds?: number; supersetWith?: string;
   sets: LiveSet[];
 };
 
@@ -67,15 +67,19 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
-  const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
+    const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
     setSession((prev) => {
       if (!prev) return prev;
-      const wasDone = prev.exercises[exIdx].sets[setIdx].done;
-      const exRest = prev.exercises[exIdx].restSeconds ?? restSeconds;
+      const current = prev.exercises[exIdx];
+      const wasDone = current.sets[setIdx].done;
+      const exRest = current.restSeconds ?? restSeconds;
       const exercises = prev.exercises.map((ex, i) => i !== exIdx ? ex : {
         ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, done: !s.done }),
       });
-      return { ...prev, exercises, restEndAt: wasDone ? prev.restEndAt : Date.now() + exRest * 1000 };
+      // si este ejercicio es el "primero" de una superserie (tiene supersetWith), no activa descanso —
+      // el descanso arranca recién cuando se completa el ejercicio vinculado
+      const isFirstOfSuperset = !!current.supersetWith;
+      return { ...prev, exercises, restEndAt: (wasDone || isFirstOfSuperset) ? prev.restEndAt : Date.now() + exRest * 1000 };
     });
   }, []);
 
