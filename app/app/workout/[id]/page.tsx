@@ -34,15 +34,15 @@ export default function WorkoutPage() {
   const [defaultRest, setDefaultRest] = useState(90);
   const [keepAwake, setKeepAwake] = useState(false);
   const [trackRpe, setTrackRpe] = useState(false);
-    const [previousMap, setPreviousMap] = useState<Record<string, Record<number, any>>>({});
-  
+  const [previousMap, setPreviousMap] = useState<Record<string, Record<number, any>>>({});
+
   useEffect(() => {
     if (session && session.routineId === id) { setLoading(false); return; }
 
     (async () => {
       const { data: re, error: reError } = await supabase
         .from("routine_exercises")
-        .select("order_index, target_sets, notes, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
+        .select("order_index, target_sets, notes, superset_with, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
         .eq("routine_id", id)
         .order("order_index");
 
@@ -59,7 +59,7 @@ export default function WorkoutPage() {
         setTrackRpe(userRow.track_rpe ?? false);
       }
 
-            const built: LiveExercise[] = (re ?? []).map((r: any) => ({
+      const built: LiveExercise[] = (re ?? []).map((r: any) => ({
         id: r.exercises.id, name: r.exercises.name, media_url: r.exercises.media_url,
         measurement_type: r.exercises.measurement_type, notes: r.notes,
         description: r.exercises.description, equipment: r.exercises.equipment,
@@ -67,6 +67,7 @@ export default function WorkoutPage() {
         restSeconds: 90, supersetWith: r.superset_with,
         sets: (r.target_sets ?? []).map((s: any) => ({ ...s, done: false })),
       }));
+
       const prevEntries = await Promise.all(built.map(async (ex) => {
         const { data: prevLogs } = await supabase
           .from("set_logs")
@@ -88,26 +89,6 @@ export default function WorkoutPage() {
       }));
       setPreviousMap(Object.fromEntries(prevEntries));
 
-      const prevEntries = await Promise.all(built.map(async (ex) => {
-        const { data: prevLogs } = await supabase
-          .from("set_logs")
-          .select("order_index, target_sets, notes, superset_with, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
-          .eq("exercise_id", ex.id)
-          .eq("workout_logs.client_id", auth.user!.id)
-          .order("id", { ascending: false })
-          .limit(30);
-
-        if (!prevLogs || prevLogs.length === 0) return [ex.id, {}] as const;
-
-        const latestLogId = prevLogs.reduce((latest: any, row: any) =>
-          !latest || new Date(row.workout_logs.date) > new Date(latest.workout_logs.date) ? row : latest
-        , null)?.workout_log_id;
-
-        const bySet: Record<number, any> = {};
-        prevLogs.filter((r: any) => r.workout_log_id === latestLogId).forEach((r: any) => { bySet[r.set_number] = r; });
-        return [ex.id, bySet] as const;
-      }));
-      setPreviousMap(Object.fromEntries(prevEntries));
       startSession(id, routine?.name ?? "Entrenamiento", built);
       setLoading(false);
     })();
@@ -242,7 +223,7 @@ export default function WorkoutPage() {
                   ) : (
                     <GifThumb src={ex.media_url} size={52} />
                   )}
-                                    <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1 }}>
                     {ex.supersetWith && (
                       <span style={{ display: "inline-block", fontSize: 9.5, fontWeight: 700, color: "#C77DFF", background: "#C77DFF22", padding: "2px 8px", borderRadius: 999, marginBottom: 4 }}>
                         🔗 Superset
@@ -302,13 +283,12 @@ export default function WorkoutPage() {
                             background: `${badge.color}22`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
                           }}>{badge.text}</button>
 
-                         {ex.measurement_type === "reps_weight" && (
+                          {ex.measurement_type === "reps_weight" && (
                             <>
                               <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} placeholder={previousMap[ex.id]?.[i + 1]?.weight ? `${previousMap[ex.id][i + 1].weight}` : "kg"} />
                               <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} placeholder={previousMap[ex.id]?.[i + 1]?.reps ? `${previousMap[ex.id][i + 1].reps}` : "reps"} />
                             </>
                           )}
-
                           {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
                             <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} placeholder="seg" />
                           )}
