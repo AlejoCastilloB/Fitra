@@ -3,7 +3,7 @@ import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
 import { Flame, Play, MessageSquare, Camera, Sparkles, Phone } from "lucide-react";
 
-const WHATSAPP_NUMBER = "573000000000"; // reemplaza por el número real de soporte de Alejo (con código de país, sin +)
+const WHATSAPP_NUMBER = "573218660796"; // reemplaza por el número real de soporte de Alejo (con código de país, sin +)
 
 export default async function ClientToday() {
   const supabase = await createClient();
