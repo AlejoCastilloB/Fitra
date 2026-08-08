@@ -59,12 +59,12 @@ export default function WorkoutPage() {
         setTrackRpe(userRow.track_rpe ?? false);
       }
 
-      const built: LiveExercise[] = (re ?? []).map((r: any) => ({
+            const built: LiveExercise[] = (re ?? []).map((r: any) => ({
         id: r.exercises.id, name: r.exercises.name, media_url: r.exercises.media_url,
         measurement_type: r.exercises.measurement_type, notes: r.notes,
         description: r.exercises.description, equipment: r.exercises.equipment,
         muscle_group: r.exercises.muscle_group, instructions: r.exercises.instructions,
-        restSeconds: 90,
+        restSeconds: 90, supersetWith: r.superset_with,
         sets: (r.target_sets ?? []).map((s: any) => ({ ...s, done: false })),
       }));
       const prevEntries = await Promise.all(built.map(async (ex) => {
@@ -91,7 +91,7 @@ export default function WorkoutPage() {
       const prevEntries = await Promise.all(built.map(async (ex) => {
         const { data: prevLogs } = await supabase
           .from("set_logs")
-          .select("set_number, weight, reps, time_sec, distance_m, workout_log_id, workout_logs!inner(date, client_id)")
+          .select("order_index, target_sets, notes, superset_with, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
           .eq("exercise_id", ex.id)
           .eq("workout_logs.client_id", auth.user!.id)
           .order("id", { ascending: false })
@@ -242,7 +242,12 @@ export default function WorkoutPage() {
                   ) : (
                     <GifThumb src={ex.media_url} size={52} />
                   )}
-                  <div style={{ flex: 1 }}>
+                                    <div style={{ flex: 1 }}>
+                    {ex.supersetWith && (
+                      <span style={{ display: "inline-block", fontSize: 9.5, fontWeight: 700, color: "#C77DFF", background: "#C77DFF22", padding: "2px 8px", borderRadius: 999, marginBottom: 4 }}>
+                        🔗 Superset
+                      </span>
+                    )}
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>{ex.name}</div>
                     <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 2 }}>
                       {muscleLabel(ex.muscle_group)} · {doneInEx}/{ex.sets.length} series
