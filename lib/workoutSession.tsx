@@ -67,7 +67,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
-    const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
+  const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
     setSession((prev) => {
       if (!prev) return prev;
       const current = prev.exercises[exIdx];
@@ -76,8 +76,6 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       const exercises = prev.exercises.map((ex, i) => i !== exIdx ? ex : {
         ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, done: !s.done }),
       });
-      // si este ejercicio es el "primero" de una superserie (tiene supersetWith), no activa descanso —
-      // el descanso arranca recién cuando se completa el ejercicio vinculado
       const isFirstOfSuperset = !!current.supersetWith;
       return { ...prev, exercises, restEndAt: (wasDone || isFirstOfSuperset) ? prev.restEndAt : Date.now() + exRest * 1000 };
     });
