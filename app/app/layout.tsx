@@ -4,6 +4,7 @@ import { palette } from "@/lib/theme";
 import BottomNav from "@/components/BottomNav";
 import { WorkoutSessionProvider } from "@/lib/workoutSession";
 import ActiveWorkoutPill from "@/components/ActiveWorkoutPill";
+import AchievementChecker from "@/components/AchievementChecker";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -27,7 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
 
-        <ActiveWorkoutPill />
+                <ActiveWorkoutPill />
+        <AchievementChecker />
         <BottomNav />
       </div>
     </WorkoutSessionProvider>
