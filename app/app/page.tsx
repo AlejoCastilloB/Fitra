@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
-import { Flame, Play, MessageSquare, Camera, Sparkles, Phone } from "lucide-react";
-
-const WHATSAPP_NUMBER = "573218660796"; // reemplaza por el número real de soporte de Alejo (con código de país, sin +)
+import { Flame, Play } from "lucide-react";
+import HomeFab from "@/components/HomeFab";
 
 export default async function ClientToday() {
   const supabase = await createClient();
@@ -34,24 +33,6 @@ export default async function ClientToday() {
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Hoy</h1>
         <p style={{ color: palette.inkDim, fontSize: 14 }}>Listo para entrenar</p>
-      </div>
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 22 }}>
-        <Link href="/app/nutrition" style={{ ...quickAction, flex: 1 }}>
-          <Camera size={17} color={palette.accent} />
-          <span>Registrar comida</span>
-        </Link>
-        {todaysRoutine ? (
-          <Link href={`/app/workout/${todaysRoutine.id}`} style={{ ...quickAction, flex: 1, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
-            <Play size={17} color={palette.accent} />
-            <span>Entrenar hoy</span>
-          </Link>
-        ) : (
-          <Link href="/app/nutrition/recipes" style={{ ...quickAction, flex: 1 }}>
-            <Sparkles size={17} color={palette.accent} />
-            <span>Hablar con la IA</span>
-          </Link>
-        )}
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 4px 22px", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
@@ -101,22 +82,7 @@ export default async function ClientToday() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-        <Link href="/app/nutrition/recipes" style={{
-          ...contactBtn, flex: 1,
-          background: `linear-gradient(135deg, ${palette.accent}22, ${palette.accentDeep}22)`,
-          border: `1px solid ${palette.accent}55`, color: palette.accent,
-        }}>
-          <Sparkles size={16} />
-          <span>Hablar con la IA</span>
-        </Link>
-        <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" style={{
-          ...contactBtn, flex: 1, background: "#25D36622", border: "1px solid #25D36655", color: "#25D366",
-        }}>
-          <Phone size={16} />
-          <span>Contactar a Alejo</span>
-        </a>
-      </div>
+      <HomeFab todaysRoutineId={todaysRoutine?.id ?? null} />
     </div>
   );
 }
@@ -136,15 +102,4 @@ function StatText({ icon, value, label }: { icon?: React.ReactNode; value: strin
 const sectionLabel: React.CSSProperties = {
   fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase",
   letterSpacing: "0.04em", marginBottom: 10, marginTop: 4,
-};
-
-const quickAction: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 8, padding: "13px 14px", borderRadius: 14,
-  border: `1px solid ${palette.panelBorder}`, background: palette.panel, textDecoration: "none",
-  color: palette.ink, fontSize: 13, fontWeight: 600,
-};
-
-const contactBtn: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", borderRadius: 14,
-  textDecoration: "none", fontSize: 13, fontWeight: 700,
 };
