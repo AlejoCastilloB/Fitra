@@ -5,11 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
+import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
 import Link from "next/link";
-import SwipeableRow from "@/components/SwipeableRow";
 
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
+const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
 const WATER_GOAL = 2500;
 const WATER_STEP = 250;
 
@@ -17,6 +18,14 @@ const modalInput: React.CSSProperties = {
   width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
   background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
 };
+
+function computeHealthScore(fiber: number, sugar: number, sodium: number, protein: number) {
+  const fiberScore = Math.min(100, (fiber / HEALTH_TARGETS.fiber) * 100);
+  const sugarScore = sugar <= HEALTH_TARGETS.sugarLimit ? 100 : Math.max(0, 100 - (sugar - HEALTH_TARGETS.sugarLimit) * 2);
+  const sodiumScore = sodium <= HEALTH_TARGETS.sodiumLimit ? 100 : Math.max(0, 100 - (sodium - HEALTH_TARGETS.sodiumLimit) / 20);
+  const proteinScore = Math.min(100, (protein / DAILY_GOALS.protein) * 100);
+  return Math.round((fiberScore + sugarScore + sodiumScore + proteinScore) / 4);
+}
 
 export default function NutritionPage() {
   const supabase = createClient();
@@ -38,9 +47,6 @@ export default function NutritionPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
@@ -154,18 +160,12 @@ export default function NutritionPage() {
     await supabase.from("nutrition_logs").update({ food_name: newName }).eq("id", logId);
     await loadAll();
   }
-    async function deleteLog(logId: string) {
-    await supabase.from("nutrition_logs").delete().eq("id", logId);
-    await loadAll();
-  }
 
-    async function toggleFavorite(log: any) {
+  async function toggleFavorite(log: any) {
     if (log.saved_meal_id) {
-      // ya estaba guardada → la desmarca
       await supabase.from("saved_meals").delete().eq("id", log.saved_meal_id);
       await supabase.from("nutrition_logs").update({ saved_meal_id: null }).eq("id", log.id);
     } else {
-      // no estaba guardada → la marca
       const { data: auth } = await supabase.auth.getUser();
       const { data: saved } = await supabase.from("saved_meals").insert({
         client_id: auth.user!.id, name: log.food_name || "Comida guardada",
@@ -191,7 +191,10 @@ export default function NutritionPage() {
   const totals = logs.reduce((acc, l) => ({
     kcal: acc.kcal + (l.kcal ?? 0), protein: acc.protein + (l.protein ?? 0),
     carbs: acc.carbs + (l.carbs ?? 0), fat: acc.fat + (l.fat ?? 0),
-  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    fiber: acc.fiber + (l.fiber ?? 0), sugar: acc.sugar + (l.sugar ?? 0), sodium: acc.sodium + (l.sodium ?? 0),
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 });
+
+  const healthScore = logs.length > 0 ? computeHealthScore(totals.fiber, totals.sugar, totals.sodium, totals.protein) : null;
 
   return (
     <div>
@@ -202,29 +205,54 @@ export default function NutritionPage() {
         .ft-drop:active { animation: ftDrop .3s ease; }
       `}</style>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Nutrición</h1>
-      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 6 }}>Hoy</p>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Nutrición</h1>
       <p style={{ color: palette.inkDim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 18 }}>
         Toma una foto, escríbelo o graba una nota — la IA de Alejo se encarga del resto.
       </p>
 
-      {/* anillos de macros */}
-      <div className="ft-pop" style={{
-        ...glassPanel, padding: 22, marginBottom: 14, position: "relative", overflow: "hidden",
-        border: "1px solid transparent", backgroundImage: `linear-gradient(${palette.panel}, ${palette.panel}), ${palette.metallicBorder}`,
-        backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box",
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <MacroRing value={totals.kcal} max={DAILY_GOALS.kcal} size={130} stroke={11} colorFrom="#EDEFF3" colorTo="#8A93A0" label="Calorías" sublabel={`de ${DAILY_GOALS.kcal}`} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-around" }}>
-          <MacroRing value={totals.protein} max={DAILY_GOALS.protein} size={70} stroke={6} colorFrom="#A8EEDC" colorTo="#5EBBA0" label="Proteína" />
-          <MacroRing value={totals.carbs} max={DAILY_GOALS.carbs} size={70} stroke={6} colorFrom="#F5D89A" colorTo="#D19A4A" label="Carbos" />
-          <MacroRing value={totals.fat} max={DAILY_GOALS.fat} size={70} stroke={6} colorFrom="#F3AFAF" colorTo="#C56767" label="Grasa" />
-        </div>
+      <div className="ft-pop" style={{ marginBottom: 14 }}>
+        <SwipeCarousel>
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
+            padding: 22, position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+              <MacroRing value={totals.kcal} max={DAILY_GOALS.kcal} size={130} stroke={11} colorFrom="#EDEFF3" colorTo="#8A93A0" label="Calorías" sublabel={`de ${DAILY_GOALS.kcal}`} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              <MacroRing value={totals.protein} max={DAILY_GOALS.protein} size={70} stroke={6} colorFrom="#A8EEDC" colorTo="#5EBBA0" label="Proteína" />
+              <MacroRing value={totals.carbs} max={DAILY_GOALS.carbs} size={70} stroke={6} colorFrom="#F5D89A" colorTo="#D19A4A" label="Carbos" />
+              <MacroRing value={totals.fat} max={DAILY_GOALS.fat} size={70} stroke={6} colorFrom="#F3AFAF" colorTo="#C56767" label="Grasa" />
+            </div>
+          </div>
+
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
+            padding: 22, position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 20 }}>
+              <MacroRing value={totals.fiber} max={HEALTH_TARGETS.fiber} size={82} stroke={7} colorFrom="#C9A8F0" colorTo="#8C5FC7" label="Fibra" />
+              <MacroRing value={totals.sugar} max={HEALTH_TARGETS.sugarLimit} size={82} stroke={7} colorFrom="#F3AFC4" colorTo="#C76488" label="Azúcar" />
+              <MacroRing value={totals.sodium} max={HEALTH_TARGETS.sodiumLimit} size={82} stroke={7} colorFrom="#F5D89A" colorTo="#C79A4A" label="Sodio" />
+            </div>
+            <div style={{ borderTop: `1px solid ${palette.panelBorder}`, paddingTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: palette.ink }}>Puntuación de salud</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: palette.accent }}>{healthScore !== null ? healthScore : "N/D"}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${healthScore ?? 0}%`, background: `linear-gradient(90deg, ${palette.accentDeep}, ${palette.accent})`, borderRadius: 4, transition: "width .6s cubic-bezier(.16,.8,.24,1)" }} />
+              </div>
+              {healthScore === null && (
+                <p style={{ fontSize: 11, color: palette.inkDim, marginTop: 8 }}>Registra algo para generar tu puntuación de hoy.</p>
+              )}
+            </div>
+          </div>
+        </SwipeCarousel>
       </div>
 
-      {/* agua */}
       <div className="ft-pop" style={{ ...glassPanel, padding: 16, marginBottom: 14, animationDelay: "0.05s" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -241,10 +269,9 @@ export default function NutritionPage() {
         </div>
       </div>
 
-      {/* contexto extra + captura */}
-      <div className="ft-pop" style={{ ...glassPanel, padding: 16, marginBottom: 12, animationDelay: "0.1s" }}>
-        <p style={{ fontSize: 11.5, color: palette.accent, fontWeight: 700, marginBottom: 8 }}>
-          <Sparkles size={11} style={{ verticalAlign: -1, marginRight: 3 }} /> Contexto extra (opcional)
+      <div className="ft-pop" style={{ marginBottom: 16, animationDelay: "0.1s" }}>
+        <p style={{ fontSize: 11.5, color: palette.accent, fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+          <Sparkles size={11} /> Contexto extra (opcional)
         </p>
         <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 10, lineHeight: 1.4 }}>
           Darle más detalles a la IA de Alejo ayuda a que el cálculo sea más preciso.
@@ -295,63 +322,56 @@ export default function NutritionPage() {
       {loading ? (
         <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center" }}>Cargando...</p>
       ) : logs.length === 0 ? (
-        <div style={{ ...glassPanel, padding: 24, textAlign: "center", color: palette.inkDim }}>Todavía no registraste nada hoy.</div>
+        <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 20 }}>Todavía no registraste nada hoy.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {logs.map((l, idx) => {
+          {logs.map((l, idx) => {
             const isOpen = expandedId === l.id;
             return (
-              <SwipeableRow
-                key={l.id}
-                rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => deleteLog(l.id) }}
-              >
-                <div className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    {l.photo_url && (
-                      <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
-                    )}
-                    <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 14px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.food_name || `${Math.round(l.kcal)} kcal`}</div>
-                        <div style={{ fontSize: 11, color: palette.inkDim }}>{l.portion || `P: ${Math.round(l.protein)}g · C: ${Math.round(l.carbs)}g · G: ${Math.round(l.fat)}g`}</div>
-                      </div>
-                      <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
-                    </button>
-                    <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
-                      <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
-                    </button>
-                  </div>
-
-                  {isOpen && (
-                    <div style={{ padding: "0 16px 16px" }}>
-                      <input
-                        defaultValue={l.food_name || ""}
-                        onBlur={(e) => e.target.value !== l.food_name && updateFoodName(l.id, e.target.value)}
-                        placeholder="Nombre de la comida"
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, marginBottom: 12 }}
-                      />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12.5 }}>
-                        <MacroRow label="Calorías" value={`${Math.round(l.kcal)} kcal`} />
-                        <MacroRow label="Proteína" value={`${Math.round(l.protein)} g`} />
-                        <MacroRow label="Carbohidratos" value={`${Math.round(l.carbs)} g`} />
-                        <MacroRow label="Grasa" value={`${Math.round(l.fat)} g`} />
-                        <MacroRow label="Fibra" value={`${Math.round(l.fiber ?? 0)} g`} />
-                        <MacroRow label="Azúcar" value={`${Math.round(l.sugar ?? 0)} g`} />
-                        <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
-                      </div>
-                    </div>
+              <div key={l.id} className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {l.photo_url && (
+                    <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
                   )}
+                  <button onClick={() => setExpandedId(isOpen ? null : l.id)} style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 8px 14px 14px", background: "none", border: "none", cursor: "pointer", color: palette.ink, textAlign: "left" }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{l.food_name || `${Math.round(l.kcal)} kcal`}</div>
+                      <div style={{ fontSize: 11, color: palette.inkDim }}>{l.portion || `P: ${Math.round(l.protein)}g · C: ${Math.round(l.carbs)}g · G: ${Math.round(l.fat)}g`}</div>
+                    </div>
+                    <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+                  </button>
+                  <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
+                    <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
+                  </button>
                 </div>
-              </SwipeableRow>
+
+                {isOpen && (
+                  <div style={{ padding: "0 16px 16px" }}>
+                    <input
+                      defaultValue={l.food_name || ""}
+                      onBlur={(e) => e.target.value !== l.food_name && updateFoodName(l.id, e.target.value)}
+                      placeholder="Nombre de la comida"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, marginBottom: 12 }}
+                    />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12.5 }}>
+                      <MacroRow label="Calorías" value={`${Math.round(l.kcal)} kcal`} />
+                      <MacroRow label="Proteína" value={`${Math.round(l.protein)} g`} />
+                      <MacroRow label="Carbohidratos" value={`${Math.round(l.carbs)} g`} />
+                      <MacroRow label="Grasa" value={`${Math.round(l.fat)} g`} />
+                      <MacroRow label="Fibra" value={`${Math.round(l.fiber ?? 0)} g`} />
+                      <MacroRow label="Azúcar" value={`${Math.round(l.sugar ?? 0)} g`} />
+                      <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
-
-
         </div>
       )}
 
       {showManual && <ManualMealModal onClose={() => setShowManual(false)} onSaved={loadAll} />}
-      {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} onDelete={async (id) => { await supabase.from("saved_meals").delete().eq("id", id); await loadAll(); }} />}
+      {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
     </div>
   );
 }
@@ -412,7 +432,7 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
   );
 }
 
-function SavedMealsModal({ meals, onClose, onPick, onDelete }: { meals: any[]; onClose: () => void; onPick: (m: any) => void; onDelete: (id: string) => void }) {
+function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: () => void; onPick: (m: any) => void }) {
   return (
     <Modal title="Comidas guardadas" onClose={onClose}>
       {meals.length === 0 ? (
@@ -422,15 +442,13 @@ function SavedMealsModal({ meals, onClose, onPick, onDelete }: { meals: any[]; o
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {meals.map((m) => (
-            <SwipeableRow key={m.id} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => onDelete(m.id) }}>
-              <button onClick={() => onPick(m)} style={{ ...glassPanel, borderRadius: 14, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
-                  <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
-                </div>
-                <Plus size={16} color={palette.accent} />
-              </button>
-            </SwipeableRow>
+            <button key={m.id} onClick={() => onPick(m)} style={{ ...glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>
+              </div>
+              <Plus size={16} color={palette.accent} />
+            </button>
           ))}
         </div>
       )}
