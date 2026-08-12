@@ -3,6 +3,7 @@ import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
 import { Flame, Play } from "lucide-react";
 import HomeFab from "@/components/HomeFab";
+import DayStrip, { DaySummary } from "@/components/DayStrip";
 
 export default async function ClientToday() {
   const supabase = await createClient();
@@ -24,16 +25,29 @@ export default async function ClientToday() {
 
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
-  const { data: weekLogs } = await supabase.from("workout_logs").select("total_volume").eq("client_id", user!.id).gte("date", weekAgo.toISOString());
+  const { data: weekLogs } = await supabase.from("workout_logs").select("date, total_volume").eq("client_id", user!.id).gte("date", weekAgo.toISOString());
   const weekVolume = (weekLogs ?? []).reduce((sum, l) => sum + (l.total_volume ?? 0), 0);
   const weekWorkouts = weekLogs?.length ?? 0;
 
+  const { data: weekNutrition } = await supabase.from("nutrition_logs").select("date, kcal").eq("client_id", user!.id).gte("date", weekAgo.toISOString());
+
+  const days: DaySummary[] = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0, 10);
+    const trained = (weekLogs ?? []).some((l) => l.date?.slice(0, 10) === dateStr);
+    const kcal = (weekNutrition ?? []).filter((n) => n.date?.slice(0, 10) === dateStr).reduce((s, n) => s + (n.kcal ?? 0), 0);
+    return { date: dateStr, trained, kcal };
+  });
+
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Hoy</h1>
         <p style={{ color: palette.inkDim, fontSize: 14 }}>Listo para entrenar</p>
       </div>
+
+      <DayStrip days={days} />
 
       <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 4px 22px", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
         <StatText icon={<Flame size={15} color={palette.accent} />} value={`${streak?.current_weeks ?? 0}`} label="semanas de racha" />
