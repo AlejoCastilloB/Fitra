@@ -8,28 +8,30 @@ import DayStrip, { DaySummary } from "@/components/DayStrip";
 export default async function ClientToday() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const uid = user!.id;
 
-  const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", user!.id).single();
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const [{ data: clientRow }, { data: streak }, { data: weekLogs }, { data: weekNutrition }] = await Promise.all([
+    supabase.from("clients").select("trainer_id").eq("user_id", uid).single(),
+    supabase.from("streaks").select("current_weeks").eq("client_id", uid).single(),
+    supabase.from("workout_logs").select("date, total_volume").eq("client_id", uid).gte("date", weekAgo.toISOString()),
+    supabase.from("nutrition_logs").select("date, kcal").eq("client_id", uid).gte("date", weekAgo.toISOString()),
+  ]);
 
   const { data: routines } = await supabase
     .from("routines")
     .select("id, name, notes, source, days_of_week")
-    .or(`source.eq.platform,client_id.eq.${user!.id}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`)
+    .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`)
     .limit(20);
-
-  const { data: streak } = await supabase.from("streaks").select("current_weeks").eq("client_id", user!.id).single();
 
   const todayDow = new Date().getDay();
   const todaysRoutine = (routines ?? []).find((r) => r.days_of_week?.includes(todayDow));
   const otherRoutines = (routines ?? []).filter((r) => r.id !== todaysRoutine?.id).slice(0, 10);
 
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const { data: weekLogs } = await supabase.from("workout_logs").select("date, total_volume").eq("client_id", user!.id).gte("date", weekAgo.toISOString());
   const weekVolume = (weekLogs ?? []).reduce((sum, l) => sum + (l.total_volume ?? 0), 0);
   const weekWorkouts = weekLogs?.length ?? 0;
-
-  const { data: weekNutrition } = await supabase.from("nutrition_logs").select("date, kcal").eq("client_id", user!.id).gte("date", weekAgo.toISOString());
 
   const days: DaySummary[] = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
