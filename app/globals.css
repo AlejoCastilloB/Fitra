@@ -10,3 +10,7 @@ html, body {
 body {
   font-family: system-ui, -apple-system, sans-serif;
 }
+@keyframes ftShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
