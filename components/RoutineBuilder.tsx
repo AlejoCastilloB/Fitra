@@ -8,7 +8,7 @@ import { muscleLabel } from "@/lib/muscleLabels";
 import { POPULAR_EXERCISE_KEYWORDS } from "@/lib/popularExercises";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
-import { Search, Plus, Trash2, X, GripVertical, Mic, Square, Loader2, Link2 } from "lucide-react";
+import { Search, Plus, Trash2, X, GripVertical, Mic, Square, Loader2, Link2, ChevronDown, SlidersHorizontal } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypePopover from "@/components/SetTypePopover";
@@ -63,6 +63,8 @@ export default function RoutineBuilder({
   const [supersetPopoverFor, setSupersetPopoverFor] = useState<{ exId: string; x: number; y: number } | null>(null);
   const [recordingFor, setRecordingFor] = useState<string | null>(null);
   const [transcribingFor, setTranscribingFor] = useState<string | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [showDetails, setShowDetails] = useState(!isEditing);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -243,65 +245,120 @@ export default function RoutineBuilder({
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 260px", gap: 20, alignItems: "start" }}>
-
-      {/* ── biblioteca ── */}
-      <div style={{ position: "sticky", top: 20 }}>
-        <h2 style={sectionTitle}>Biblioteca</h2>
-
-        <div style={{ position: "relative", marginBottom: 8 }}>
-          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." style={{ ...inputStyle, paddingLeft: 32, fontSize: 13 }} />
-        </div>
-
-        <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...inputStyle, fontSize: 12.5, marginBottom: 14 }}>
-          <option value="">Todos los músculos</option>
-          {muscles.map((m) => <option key={m} value={m}>{muscleLabel(m)}</option>)}
-        </select>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "calc(100vh - 220px)", overflowY: "auto" }}>
-          {results.map((r) => {
-            const already = picked.some((p) => p.id === r.id);
-            return (
-              <button key={r.id} onClick={() => addExercise(r)} disabled={already} style={{
-                display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px",
-                borderRadius: 10, background: already ? `${palette.accent}18` : palette.inputBg,
-                border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: already ? "default" : "pointer",
-                fontSize: 12.5, opacity: already ? 0.5 : 1,
-              }}>
-                <GifThumb src={r.media_url} size={28} />
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                {!already && <Plus size={13} color={palette.accent} style={{ flexShrink: 0 }} />}
-              </button>
-            );
-          })}
-          {results.length === 0 && <p style={{ fontSize: 12, color: palette.inkDim, textAlign: "center", padding: 12 }}>Sin resultados</p>}
-        </div>
+    <div>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+        <input
+          value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la rutina"
+          style={{ ...inputStyle, flex: 1, fontSize: 16, fontWeight: 700 }}
+        />
+        <button
+          onClick={() => setShowLibrary((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "11px 14px", borderRadius: 12, flexShrink: 0,
+            border: `1px solid ${showLibrary ? palette.accent : palette.panelBorder}`,
+            background: showLibrary ? `${palette.accent}18` : palette.inputBg,
+            color: showLibrary ? palette.accent : palette.ink, cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+          }}
+        >
+          <Search size={14} /> Ejercicios
+        </button>
       </div>
 
-      {/* ── rutina editable ── */}
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Rutina {picked.length > 0 && `· ${picked.length} ejercicios`}</h2>
-          <button onClick={() => setShowAI(true)} style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 10,
-            border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
-            fontSize: 12, fontWeight: 700, cursor: "pointer",
-          }}>
-            ✨ IA de Alejo
-          </button>
-        </div>
-
-        {picked.length === 0 ? (
-          <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>
-            Agrega ejercicios desde la biblioteca de la izquierda o pídele a la IA de Alejo que arme la rutina.
+      {showLibrary && (
+        <div style={{ ...glassPanel, padding: 14, marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar ejercicio..." style={{ ...inputStyle, paddingLeft: 32, fontSize: 13 }} />
+            </div>
+            <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...inputStyle, width: 130, fontSize: 12.5 }}>
+              <option value="">Músculo</option>
+              {muscles.map((m) => <option key={m} value={m}>{muscleLabel(m)}</option>)}
+            </select>
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {picked.map((ex, idx) => {
-              const groupColor = ex.supersetGroup ? supersetColor(ex.supersetGroup) : null;
-              const groupMates = ex.supersetGroup ? picked.filter((p) => p.supersetGroup === ex.supersetGroup && p.id !== ex.id) : [];
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+            {results.map((r) => {
+              const already = picked.some((p) => p.id === r.id);
               return (
+                <button key={r.id} onClick={() => addExercise(r)} disabled={already} style={{
+                  display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px",
+                  borderRadius: 10, background: already ? `${palette.accent}18` : palette.inputBg,
+                  border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: already ? "default" : "pointer",
+                  fontSize: 12.5, opacity: already ? 0.5 : 1,
+                }}>
+                  <GifThumb src={r.media_url} size={28} />
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                  {!already && <Plus size={13} color={palette.accent} style={{ flexShrink: 0 }} />}
+                </button>
+              );
+            })}
+            {results.length === 0 && <p style={{ fontSize: 12, color: palette.inkDim, textAlign: "center", padding: 12 }}>Sin resultados</p>}
+          </div>
+        </div>
+      )}
+
+      <button onClick={() => setShowAI(true)} style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "11px", borderRadius: 12, marginBottom: 14,
+        border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
+        fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+      }}>
+        ✨ Pedirle a la IA de Alejo que arme la rutina
+      </button>
+
+      <button onClick={() => setShowDetails((v) => !v)} style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 2px",
+        background: "none", border: "none", cursor: "pointer", marginBottom: showDetails ? 10 : 4,
+      }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <SlidersHorizontal size={13} /> Detalles
+        </span>
+        <ChevronDown size={16} color={palette.inkDim} style={{ transform: showDetails ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+      </button>
+
+      {showDetails && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
+          {role === "trainer" && (
+            <label style={fieldLabel}>
+              Asignar a
+              <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
+                <option value="">Plantilla (sin asignar)</option>
+                {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
+              </select>
+            </label>
+          )}
+
+          <label style={fieldLabel}>
+            Días de la semana (opcional)
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {["D", "L", "M", "M", "J", "V", "S"].map((label, i) => (
+                <button key={i} onClick={() => toggleDay(i)} style={{
+                  width: 30, height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                  border: `1px solid ${days.includes(i) ? palette.accent : palette.panelBorder}`,
+                  background: days.includes(i) ? `${palette.accent}22` : palette.inputBg,
+                  color: days.includes(i) ? palette.accent : palette.inkDim,
+                }}>{label}</button>
+              ))}
+            </div>
+          </label>
+
+          <label style={fieldLabel}>
+            Notas generales de la rutina
+            <textarea value={routineNotes} onChange={(e) => setRoutineNotes(e.target.value)} placeholder="Ej: enfocada en fuerza, progresar peso cada 2 semanas" style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+          </label>
+        </div>
+      )}
+
+      {picked.length === 0 ? (
+        <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
+          Agrega ejercicios desde "Ejercicios" arriba o pídele a la IA de Alejo que arme la rutina.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {picked.map((ex, idx) => {
+            const groupColor = ex.supersetGroup ? supersetColor(ex.supersetGroup) : null;
+            const groupMates = ex.supersetGroup ? picked.filter((p) => p.supersetGroup === ex.supersetGroup && p.id !== ex.id) : [];
+            return (
               <div key={ex.id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
                 style={{
                   ...glassPanel, padding: 14, opacity: dragIndex === idx ? 0.4 : 1, cursor: "grab",
@@ -412,64 +469,24 @@ export default function RoutineBuilder({
                   <Plus size={12} /> Agregar serie
                 </button>
               </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── detalles + guardar ── */}
-      <div style={{ position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-        <h2 style={sectionTitle}>Detalles</h2>
-
-        <label style={fieldLabel}>
-          Nombre
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Push Day A" style={inputStyle} />
-        </label>
-
-        {role === "trainer" && (
-          <label style={fieldLabel}>
-            Asignar a
-            <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
-              <option value="">Plantilla (sin asignar)</option>
-              {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
-            </select>
-          </label>
-        )}
-
-        <label style={fieldLabel}>
-          Días de la semana (opcional)
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {["D", "L", "M", "M", "J", "V", "S"].map((label, i) => (
-              <button key={i} onClick={() => toggleDay(i)} style={{
-                width: 30, height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 700, cursor: "pointer",
-                border: `1px solid ${days.includes(i) ? palette.accent : palette.panelBorder}`,
-                background: days.includes(i) ? `${palette.accent}22` : palette.inputBg,
-                color: days.includes(i) ? palette.accent : palette.inkDim,
-              }}>{label}</button>
-            ))}
-          </div>
-        </label>
-
-        <label style={fieldLabel}>
-          Notas generales de la rutina
-          <textarea value={routineNotes} onChange={(e) => setRoutineNotes(e.target.value)} placeholder="Ej: enfocada en fuerza, progresar peso cada 2 semanas" style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} />
-        </label>
-
-        <div style={{ ...glassPanel, padding: 14 }}>
-          <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>Resumen</div>
-          <div style={{ fontSize: 13 }}>{picked.length} ejercicios</div>
-          <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>
+            );
+          })}
         </div>
+      )}
 
-        <button onClick={handleSave} disabled={saving || !name || picked.length === 0} style={{
-          padding: 13, borderRadius: 12, border: "none",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
-          fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (saving || !name || picked.length === 0) ? 0.5 : 1,
-        }}>
-          {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}
-        </button>
+      <div style={{ ...glassPanel, padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>Resumen</div>
+        <div style={{ fontSize: 13 }}>{picked.length} ejercicios</div>
+        <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>
       </div>
+
+      <button onClick={handleSave} disabled={saving || !name || picked.length === 0} style={{
+        width: "100%", padding: 14, borderRadius: 14, border: "none",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        fontWeight: 700, fontSize: 14.5, cursor: "pointer", opacity: (saving || !name || picked.length === 0) ? 0.5 : 1,
+      }}>
+        {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}
+      </button>
 
       {showAI && <AIRoutineGenerator onClose={() => setShowAI(false)} onGenerated={handleAIGenerated} />}
 
@@ -498,7 +515,6 @@ export default function RoutineBuilder({
   );
 }
 
-const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 };
 const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: palette.inkDim };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit" };
 const smallInput: React.CSSProperties = { width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 };
