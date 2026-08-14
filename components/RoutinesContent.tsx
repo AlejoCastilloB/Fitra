@@ -41,7 +41,7 @@ export default function RoutinesContent() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
-          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Armala vos o pedile ayuda a la IA de Alejo</div>
+          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Armala tu o pídele ayuda a la IA de Alejo</div>
         </div>
         <ChevronRight size={18} color={palette.inkDim} />
       </Link>
