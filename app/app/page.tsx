@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
 import { Flame, Play } from "lucide-react";
-import DayStrip, { DaySummary } from "@/components/DayStrip";
+import DayStrip from "@/components/DayStrip";
 
 export default async function ClientToday() {
   const supabase = await createClient();
@@ -12,11 +12,10 @@ export default async function ClientToday() {
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
-  const [{ data: clientRow }, { data: streak }, { data: weekLogs }, { data: weekNutrition }] = await Promise.all([
+  const [{ data: clientRow }, { data: streak }, { data: weekLogs }] = await Promise.all([
     supabase.from("clients").select("trainer_id").eq("user_id", uid).single(),
     supabase.from("streaks").select("current_weeks").eq("client_id", uid).single(),
-    supabase.from("workout_logs").select("date, total_volume").eq("client_id", uid).gte("date", weekAgo.toISOString()),
-    supabase.from("nutrition_logs").select("date, kcal").eq("client_id", uid).gte("date", weekAgo.toISOString()),
+    supabase.from("workout_logs").select("total_volume").eq("client_id", uid).gte("date", weekAgo.toISOString()),
   ]);
 
   const { data: routines } = await supabase
@@ -32,15 +31,6 @@ export default async function ClientToday() {
   const weekVolume = (weekLogs ?? []).reduce((sum, l) => sum + (l.total_volume ?? 0), 0);
   const weekWorkouts = weekLogs?.length ?? 0;
 
-  const days: DaySummary[] = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toISOString().slice(0, 10);
-    const trained = (weekLogs ?? []).some((l) => l.date?.slice(0, 10) === dateStr);
-    const kcal = (weekNutrition ?? []).filter((n) => n.date?.slice(0, 10) === dateStr).reduce((s, n) => s + (n.kcal ?? 0), 0);
-    return { date: dateStr, trained, kcal };
-  });
-
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -48,7 +38,7 @@ export default async function ClientToday() {
         <p style={{ color: palette.inkDim, fontSize: 14 }}>Listo para entrenar</p>
       </div>
 
-      <DayStrip days={days} />
+      <DayStrip />
 
       <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 4px 22px", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
         <StatText icon={<Flame size={15} color={palette.accent} />} value={`${streak?.current_weeks ?? 0}`} label="semanas de racha" />
