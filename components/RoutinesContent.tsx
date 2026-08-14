@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
-import { Plus, Play, Pencil, MessageSquare } from "lucide-react";
+import { Play, Pencil, Sparkles, ChevronRight } from "lucide-react";
 
 export default function RoutinesContent() {
   const supabase = createClient();
@@ -28,14 +28,23 @@ export default function RoutinesContent() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        <Link href="/app/routines/new" style={{ ...actionBtn, flex: 1 }}>
-          <Plus size={15} /> Nueva rutina
-        </Link>
-        <Link href="/app/messages" style={{ ...actionBtn, flex: 1 }}>
-          <MessageSquare size={15} /> Tu coach
-        </Link>
-      </div>
+      <Link href="/app/routines/new" style={{
+        display: "flex", alignItems: "center", gap: 14, padding: 18, borderRadius: 18, marginBottom: 20,
+        background: `linear-gradient(135deg, ${palette.accent}22, ${palette.accentDeep}22)`,
+        border: `1px solid ${palette.accent}44`, textDecoration: "none", position: "relative", overflow: "hidden",
+      }}>
+        <div style={{
+          width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <Sparkles size={21} color="#0A0C10" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
+          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Armala vos o pedile ayuda a la IA de Alejo</div>
+        </div>
+        <ChevronRight size={18} color={palette.inkDim} />
+      </Link>
 
       {loading ? (
         <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 20 }}>Cargando...</p>
@@ -73,9 +82,3 @@ export default function RoutinesContent() {
     </div>
   );
 }
-
-const actionBtn: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px",
-  borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
-  fontSize: 12.5, fontWeight: 600, textDecoration: "none",
-};
