@@ -1,22 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { palette, glassPanel } from "@/lib/theme";
+import { palette } from "@/lib/theme";
 import Link from "next/link";
-import { Flame, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import DayStrip from "@/components/DayStrip";
+import TodayCards from "@/components/TodayCards";
 
 export default async function ClientToday() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const uid = user!.id;
 
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-
-  const [{ data: clientRow }, { data: streak }, { data: weekLogs }] = await Promise.all([
-    supabase.from("clients").select("trainer_id").eq("user_id", uid).single(),
-    supabase.from("streaks").select("current_weeks").eq("client_id", uid).single(),
-    supabase.from("workout_logs").select("total_volume").eq("client_id", uid).gte("date", weekAgo.toISOString()),
-  ]);
+  const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
 
   const { data: routines } = await supabase
     .from("routines")
@@ -28,9 +22,6 @@ export default async function ClientToday() {
   const todaysRoutine = (routines ?? []).find((r) => r.days_of_week?.includes(todayDow));
   const otherRoutines = (routines ?? []).filter((r) => r.id !== todaysRoutine?.id).slice(0, 10);
 
-  const weekVolume = (weekLogs ?? []).reduce((sum, l) => sum + (l.total_volume ?? 0), 0);
-  const weekWorkouts = weekLogs?.length ?? 0;
-
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -40,28 +31,7 @@ export default async function ClientToday() {
 
       <DayStrip />
 
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 4px 22px", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
-        <StatText icon={<Flame size={15} color={palette.accent} />} value={`${streak?.current_weeks ?? 0}`} label="semanas de racha" />
-        <StatText value={`${Math.round(weekVolume).toLocaleString()} kg`} label={`${weekWorkouts} entrenos esta semana`} />
-      </div>
-
-      {todaysRoutine && (
-        <>
-          <h2 style={sectionLabel}>Tu rutina de hoy</h2>
-          <Link href={`/app/workout/${todaysRoutine.id}`} style={{
-            ...glassPanel, padding: 18, display: "flex", alignItems: "center", justifyContent: "space-between",
-            textDecoration: "none", color: palette.ink, marginBottom: 24, border: `1px solid ${palette.accent}55`,
-          }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{todaysRoutine.name}</div>
-              <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 2 }}>Programada para hoy</div>
-            </div>
-            <div style={{ width: 38, height: 38, borderRadius: "50%", background: palette.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Play size={16} color="#0A0C10" fill="#0A0C10" />
-            </div>
-          </Link>
-        </>
-      )}
+      <TodayCards todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name } : null} />
 
       <h2 style={sectionLabel}>{todaysRoutine ? "Otras rutinas" : "Tus rutinas"}</h2>
 
@@ -86,18 +56,6 @@ export default async function ClientToday() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatText({ icon, value, label }: { icon?: React.ReactNode; value: string; label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      {icon}
-      <div>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{value}</div>
-        <div style={{ fontSize: 10.5, color: palette.inkDim }}>{label}</div>
-      </div>
     </div>
   );
 }
