@@ -5,6 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { WorkoutSessionProvider } from "@/lib/workoutSession";
 import ActiveWorkoutPill from "@/components/ActiveWorkoutPill";
 import AchievementChecker from "@/components/AchievementChecker";
+import HomeFab from "@/components/HomeFab";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -28,8 +29,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
 
-                <ActiveWorkoutPill />
+        <ActiveWorkoutPill />
         <AchievementChecker />
+        <HomeFab />
         <BottomNav />
       </div>
     </WorkoutSessionProvider>
