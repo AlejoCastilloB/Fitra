@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { palette, glassPanel } from "@/lib/theme";
 import Link from "next/link";
 import { Flame, Play } from "lucide-react";
-import HomeFab from "@/components/HomeFab";
 import DayStrip, { DaySummary } from "@/components/DayStrip";
 
 export default async function ClientToday() {
@@ -97,8 +96,6 @@ export default async function ClientToday() {
           ))}
         </div>
       )}
-
-      <HomeFab todaysRoutineId={todaysRoutine?.id ?? null} />
     </div>
   );
 }
