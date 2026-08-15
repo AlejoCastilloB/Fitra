@@ -1,20 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { palette } from "@/lib/theme";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
 
 const WHATSAPP_NUMBER = "573000000000"; // reemplaza por el número real de soporte de Alejo
 
-export default function HomeFab({ todaysRoutineId }: { todaysRoutineId?: string | null }) {
+export default function HomeFab() {
+  const supabase = createClient();
+  const uid = useCurrentUser();
   const [open, setOpen] = useState(false);
+  const [todaysRoutineId, setTodaysRoutineId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!uid) return;
+    (async () => {
+      const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
+      const { data: routines } = await supabase
+        .from("routines")
+        .select("id, days_of_week")
+        .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`);
+
+      const todayDow = new Date().getDay();
+      const todays = (routines ?? []).find((r) => r.days_of_week?.includes(todayDow));
+      setTodaysRoutineId(todays?.id ?? null);
+    })();
+  }, [uid]);
 
   const items = [
-    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
-    { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/nutrition", external: false },
+    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/progress", external: false },
+    { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
     { icon: <Sparkles size={17} />, label: "Preguntarle a la IA de Alejo", href: "/app/nutrition/recipes", external: false },
-    { icon: <Phone size={17} />, label: "Hablar con Alejo", href: `https://wa.me/34664285466`, external: true },
+    { icon: <Phone size={17} />, label: "Hablar con Alejo", href: `https://wa.me/${WHATSAPP_NUMBER}`, external: true },
   ];
 
   return (
