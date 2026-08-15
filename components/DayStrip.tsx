@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { palette } from "@/lib/theme";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import Modal from "@/components/Modal";
 import { Dumbbell, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -28,16 +29,15 @@ function getMonday(offsetWeeks: number) {
 
 export default function DayStrip() {
   const supabase = createClient();
+  const uid = useCurrentUser();
   const [weekOffset, setWeekOffset] = useState(0);
   const [days, setDays] = useState<DayData[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!uid) return;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user!.id;
-
       const monday = getMonday(weekOffset);
       const sunday = new Date(monday);
       sunday.setDate(sunday.getDate() + 7);
@@ -80,7 +80,7 @@ export default function DayStrip() {
 
       setDays(built);
     })();
-  }, [weekOffset]);
+  }, [weekOffset, uid]);
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
