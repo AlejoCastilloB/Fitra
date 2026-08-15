@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Dumbbell } from "lucide-react";
 
 const DAILY_KCAL_GOAL = 2200;
@@ -34,6 +35,7 @@ function DumbbellRing({ done }: { done: boolean }) {
 
 export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: string; name: string } | null }) {
   const supabase = createClient();
+  const uid = useCurrentUser();
   const [kcalConsumed, setKcalConsumed] = useState(0);
   const [mode, setMode] = useState<"remaining" | "consumed">("remaining");
   const [done, setDone] = useState(false);
@@ -43,9 +45,8 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   const [topMuscle, setTopMuscle] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!uid) return;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user!.id;
       const today = new Date().toISOString().slice(0, 10);
 
       const { data: logs } = await supabase.from("nutrition_logs").select("kcal").eq("client_id", uid).gte("date", `${today}T00:00:00`);
@@ -73,7 +74,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         setTopMuscle(top ? top[0] : null);
       }
     })();
-  }, [todaysRoutine?.id]);
+  }, [todaysRoutine?.id, uid]);
 
   const kcalRemaining = Math.max(0, DAILY_KCAL_GOAL - kcalConsumed);
 
