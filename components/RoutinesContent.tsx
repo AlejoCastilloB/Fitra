@@ -3,18 +3,19 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import Link from "next/link";
 import { Play, Pencil, Sparkles, ChevronRight } from "lucide-react";
 
 export default function RoutinesContent() {
   const supabase = createClient();
+  const uid = useCurrentUser();
   const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!uid) return;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user!.id;
       const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
       const { data } = await supabase
         .from("routines")
@@ -24,7 +25,7 @@ export default function RoutinesContent() {
       setRoutines(data ?? []);
       setLoading(false);
     })();
-  }, []);
+  }, [uid]);
 
   return (
     <div>
@@ -41,7 +42,7 @@ export default function RoutinesContent() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
-          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Armala tu o pídele ayuda a la IA de Alejo</div>
+          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Créala tú o pídele ayuda a la IA de Alejo</div>
         </div>
         <ChevronRight size={18} color={palette.inkDim} />
       </Link>
