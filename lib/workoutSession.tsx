@@ -11,7 +11,8 @@ export type LiveExercise = {
 };
 
 type Session = {
-  routineId: string; routineName: string; exercises: LiveExercise[]; startedAt: number; restEndAt: number | null;
+  routineId: string; routineName: string; exercises: LiveExercise[]; startedAt: number;
+  restEndAt: number | null; restForExIdx: number | null;
 } | null;
 
 type Ctx = {
@@ -22,6 +23,7 @@ type Ctx = {
   addSet: (exIdx: number) => void;
   removeSet: (exIdx: number, setIdx: number) => void;
   updateExerciseRest: (exIdx: number, seconds: number) => void;
+  adjustRest: (deltaSeconds: number) => void;
   skipRest: () => void;
   clearSession: () => void;
 };
@@ -45,7 +47,11 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      try { setSession(JSON.parse(raw)); } catch {}
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.restForExIdx === undefined) parsed.restForExIdx = null;
+        setSession(parsed);
+      } catch {}
     }
   }, []);
 
@@ -63,7 +69,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     setSession({
       routineId, routineName,
       exercises: exercises.map((e) => ({ restSeconds: 90, ...e })),
-      startedAt: Date.now(), restEndAt: null,
+      startedAt: Date.now(), restEndAt: null, restForExIdx: null,
     });
   }, []);
 
@@ -76,6 +82,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       const exercises = prev.exercises.map((ex, i) => i !== exIdx ? ex : {
         ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, done: !s.done }),
       });
+
       let shouldRest = true;
       if (current.supersetGroup != null) {
         const groupIndices = prev.exercises
@@ -83,7 +90,11 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
           .filter((i) => i >= 0);
         shouldRest = exIdx === Math.max(...groupIndices);
       }
-      return { ...prev, exercises, restEndAt: (wasDone || !shouldRest) ? prev.restEndAt : Date.now() + exRest * 1000 };
+
+      if (wasDone || !shouldRest) {
+        return { ...prev, exercises };
+      }
+      return { ...prev, exercises, restEndAt: Date.now() + exRest * 1000, restForExIdx: exIdx };
     });
   }, []);
 
@@ -117,14 +128,22 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const adjustRest = useCallback((deltaSeconds: number) => {
+    setSession((prev) => {
+      if (!prev || !prev.restEndAt) return prev;
+      const next = Math.max(Date.now(), prev.restEndAt + deltaSeconds * 1000);
+      return { ...prev, restEndAt: next };
+    });
+  }, []);
+
   const skipRest = useCallback(() => {
-    setSession((prev) => prev && { ...prev, restEndAt: null });
+    setSession((prev) => prev && { ...prev, restEndAt: null, restForExIdx: null });
   }, []);
 
   const clearSession = useCallback(() => setSession(null), []);
 
   return (
-    <WorkoutSessionContext.Provider value={{ session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, skipRest, clearSession }}>
+    <WorkoutSessionContext.Provider value={{ session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, clearSession }}>
       {children}
     </WorkoutSessionContext.Provider>
   );
