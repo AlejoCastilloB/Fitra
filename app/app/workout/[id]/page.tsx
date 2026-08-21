@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { palette, glassPanel } from "@/lib/theme";
@@ -10,6 +10,7 @@ import { getSetBadge } from "@/lib/setBadges";
 import { computeStreakUpdate } from "@/lib/streak";
 import { supersetColor } from "@/lib/supersetColors";
 import { getWeightComparison } from "@/lib/weightComparisons";
+import { toPng } from "html-to-image";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings } from "lucide-react";
@@ -30,7 +31,7 @@ export default function WorkoutPage() {
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [finished, setFinished] = useState<null | { volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number> }>(null);
+  const [finished, setFinished] = useState<null | { routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number> }>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [defaultRest, setDefaultRest] = useState(90);
@@ -148,7 +149,7 @@ export default function WorkoutPage() {
     if (streakRow) await supabase.from("streaks").update(streakUpdate).eq("client_id", uid);
     else await supabase.from("streaks").insert({ client_id: uid, ...streakUpdate });
 
-    setFinished({ volume: totalVolume, durationSec, prs: prsHit, breakdown });
+    setFinished({ routineName: session.routineName, volume: totalVolume, durationSec, prs: prsHit, breakdown });
     clearSession();
   }
 
@@ -160,7 +161,7 @@ export default function WorkoutPage() {
   if (loading) return <p style={{ color: palette.inkDim, textAlign: "center", marginTop: 60 }}>Cargando entrenamiento...</p>;
 
   if (finished) {
-    return <SummaryScreen routineName={session?.routineName ?? "Entrenamiento"} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} breakdown={finished.breakdown} onDone={() => router.push("/app")} />;
+    return <SummaryScreen routineName={finished.routineName} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} breakdown={finished.breakdown} onDone={() => router.push("/app")} />;
   }
 
   const hasExercises = session && session.exercises.length > 0;
@@ -246,8 +247,9 @@ export default function WorkoutPage() {
                   <Timer size={12} color={palette.inkDim} />
                   {editingRestFor === exIdx ? (
                     <input
-                      type="number" autoFocus defaultValue={ex.restSeconds}
-                      onBlur={(e) => { updateExerciseRest(exIdx, +e.target.value || 90); setEditingRestFor(null); }}
+                      type="number" inputMode="numeric" min={0} autoFocus defaultValue={ex.restSeconds}
+                      onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
+                      onBlur={(e) => { updateExerciseRest(exIdx, Math.max(0, +e.target.value || 90)); setEditingRestFor(null); }}
                       style={{ width: 50, padding: "2px 6px", borderRadius: 6, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 11 }}
                     />
                   ) : (
@@ -407,7 +409,10 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 
 function SetInput({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
   return (
-    <input type="number" value={value ?? ""} onChange={(e) => onChange(+e.target.value)}
+    <input
+      type="number" inputMode="decimal" min={0} value={value ?? ""}
+      onChange={(e) => onChange(Math.max(0, +e.target.value || 0))}
+      onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
       style={{ width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
   );
 }
@@ -418,11 +423,30 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
   const minutes = Math.floor(durationSec / 60);
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
   const comparison = getWeightComparison(volume);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
 
   async function share() {
-    const text = `Completé "${capitalized}" en FitTrack 💪\n${volume.toLocaleString()} kg de volumen total en ${minutes} min\nEso es como mover ${comparison.emoji} ${comparison.text}${prs.length ? `\n🏆 ${prs.length} nuevo(s) récord: ${prs.join(", ")}` : ""}`;
-    if (navigator.share) await navigator.share({ text });
-    else { await navigator.clipboard.writeText(text); alert("Copiado al portapapeles"); }
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "entreno-fittrack.png";
+        link.click();
+      }
+    } catch {
+      alert("No pudimos generar la imagen, intenta de nuevo.");
+    } finally {
+      setSharing(false);
+    }
   }
 
   const BADGE_LABELS: Record<string, { label: string; color: string }> = {
@@ -441,7 +465,7 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
         .ft-emoji-pop { animation: ftEmojiPop .5s cubic-bezier(.16,.8,.24,1) .15s both; }
       `}</style>
 
-      <div className="ft-story-card" style={{
+      <div ref={cardRef} className="ft-story-card" style={{
         borderRadius: 26, padding: "36px 24px 28px", textAlign: "center", marginBottom: 20,
         background: `radial-gradient(circle at 50% 0%, ${palette.accentDeep}44, ${palette.bg} 65%)`,
         border: `1px solid ${palette.panelBorder}`, position: "relative", overflow: "hidden",
@@ -479,16 +503,18 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
             </div>
           )}
         </div>
-      </div>
 
-      {prs.length > 0 && (
-        <div style={{ ...glassPanel, padding: 16, marginBottom: 16, textAlign: "left", border: `1px solid ${palette.accent}55` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 13 }}>
-            <Trophy size={16} /> Hiciste récord en:
+        {prs.length > 0 && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${palette.panelBorder}`, textAlign: "left" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 12.5 }}>
+              <Trophy size={14} /> Hiciste récord en:
+            </div>
+            {prs.map((p) => <div key={p} style={{ fontSize: 12.5, marginBottom: 3 }}>🏆 {p}</div>)}
           </div>
-          {prs.map((p) => <div key={p} style={{ fontSize: 13, marginBottom: 3 }}>🏆 {p}</div>)}
-        </div>
-      )}
+        )}
+
+        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · la IA de Alejo</div>
+      </div>
 
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 10, textTransform: "uppercase", fontWeight: 700 }}>Series por tipo</div>
@@ -502,8 +528,8 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
         </div>
       </div>
 
-      <button onClick={share} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-        Compartir
+      <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
+        {sharing ? "Generando imagen..." : "Compartir como imagen"}
       </button>
       <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>
         Volver a Hoy
