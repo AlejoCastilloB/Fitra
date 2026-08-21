@@ -9,6 +9,7 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
 import { computeStreakUpdate } from "@/lib/streak";
 import { supersetColor } from "@/lib/supersetColors";
+import { getWeightComparison } from "@/lib/weightComparisons";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings } from "lucide-react";
@@ -416,9 +417,10 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
 }) {
   const minutes = Math.floor(durationSec / 60);
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
+  const comparison = getWeightComparison(volume);
 
   async function share() {
-    const text = `Completé "${capitalized}" en FitTrack 💪\n${volume.toLocaleString()} kg de volumen total en ${minutes} min${prs.length ? `\n🏆 ${prs.length} nuevo(s) PR: ${prs.join(", ")}` : ""}`;
+    const text = `Completé "${capitalized}" en FitTrack 💪\n${volume.toLocaleString()} kg de volumen total en ${minutes} min\nEso es como mover ${comparison.emoji} ${comparison.text}${prs.length ? `\n🏆 ${prs.length} nuevo(s) récord: ${prs.join(", ")}` : ""}`;
     if (navigator.share) await navigator.share({ text });
     else { await navigator.clipboard.writeText(text); alert("Copiado al portapapeles"); }
   }
@@ -431,25 +433,64 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
   };
 
   return (
-    <div style={{ textAlign: "center", paddingTop: 40 }}>
-      <div style={{ width: 64, height: 64, borderRadius: "50%", background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", color: palette.accent }}>
-        <Flame size={28} />
-      </div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>¡Entreno completado!</h1>
-      <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 24 }}>{capitalized}</p>
+    <div>
+      <style>{`
+        @keyframes ftStoryIn { from { opacity: 0; transform: scale(0.94) translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes ftEmojiPop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+        .ft-story-card { animation: ftStoryIn .45s cubic-bezier(.16,.8,.24,1) both; }
+        .ft-emoji-pop { animation: ftEmojiPop .5s cubic-bezier(.16,.8,.24,1) .15s both; }
+      `}</style>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-        <div style={{ ...glassPanel, flex: 1, padding: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{volume.toLocaleString()} kg</div>
-          <div style={{ fontSize: 11, color: palette.inkDim }}>Volumen total</div>
+      <div className="ft-story-card" style={{
+        borderRadius: 26, padding: "36px 24px 28px", textAlign: "center", marginBottom: 20,
+        background: `radial-gradient(circle at 50% 0%, ${palette.accentDeep}44, ${palette.bg} 65%)`,
+        border: `1px solid ${palette.panelBorder}`, position: "relative", overflow: "hidden",
+      }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: "50%", background: `${palette.accent}22`,
+          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: palette.accent,
+        }}>
+          <Flame size={26} />
         </div>
-        <div style={{ ...glassPanel, flex: 1, padding: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{minutes} min</div>
-          <div style={{ fontSize: 11, color: palette.inkDim }}>Duración</div>
+        <p style={{ fontSize: 12, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Entreno completado</p>
+        <h1 style={{ fontSize: 19, fontWeight: 800, marginBottom: 22 }}>{capitalized}</h1>
+
+        <div style={{ fontSize: 38, fontWeight: 900, lineHeight: 1 }}>{volume.toLocaleString()}</div>
+        <div style={{ fontSize: 13, color: palette.inkDim, marginBottom: 18 }}>kg de volumen total</div>
+
+        <div className="ft-emoji-pop" style={{ fontSize: 40, marginBottom: 8 }}>{comparison.emoji}</div>
+        <p style={{ fontSize: 13, color: palette.ink, lineHeight: 1.5, maxWidth: 280, margin: "0 auto 22px" }}>
+          Eso es como mover <strong>{comparison.text}</strong>
+        </p>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: 24 }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{minutes} min</div>
+            <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Duración</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{Object.values(breakdown).reduce((a, b) => a + b, 0)}</div>
+            <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Series</div>
+          </div>
+          {prs.length > 0 && (
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: palette.accent }}>{prs.length}</div>
+              <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Récords</div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div style={{ ...glassPanel, padding: 16, marginBottom: 20, textAlign: "left" }}>
+      {prs.length > 0 && (
+        <div style={{ ...glassPanel, padding: 16, marginBottom: 16, textAlign: "left", border: `1px solid ${palette.accent}55` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 13 }}>
+            <Trophy size={16} /> Hiciste récord en:
+          </div>
+          {prs.map((p) => <div key={p} style={{ fontSize: 13, marginBottom: 3 }}>🏆 {p}</div>)}
+        </div>
+      )}
+
+      <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 10, textTransform: "uppercase", fontWeight: 700 }}>Series por tipo</div>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
           {Object.entries(breakdown).filter(([, count]) => count > 0).map(([type, count]) => (
@@ -460,15 +501,6 @@ function SummaryScreen({ routineName, volume, durationSec, prs, breakdown, onDon
           ))}
         </div>
       </div>
-
-      {prs.length > 0 && (
-        <div style={{ ...glassPanel, padding: 16, marginBottom: 20, textAlign: "left", border: `1px solid ${palette.accent}55` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 13 }}>
-            <Trophy size={16} /> Nuevos récords
-          </div>
-          {prs.map((p) => <div key={p} style={{ fontSize: 13, marginBottom: 3 }}>{p}</div>)}
-        </div>
-      )}
 
       <button onClick={share} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
         Compartir
