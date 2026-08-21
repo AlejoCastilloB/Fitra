@@ -14,7 +14,7 @@ import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
-import RestTimerRing from "@/components/RestTimerRing";
+import RestBar from "@/components/RestBar";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 
 export default function WorkoutPage() {
@@ -22,11 +22,10 @@ export default function WorkoutPage() {
   const router = useRouter();
   const supabase = createClient();
   const uid = useCurrentUser();
-  const { session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, skipRest, clearSession } = useWorkoutSession();
+  const { session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, clearSession } = useWorkoutSession();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [timerSound, setTimerSound] = useState("clasico");
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -53,9 +52,8 @@ export default function WorkoutPage() {
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
 
-      const { data: userRow } = await supabase.from("users").select("timer_sound, default_rest_seconds, keep_screen_awake, track_rpe").eq("id", uid).single();
+      const { data: userRow } = await supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe").eq("id", uid).single();
       if (userRow) {
-        setTimerSound(userRow.timer_sound);
         setDefaultRest(userRow.default_rest_seconds ?? 90);
         setKeepAwake(userRow.keep_screen_awake ?? false);
         setTrackRpe(userRow.track_rpe ?? false);
@@ -102,30 +100,6 @@ export default function WorkoutPage() {
     (navigator as any).wakeLock.request("screen").then((l: any) => { lock = l; }).catch(() => {});
     return () => { lock?.release?.(); };
   }, [keepAwake]);
-
-  useEffect(() => {
-    if (session?.restEndAt && session.restEndAt - now <= 0) {
-      playBeep();
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-    }
-  }, [session?.restEndAt, now]);
-
-  function playBeep() {
-    const sounds: Record<string, { freq: number; pattern: number[] }> = {
-      clasico: { freq: 880, pattern: [0.35] }, suave: { freq: 660, pattern: [0.5] },
-      energico: { freq: 990, pattern: [0.12, 0.12, 0.12] },
-    };
-    const s = sounds[timerSound] || sounds.clasico;
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      let t = ctx.currentTime;
-      s.pattern.forEach((dur) => {
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.frequency.value = s.freq; osc.connect(gain); gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0.15, t); osc.start(t); osc.stop(t + dur); t += dur + 0.08;
-      });
-    } catch {}
-  }
 
   async function finishWorkout() {
     if (!session || !uid) return;
@@ -190,7 +164,6 @@ export default function WorkoutPage() {
 
   const hasExercises = session && session.exercises.length > 0;
   const restLeft = session?.restEndAt ? Math.max(0, Math.ceil((session.restEndAt - now) / 1000)) : 0;
-  const activeExRest = session?.exercises.find((_, i) => session.restEndAt)?.restSeconds ?? 90;
 
   return (
     <div>
@@ -210,8 +183,6 @@ export default function WorkoutPage() {
         </div>
       )}
 
-      {restLeft > 0 && <RestTimerRing secondsLeft={restLeft} totalSeconds={activeExRest} onSkip={skipRest} />}
-
       {!hasExercises ? (
         <div style={{ padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
           <p style={{ marginBottom: 8 }}>Esta rutina no tiene ejercicios cargados.</p>
@@ -223,6 +194,7 @@ export default function WorkoutPage() {
             const isOpen = expandedId === ex.id;
             const doneInEx = ex.sets.filter((s) => s.done).length;
             const groupColor = ex.supersetGroup != null ? supersetColor(ex.supersetGroup) : null;
+            const showRestHere = session!.restForExIdx === exIdx && restLeft > 0;
             return (
               <div key={ex.id} style={{
                 paddingTop: 16, paddingBottom: 16,
@@ -346,6 +318,10 @@ export default function WorkoutPage() {
                     </div>
                   );
                 })}
+
+                {showRestHere && (
+                  <RestBar secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onAdjust={adjustRest} onSkip={skipRest} />
+                )}
 
                 <button onClick={() => addSet(exIdx)} style={{
                   display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
