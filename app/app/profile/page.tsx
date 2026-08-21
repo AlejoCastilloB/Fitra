@@ -80,8 +80,8 @@ export default function ProfilePage() {
       setActiveDays(days);
 
       const combined = [
-        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString()} kg · ${Math.round((w.duration_sec ?? 0) / 60)} min` })),
-        ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
+        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString()} kg · ${Math.round((w.duration_sec ?? 0) / 60)} min` })),
+        ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
       setHistory(combined);
     })();
@@ -244,18 +244,15 @@ export default function ProfilePage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {history.map((h, i) => (
-            <button key={i} onClick={() => setSelectedHistory(h)} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                background: h.type === "workout" ? `${palette.accent}22` : "#7DC4E822", color: h.type === "workout" ? palette.accent : "#7DC4E8", fontSize: 13,
-              }}>
-                {h.type === "workout" ? "💪" : "🍽️"}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{h.title}</div>
-                <div style={{ fontSize: 10.5, color: palette.inkDim }}>{h.detail} · {new Date(h.date).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</div>
-              </div>
-            </button>
+            h.type === "workout" && h.id ? (
+              <Link key={i} href={`/app/workout-log/${h.id}`} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: palette.ink }}>
+                <HistoryRowContent h={h} />
+              </Link>
+            ) : (
+              <button key={i} onClick={() => setSelectedHistory(h)} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}>
+                <HistoryRowContent h={h} />
+              </button>
+            )
           ))}
         </div>
       )}
@@ -269,6 +266,23 @@ export default function ProfilePage() {
         </Modal>
       )}
     </div>
+  );
+}
+
+function HistoryRowContent({ h }: { h: any }) {
+  return (
+    <>
+      <div style={{
+        width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+        background: h.type === "workout" ? `${palette.accent}22` : "#7DC4E822", color: h.type === "workout" ? palette.accent : "#7DC4E8", fontSize: 13,
+      }}>
+        {h.type === "workout" ? "💪" : "🍽️"}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{h.title}</div>
+        <div style={{ fontSize: 10.5, color: palette.inkDim }}>{h.detail} · {new Date(h.date).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</div>
+      </div>
+    </>
   );
 }
 
