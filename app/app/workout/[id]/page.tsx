@@ -9,10 +9,10 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
 import { computeStreakUpdate } from "@/lib/streak";
 import { supersetColor } from "@/lib/supersetColors";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
-import SwipeableRow from "@/components/SwipeableRow";
 import SetTypePopover from "@/components/SetTypePopover";
 import RestTimerRing from "@/components/RestTimerRing";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
@@ -21,6 +21,7 @@ export default function WorkoutPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
+  const uid = useCurrentUser();
   const { session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, skipRest, clearSession } = useWorkoutSession();
 
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,7 @@ export default function WorkoutPage() {
   const [previousMap, setPreviousMap] = useState<Record<string, Record<number, any>>>({});
 
   useEffect(() => {
+    if (!uid) return;
     if (session && session.routineId === id) { setLoading(false); return; }
 
     (async () => {
@@ -51,8 +53,7 @@ export default function WorkoutPage() {
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
 
-      const { data: auth } = await supabase.auth.getUser();
-      const { data: userRow } = await supabase.from("users").select("timer_sound, default_rest_seconds, keep_screen_awake, track_rpe").eq("id", auth.user!.id).single();
+      const { data: userRow } = await supabase.from("users").select("timer_sound, default_rest_seconds, keep_screen_awake, track_rpe").eq("id", uid).single();
       if (userRow) {
         setTimerSound(userRow.timer_sound);
         setDefaultRest(userRow.default_rest_seconds ?? 90);
@@ -74,7 +75,7 @@ export default function WorkoutPage() {
           .from("set_logs")
           .select("set_number, weight, reps, time_sec, distance_m, workout_log_id, workout_logs!inner(date, client_id)")
           .eq("exercise_id", ex.id)
-          .eq("workout_logs.client_id", auth.user!.id)
+          .eq("workout_logs.client_id", uid)
           .order("id", { ascending: false })
           .limit(30);
 
@@ -93,7 +94,7 @@ export default function WorkoutPage() {
       startSession(id, routine?.name ?? "Entrenamiento", built);
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, uid]);
 
   useEffect(() => {
     if (!keepAwake || !("wakeLock" in navigator)) return;
@@ -127,9 +128,7 @@ export default function WorkoutPage() {
   }
 
   async function finishWorkout() {
-    if (!session) return;
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth.user!.id;
+    if (!session || !uid) return;
     const durationSec = Math.round((Date.now() - session.startedAt) / 1000);
 
     let totalVolume = 0;
@@ -146,7 +145,10 @@ export default function WorkoutPage() {
       doneSets.forEach((s) => { breakdown[s.set_type] = (breakdown[s.set_type] ?? 0) + 1; });
 
       const rows = doneSets.map((s, i) => {
-        if (s.weight && s.reps) { totalVolume += s.weight * s.reps; if (s.weight > bestWeight) bestWeight = s.weight; }
+        if (s.weight && s.reps && s.set_type !== "warmup") {
+          totalVolume += s.weight * s.reps;
+          if (s.weight > bestWeight) bestWeight = s.weight;
+        }
         return {
           workout_log_id: workoutLog!.id, exercise_id: ex.id, set_number: i + 1,
           weight: s.weight ?? null, reps: s.reps ?? null, time_sec: s.time_sec ?? null,
@@ -192,7 +194,7 @@ export default function WorkoutPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <button onClick={() => router.push("/app")} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={20} /></button>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{session?.routineName}</span>
         <div style={{ display: "flex", gap: 14 }}>
@@ -201,23 +203,36 @@ export default function WorkoutPage() {
         </div>
       </div>
 
+      {hasExercises && (
+        <div style={{ display: "flex", justifyContent: "space-around", padding: "10px 0", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 14 }}>
+          <SessionStat label="Series" value={`${session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done).length, 0)}`} />
+          <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString()} kg`} />
+        </div>
+      )}
+
       {restLeft > 0 && <RestTimerRing secondsLeft={restLeft} totalSeconds={activeExRest} onSkip={skipRest} />}
 
       {!hasExercises ? (
-        <div style={{ ...glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
+        <div style={{ padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
           <p style={{ marginBottom: 8 }}>Esta rutina no tiene ejercicios cargados.</p>
           {loadError && <p style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace" }}>{loadError}</p>}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", marginBottom: 24 }}>
           {session!.exercises.map((ex, exIdx) => {
             const isOpen = expandedId === ex.id;
             const doneInEx = ex.sets.filter((s) => s.done).length;
+            const groupColor = ex.supersetGroup != null ? supersetColor(ex.supersetGroup) : null;
             return (
-              <div key={ex.id} style={{ ...glassPanel, overflow: "hidden", borderLeft: ex.supersetGroup != null ? `3px solid ${supersetColor(ex.supersetGroup)}` : undefined }}>
+              <div key={ex.id} style={{
+                paddingTop: 16, paddingBottom: 16,
+                borderTop: exIdx > 0 ? `1px solid ${palette.panelBorder}` : "none",
+                borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
+                paddingLeft: groupColor ? 10 : 0,
+              }}>
                 <button onClick={() => setExpandedId(isOpen ? null : ex.id)} style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: 12, padding: 14,
-                  background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                  width: "100%", display: "flex", alignItems: "center", gap: 12,
+                  background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, marginBottom: 10,
                 }}>
                   {isOpen && ex.media_url ? (
                     <img src={ex.media_url} alt={ex.name} style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
@@ -225,12 +240,8 @@ export default function WorkoutPage() {
                     <GifThumb src={ex.media_url} size={52} />
                   )}
                   <div style={{ flex: 1 }}>
-                    {ex.supersetGroup != null && (
-                      <span style={{
-                        display: "inline-block", fontSize: 9.5, fontWeight: 700, marginBottom: 4,
-                        color: supersetColor(ex.supersetGroup), background: `${supersetColor(ex.supersetGroup)}22`,
-                        padding: "2px 8px", borderRadius: 999,
-                      }}>
+                    {groupColor && (
+                      <span style={{ display: "inline-block", fontSize: 9.5, fontWeight: 700, marginBottom: 4, color: groupColor, background: `${groupColor}22`, padding: "2px 8px", borderRadius: 999 }}>
                         🔗 Superserie
                       </span>
                     )}
@@ -243,12 +254,12 @@ export default function WorkoutPage() {
                 </button>
 
                 {isOpen && (
-                  <div style={{ padding: "0 14px 14px" }}>
+                  <div style={{ marginBottom: 12 }}>
                     {ex.notes && <p style={{ fontSize: 12.5, color: palette.accent, marginBottom: 10 }}>📝 {ex.notes}</p>}
                     {ex.equipment && <InfoLine label="Equipo" value={equipmentLabel(ex.equipment)} />}
                     {ex.description && <InfoLine label="Descripción" value={ex.description} />}
                     {ex.instructions && ex.instructions.length > 0 && (
-                      <div style={{ marginTop: 8, marginBottom: 12 }}>
+                      <div style={{ marginTop: 8, marginBottom: 4 }}>
                         <div style={{ fontSize: 10.5, color: palette.accent, fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Técnica</div>
                         <ol style={{ paddingLeft: 16, fontSize: 12, color: palette.inkDim, lineHeight: 1.6 }}>
                           {ex.instructions.map((step, i) => <li key={i}>{step}</li>)}
@@ -258,7 +269,7 @@ export default function WorkoutPage() {
                   </div>
                 )}
 
-                <div style={{ padding: "0 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <Timer size={12} color={palette.inkDim} />
                   {editingRestFor === exIdx ? (
                     <input
@@ -273,53 +284,75 @@ export default function WorkoutPage() {
                   )}
                 </div>
 
-                <div style={{ padding: "0 14px 8px" }}>
-                  {ex.sets.map((s, i) => {
-                    const badge = getSetBadge(ex.sets, i, palette.accent);
-                    return (
-                      <SwipeableRow key={i} rightAction={{ label: "Eliminar", icon: "delete", color: "#c0392b", onClick: () => removeSet(exIdx, i) }}>
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
-                          borderBottom: i < ex.sets.length - 1 ? `1px solid ${palette.panelBorder}` : "none",
-                          opacity: s.done ? 0.55 : 1,
-                        }}>
-                          <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
-                            fontSize: 11, color: badge.color, width: 22, height: 22, borderRadius: 7,
-                            background: `${badge.color}22`, border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0,
-                          }}>{badge.text}</button>
-
-                          {ex.measurement_type === "reps_weight" && (
-                            <>
-                              <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} placeholder={previousMap[ex.id]?.[i + 1]?.weight ? `${previousMap[ex.id][i + 1].weight}` : "kg"} />
-                              <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} placeholder={previousMap[ex.id]?.[i + 1]?.reps ? `${previousMap[ex.id][i + 1].reps}` : "reps"} />
-                            </>
-                          )}
-                          {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-                            <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} placeholder="seg" />
-                          )}
-                          {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-                            <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} placeholder="m" />
-                          )}
-
-                          <div style={{ flex: 1 }} />
-                          <button onClick={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)} style={{
-                            width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
-                            background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                          }}>
-                            <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
-                          </button>
-                        </div>
-                      </SwipeableRow>
-                    );
-                  })}
-
-                  <button onClick={() => addSet(exIdx)} style={{
-                    display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
-                    color: palette.accent, fontSize: 12, cursor: "pointer", padding: "8px 0 4px",
-                  }}>
-                    <Plus size={13} /> Agregar serie
-                  </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 6px" }}>
+                  <span style={{ width: 22, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Serie</span>
+                  <span style={{ width: 62, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Anterior</span>
+                  {ex.measurement_type === "reps_weight" && (
+                    <>
+                      <span style={{ width: 50, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Peso</span>
+                      <span style={{ width: 50, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Reps</span>
+                    </>
+                  )}
+                  {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 50, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Seg</span>
+                  )}
+                  {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 50, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Metros</span>
+                  )}
                 </div>
+
+                {ex.sets.map((s, i) => {
+                  const badge = getSetBadge(ex.sets, i, palette.accent);
+                  const prev = previousMap[ex.id]?.[i + 1];
+                  const prevLabel = prev
+                    ? (ex.measurement_type === "reps_weight" ? `${prev.weight ?? "-"}×${prev.reps ?? "-"}` : ex.measurement_type === "distance" ? `${prev.distance_m ?? "-"}m` : `${prev.time_sec ?? "-"}s`)
+                    : "—";
+                  return (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
+                      background: i % 2 === 1 ? "rgba(255,255,255,0.025)" : "transparent",
+                      borderRadius: 8, opacity: s.done ? 0.55 : 1,
+                    }}>
+                      <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
+                        width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, flexShrink: 0,
+                        color: badge.color, background: `${badge.color}22`,
+                      }}>{badge.text}</button>
+
+                      <span style={{ width: 62, fontSize: 11, color: palette.inkDim, textAlign: "center" }}>{prevLabel}</span>
+
+                      {ex.measurement_type === "reps_weight" && (
+                        <>
+                          <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} />
+                          <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} />
+                        </>
+                      )}
+                      {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                        <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} />
+                      )}
+                      {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                        <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} />
+                      )}
+
+                      <div style={{ flex: 1 }} />
+                      <button onClick={() => removeSet(exIdx, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: 4 }}>
+                        <Trash2 size={13} />
+                      </button>
+                      <button onClick={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)} style={{
+                        width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
+                        background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+                      }}>
+                        <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                <button onClick={() => addSet(exIdx)} style={{
+                  display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
+                  color: palette.accent, fontSize: 12, cursor: "pointer", padding: "8px 2px 0",
+                }}>
+                  <Plus size={13} /> Agregar serie
+                </button>
               </div>
             );
           })}
@@ -377,6 +410,15 @@ export default function WorkoutPage() {
   );
 }
 
+function SessionStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 15, fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
+}
+
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ marginBottom: 8 }}>
@@ -386,9 +428,9 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SetInput({ value, onChange, placeholder }: { value?: number; onChange: (v: number) => void; placeholder: string }) {
+function SetInput({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
   return (
-    <input type="number" value={value ?? ""} onChange={(e) => onChange(+e.target.value)} placeholder={placeholder}
+    <input type="number" value={value ?? ""} onChange={(e) => onChange(+e.target.value)}
       style={{ width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
   );
 }
