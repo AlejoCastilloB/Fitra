@@ -362,6 +362,14 @@ export default function NutritionContent() {
                       <MacroRow label="Azúcar" value={`${Math.round(l.sugar ?? 0)} g`} />
                       <MacroRow label="Sodio" value={`${Math.round(l.sodium ?? 0)} mg`} />
                     </div>
+                    {l.note && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${palette.panelBorder}` }}>
+                        <div style={{ fontSize: 10.5, color: palette.accent, fontWeight: 700, textTransform: "uppercase", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Sparkles size={10} /> Contexto que diste
+                        </div>
+                        <p style={{ fontSize: 12.5, color: palette.ink, lineHeight: 1.4 }}>{l.note}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
