@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const DAILY_LIMIT = 10;
+const DAILY_LIMIT = 20;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     const { data: log, error } = await supabase.from("nutrition_logs").insert({
     client_id: user.id,
     photo_url: photoUrl || null,
+    note: note || null,
     food_name: parsed.food_name,
     portion: parsed.portion,
     kcal: parsed.kcal,
