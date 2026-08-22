@@ -124,7 +124,7 @@ export default function WorkoutPage() {
       const best = bestPRMap[ex.id] ?? 0;
       if (set.weight > best) {
         setBestPRMap((prev) => ({ ...prev, [ex.id]: set.weight! }));
-        setPrToast(`🏆 ¡Nuevo récord en ${ex.name}! ${set.weight} kg`);
+        setPrToast(`🏆 ¡Nuevo récord en ${ex.name}: ${set.weight} kg`);
         setTimeout(() => setPrToast(null), 3500);
       }
     }
