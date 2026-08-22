@@ -6,9 +6,9 @@ import { computeWarmupSets } from "@/lib/warmupCalculator";
 import Modal from "@/components/Modal";
 
 export default function WarmupCalculator({
-  onClose, onApply,
-}: { onClose: () => void; onApply: (sets: { weight: number; reps: number }[]) => void }) {
-  const [target, setTarget] = useState("");
+  onClose, onApply, initialTarget,
+}: { onClose: () => void; onApply: (sets: { weight: number; reps: number }[]) => void; initialTarget?: number }) {
+  const [target, setTarget] = useState(initialTarget ? String(initialTarget) : "");
   const sets = computeWarmupSets(+target || 0);
 
   return (

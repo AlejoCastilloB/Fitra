@@ -42,6 +42,9 @@ export default function WorkoutPage() {
   const [bestPRMap, setBestPRMap] = useState<Record<string, number>>({});
   const [prToast, setPrToast] = useState<string | null>(null);
   const [warmupFor, setWarmupFor] = useState<number | null>(null);
+  const [warmupTarget, setWarmupTarget] = useState<number | undefined>(undefined);
+  const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
+  const autoWarmupPromptedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!uid) return;
@@ -58,11 +61,12 @@ export default function WorkoutPage() {
 
       const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
 
-      const { data: userRow } = await supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe").eq("id", uid).single();
+      const { data: userRow } = await supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe, auto_warmup_prompt").eq("id", uid).single();
       if (userRow) {
         setDefaultRest(userRow.default_rest_seconds ?? 90);
         setKeepAwake(userRow.keep_screen_awake ?? false);
         setTrackRpe(userRow.track_rpe ?? false);
+        setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
       }
 
       const built: LiveExercise[] = (re ?? []).map((r: any) => ({
@@ -147,6 +151,26 @@ export default function WorkoutPage() {
     if (warmupFor === null) return;
     insertWarmupSets(warmupFor, sets);
     setWarmupFor(null);
+    setWarmupTarget(undefined);
+  }
+
+  function handleWeightChange(exIdx: number, setIdx: number, value: number) {
+    const ex = session!.exercises[exIdx];
+    const isFirstMeaningfulEntry =
+      autoWarmupPrompt &&
+      setIdx === 0 &&
+      ex.measurement_type === "reps_weight" &&
+      value > 0 &&
+      !ex.sets[0].weight &&
+      !autoWarmupPromptedRef.current.has(exIdx);
+
+    updateSet(exIdx, setIdx, "weight", value);
+
+    if (isFirstMeaningfulEntry) {
+      autoWarmupPromptedRef.current.add(exIdx);
+      setWarmupTarget(value);
+      setWarmupFor(exIdx);
+    }
   }
 
   async function finishWorkout() {
@@ -361,7 +385,7 @@ export default function WorkoutPage() {
 
                       {ex.measurement_type === "reps_weight" && (
                         <>
-                          <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} />
+                          <SetInput value={s.weight} onChange={(v) => handleWeightChange(exIdx, i, v)} />
                           <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} />
                         </>
                       )}
@@ -426,7 +450,11 @@ export default function WorkoutPage() {
       )}
 
       {warmupFor !== null && (
-        <WarmupCalculator onClose={() => setWarmupFor(null)} onApply={applyWarmup} />
+        <WarmupCalculator
+          onClose={() => { setWarmupFor(null); setWarmupTarget(undefined); }}
+          onApply={applyWarmup}
+          initialTarget={warmupTarget}
+        />
       )}
 
       {showSettings && (

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useWorkoutSession } from "@/lib/workoutSession";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { createClient } from "@/lib/supabase/client";
+import { ensurePushSubscribed } from "@/lib/push";
 
 const SOUNDS: Record<string, { freq: number; pattern: number[] }> = {
   clasico: { freq: 880, pattern: [0.35] },
@@ -27,6 +28,26 @@ export default function RestAlarm() {
       if (data?.timer_sound) soundRef.current = data.timer_sound;
     });
   }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return;
+    ensurePushSubscribed();
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const supabase = createClient();
+    if (session?.restEndAt) {
+      supabase.from("active_rests").upsert({
+        user_id: uid,
+        rest_end_at: new Date(session.restEndAt).toISOString(),
+        routine_name: session.routineName,
+        notified: false,
+      }).then(() => {});
+    } else {
+      supabase.from("active_rests").delete().eq("user_id", uid).then(() => {});
+    }
+  }, [uid, session?.restEndAt]);
 
   function playBeeps(times: number) {
     const s = SOUNDS[soundRef.current] || SOUNDS.clasico;

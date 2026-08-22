@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { requestPushPermissionAndSubscribe, unsubscribeFromPush } from "@/lib/push";
 import { palette } from "@/lib/theme";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -43,7 +44,8 @@ export default function ProfileSettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [timerSound, setTimerSound] = useState("clasico");
-  const [notifEnabled, setNotifEnabled] = useState(true);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
   const [currentWeight, setCurrentWeight] = useState("");
@@ -62,8 +64,11 @@ export default function ProfileSettingsPage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("theme_pref, timer_sound, display_name").eq("id", id).single();
-      if (userRow) { setTheme(userRow.theme_pref); setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || ""); }
+      const { data: userRow } = await supabase.from("users").select("theme_pref, timer_sound, display_name, auto_warmup_prompt").eq("id", id).single();
+      if (userRow) {
+        setTheme(userRow.theme_pref); setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || "");
+        setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
+      }
 
       const { data: clientRow } = await supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight").eq("user_id", id).single();
       if (clientRow) {
@@ -71,6 +76,8 @@ export default function ProfileSettingsPage() {
         setKitchenEquipment(clientRow.kitchen_equipment || []);
         setCurrentWeight(clientRow.current_weight ? String(clientRow.current_weight) : "");
       }
+
+      if ("Notification" in window) setNotifEnabled(Notification.permission === "granted");
     })();
   }, []);
 
@@ -99,9 +106,19 @@ export default function ProfileSettingsPage() {
   }
 
   async function toggleNotifications() {
-    const next = !notifEnabled;
-    setNotifEnabled(next);
-    if (next && "Notification" in window) await Notification.requestPermission();
+    if (!notifEnabled) {
+      const granted = await requestPushPermissionAndSubscribe();
+      setNotifEnabled(granted);
+    } else {
+      await unsubscribeFromPush();
+      setNotifEnabled(false);
+    }
+  }
+
+  async function toggleAutoWarmup() {
+    const next = !autoWarmupPrompt;
+    setAutoWarmupPrompt(next);
+    await supabase.from("users").update({ auto_warmup_prompt: next }).eq("id", uid);
   }
 
   async function saveDisplayName(name: string) {
@@ -151,6 +168,11 @@ export default function ProfileSettingsPage() {
 
       <SettingsGroup title="Entrenamiento">
         <ListRow label="Sonido del timer" sublabel={SOUNDS[timerSound]?.label} showChevron onClick={() => setShowSoundPicker(true)} />
+        <ListRow
+          label="Calentamiento automático"
+          sublabel="Sugiere series de calentamiento al cargar el peso de tu primera serie"
+          right={<Toggle checked={autoWarmupPrompt} onChange={toggleAutoWarmup} />}
+        />
       </SettingsGroup>
 
       <SettingsGroup title="Notificaciones">
