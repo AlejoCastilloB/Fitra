@@ -46,6 +46,7 @@ export default function WorkoutPage() {
   const [warmupTarget, setWarmupTarget] = useState<number | undefined>(undefined);
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const autoWarmupPromptedRef = useRef<Set<number>>(new Set());
+  const [highlightSet, setHighlightSet] = useState<{ exIdx: number; setIdx: number } | null>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -140,11 +141,15 @@ export default function WorkoutPage() {
       const posInGroup = groupIndices.indexOf(exIdx);
       if (posInGroup < groupIndices.length - 1) {
         const nextExId = session!.exercises[groupIndices[posInGroup + 1]].id;
-        setExpandedId(nextExId);
         setTimeout(() => {
           document.getElementById(`ex-${nextExId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 150);
       }
+    }
+
+    if (willBeDone && ex.sets[setIdx + 1]?.set_type === "dropset") {
+      setHighlightSet({ exIdx, setIdx: setIdx + 1 });
+      setTimeout(() => setHighlightSet(null), 1800);
     }
   }
 
@@ -240,6 +245,13 @@ export default function WorkoutPage() {
 
   return (
     <div>
+      <style>{`
+        @keyframes ftDropsetHighlight {
+          0% { box-shadow: inset 0 0 0 999px rgba(199,125,255,0.28); }
+          100% { box-shadow: inset 0 0 0 999px rgba(199,125,255,0); }
+        }
+      `}</style>
+
       {prToast && (
         <div style={{
           position: "fixed", top: 16, left: 16, right: 16, zIndex: 200,
@@ -371,18 +383,28 @@ export default function WorkoutPage() {
                   const prevLabel = prev
                     ? (ex.measurement_type === "reps_weight" ? `${prev.weight ?? "-"}×${prev.reps ?? "-"}` : ex.measurement_type === "distance" ? `${prev.distance_m ?? "-"}m` : `${prev.time_sec ?? "-"}s`)
                     : "—";
+                  const isHighlighted = highlightSet?.exIdx === exIdx && highlightSet?.setIdx === i;
                   return (
                     <div key={i} style={{
-                      display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
+                      position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
                       background: i % 2 === 1 ? palette.panel : "transparent",
-                      borderRadius: 8, opacity: s.done ? 0.55 : 1,
+                      borderRadius: 8,
+                      animation: isHighlighted ? "ftDropsetHighlight 1.8s ease-out" : "none",
                     }}>
+                      <div style={{
+                        position: "absolute", top: 0, right: 0, bottom: 0, borderRadius: 8,
+                        width: s.done ? "100%" : "0%",
+                        background: "rgba(74,222,128,0.16)",
+                        transition: "width .45s cubic-bezier(.16,.8,.24,1)",
+                        pointerEvents: "none",
+                      }} />
+
                       <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
-                        width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, flexShrink: 0,
+                        position: "relative", width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, flexShrink: 0,
                         color: badge.color, background: `${badge.color}22`,
                       }}>{badge.text}</button>
 
-                      <span style={{ width: 62, fontSize: 11, color: palette.inkDim, textAlign: "center" }}>{prevLabel}</span>
+                      <span style={{ position: "relative", width: 62, fontSize: 11, color: palette.inkDim, textAlign: "center" }}>{prevLabel}</span>
 
                       {ex.measurement_type === "reps_weight" && (
                         <>
@@ -397,13 +419,11 @@ export default function WorkoutPage() {
                         <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} />
                       )}
 
-                      <div style={{ flex: 1 }} />
-                      <button onClick={() => removeSet(exIdx, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: 4 }}>
-                        <Trash2 size={13} />
-                      </button>
+                      <div style={{ position: "relative", flex: 1 }} />
                       <button onClick={() => handleToggleSet(exIdx, i)} style={{
-                        width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
+                        position: "relative", width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
                         background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+                        transition: "background .3s ease, border-color .3s ease",
                       }}>
                         <Check size={13} color={s.done ? palette.bg : palette.inkDim} />
                       </button>
@@ -447,6 +467,7 @@ export default function WorkoutPage() {
           x={editingType.x} y={editingType.y}
           onSelect={(type) => updateSet(editingType.exIdx, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
+          onDelete={() => removeSet(editingType.exIdx, editingType.setIdx)}
         />
       )}
 
@@ -513,7 +534,7 @@ function SetInput({ value, onChange }: { value?: number; onChange: (v: number) =
       type="number" inputMode="decimal" min={0} value={value ?? ""}
       onChange={(e) => onChange(Math.max(0, +e.target.value || 0))}
       onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
-      style={{ width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
+      style={{ position: "relative", width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
   );
 }
 
@@ -662,7 +683,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
         {sharing ? "Generando imagen..." : "Compartir como imagen"}
       </button>
       <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>
-        Volver a Hoy
+        Volver a Inicio
       </button>
     </div>
   );

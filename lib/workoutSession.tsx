@@ -91,6 +91,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
           .filter((i) => i >= 0);
         shouldRest = exIdx === Math.max(...groupIndices);
       }
+      if (current.sets[setIdx + 1]?.set_type === "dropset") shouldRest = false;
 
       if (wasDone || !shouldRest) {
         return { ...prev, exercises };

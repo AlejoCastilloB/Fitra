@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePalette, type Palette } from "@/lib/theme";
+import { Trash2 } from "lucide-react";
 
 function getTypes(palette: Palette) {
   return [
@@ -13,8 +14,8 @@ function getTypes(palette: Palette) {
 }
 
 export default function SetTypePopover({
-  current, x, y, onSelect, onClose,
-}: { current: string; x: number; y: number; onSelect: (type: string) => void; onClose: () => void }) {
+  current, x, y, onSelect, onClose, onDelete,
+}: { current: string; x: number; y: number; onSelect: (type: string) => void; onClose: () => void; onDelete?: () => void }) {
   const palette = usePalette();
   const TYPES = getTypes(palette);
   const ref = useRef<HTMLDivElement>(null);
@@ -33,7 +34,7 @@ export default function SetTypePopover({
 
   const width = 168;
   const left = Math.min(Math.max(8, x - width / 2), (typeof window !== "undefined" ? window.innerWidth : 400) - width - 8);
-  const top = Math.min(y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - 200);
+  const top = Math.min(y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - (onDelete ? 250 : 200));
 
   return (
     <div
@@ -64,6 +65,24 @@ export default function SetTypePopover({
           <span style={{ fontSize: 12.5, fontWeight: 600, color: t.color }}>{t.label}</span>
         </button>
       ))}
+      {onDelete && (
+        <>
+          <div style={{ height: 1, background: palette.panelBorder, margin: "4px 6px" }} />
+          <button
+            onClick={() => { onDelete(); onClose(); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 10px",
+              borderRadius: 9, background: "transparent", border: "none", cursor: "pointer",
+            }}
+          >
+            <span style={{
+              width: 22, height: 22, borderRadius: 7, background: "#F8717122", color: "#F87171",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}><Trash2 size={12} /></span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "#F87171" }}>Eliminar serie</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }
