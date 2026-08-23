@@ -7,7 +7,6 @@ import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
 
-const WHATSAPP_NUMBER = "573000000000"; // reemplaza por el número real de soporte de Alejo
 const ANIM_MS = 260;
 
 export default function HomeFab() {
@@ -19,6 +18,7 @@ export default function HomeFab() {
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [todaysRoutineId, setTodaysRoutineId] = useState<string | null>(null);
+  const [coachWhatsapp, setCoachWhatsapp] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -32,6 +32,11 @@ export default function HomeFab() {
       const todayDow = new Date().getDay();
       const todays = (routines ?? []).find((r) => r.days_of_week?.includes(todayDow));
       setTodaysRoutineId(todays?.id ?? null);
+
+      if (clientRow?.trainer_id) {
+        const { data: trainerRow } = await supabase.from("trainers").select("whatsapp_number").eq("user_id", clientRow.trainer_id).single();
+        setCoachWhatsapp(trainerRow?.whatsapp_number || null);
+      }
     })();
   }, [uid]);
 
@@ -64,7 +69,9 @@ export default function HomeFab() {
     { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/progress", external: false },
     { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
     { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
-    { icon: <Phone size={17} />, label: "Hablar con Alejo", href: `https://wa.me/${WHATSAPP_NUMBER}`, external: true },
+    ...(coachWhatsapp
+      ? [{ icon: <Phone size={17} />, label: "Hablar con tu coach", href: `https://wa.me/${coachWhatsapp}`, external: true }]
+      : []),
   ];
 
   return (
