@@ -1,11 +1,13 @@
 "use client";
 
 import { usePalette } from "@/lib/theme";
+import Link from "next/link";
 
 type ClientRow = { user_id: string; status: string; email: string | undefined };
+type ReminderRow = { id: string; note: string; remind_at: string; clientName: string | null };
 
-export default function CoachTodayContent({ clients, activeCount, total }: {
-  clients: ClientRow[]; activeCount: number; total: number;
+export default function CoachTodayContent({ clients, activeCount, total, reminders }: {
+  clients: ClientRow[]; activeCount: number; total: number; reminders: ReminderRow[];
 }) {
   const palette = usePalette();
 
@@ -20,6 +22,22 @@ export default function CoachTodayContent({ clients, activeCount, total }: {
         <StatCard label="Adherencia semanal" value="—" hint="próximamente" />
         <StatCard label="Alertas" value="—" hint="próximamente" />
       </div>
+
+      {reminders.length > 0 && (
+        <Section title="Recordatorios">
+          {reminders.map((r) => (
+            <div key={r.id} style={{ ...palette.glassPanel, padding: "13px 16px", marginBottom: 8 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{r.note}</div>
+              <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
+                {r.clientName ? `${r.clientName} · ` : ""}{new Date(r.remind_at).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+              </div>
+            </div>
+          ))}
+          <Link href="/coach/settings" style={{ fontSize: 12, color: palette.accent, fontWeight: 600, textDecoration: "none" }}>
+            Gestionar recordatorios →
+          </Link>
+        </Section>
+      )}
 
       <Section title="Necesitan atención">
         <EmptyState text="Todavía no hay datos de adherencia para mostrar alertas." />

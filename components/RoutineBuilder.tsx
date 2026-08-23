@@ -442,6 +442,22 @@ export default function RoutineBuilder({
 
                 <ExerciseVideoLink exerciseId={ex.id} />
 
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 2px 6px" }}>
+                  <span style={{ width: 26, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Serie</span>
+                  {ex.measurement_type === "reps_weight" && (
+                    <>
+                      <span style={{ width: 60, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Reps</span>
+                      <span style={{ width: 60, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Peso</span>
+                    </>
+                  )}
+                  {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 60, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Seg</span>
+                  )}
+                  {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
+                    <span style={{ width: 60, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Metros</span>
+                  )}
+                </div>
+
                 {ex.sets.map((s, i) => {
                   const badge = getSetBadge(ex.sets, i, palette.accent);
                   return (

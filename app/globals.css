@@ -22,3 +22,16 @@ body {
 .ft-fade-in-up {
   animation: ftFadeInUp .45s cubic-bezier(.16,.8,.24,1) both;
 }
+
+.coach-desktop-only { display: flex; }
+.coach-mobile-only { display: none; }
+.coach-mobile-topbar { display: none; }
+
+.coach-main { padding: 32px; }
+
+@media (max-width: 767px) {
+  .coach-desktop-only { display: none !important; }
+  .coach-mobile-only { display: flex !important; }
+  .coach-mobile-topbar { display: flex !important; }
+  .coach-main { padding: 20px 16px 104px; }
+}

@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sun, Moon, Phone } from "lucide-react";
+import { Sun, Moon, Phone, Bell, Plus, Trash2, Check } from "lucide-react";
 import { usePalette, useTheme, type Palette } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
+
+type ClientOption = { user_id: string; name: string };
+type Reminder = { id: string; note: string; remind_at: string; done: boolean; client_id: string | null };
 
 export default function SettingsPage() {
   const palette = usePalette();
@@ -17,21 +20,47 @@ export default function SettingsPage() {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [showWhatsappEdit, setShowWhatsappEdit] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const id = auth.user!.id;
-      setUid(id);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showAddReminder, setShowAddReminder] = useState(false);
 
-      const { data: trainerRow } = await supabase.from("trainers").select("whatsapp_number").eq("user_id", id).single();
-      setWhatsappNumber(trainerRow?.whatsapp_number || "");
-    })();
-  }, []);
+  async function load() {
+    const { data: auth } = await supabase.auth.getUser();
+    const id = auth.user!.id;
+    setUid(id);
+
+    const [{ data: trainerRow }, { data: clientRows }, { data: reminderRows }] = await Promise.all([
+      supabase.from("trainers").select("whatsapp_number").eq("user_id", id).single(),
+      supabase.from("clients").select("user_id, users(display_name, email)").eq("trainer_id", id),
+      supabase.from("trainer_reminders").select("id, note, remind_at, done, client_id").eq("trainer_id", id).order("remind_at", { ascending: true }),
+    ]);
+
+    setWhatsappNumber(trainerRow?.whatsapp_number || "");
+    setClients((clientRows ?? []).map((c: any) => ({ user_id: c.user_id, name: c.users?.display_name || c.users?.email || "Cliente" })));
+    setReminders(reminderRows ?? []);
+  }
+
+  useEffect(() => { load(); }, []);
 
   async function saveWhatsapp(value: string) {
     setWhatsappNumber(value);
     await supabase.from("trainers").update({ whatsapp_number: value || null }).eq("user_id", uid);
     setShowWhatsappEdit(false);
+  }
+
+  async function toggleDone(reminder: Reminder) {
+    setReminders((prev) => prev.map((r) => (r.id === reminder.id ? { ...r, done: !r.done } : r)));
+    await supabase.from("trainer_reminders").update({ done: !reminder.done }).eq("id", reminder.id);
+  }
+
+  async function deleteReminder(id: string) {
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    await supabase.from("trainer_reminders").delete().eq("id", id);
+  }
+
+  function clientName(clientId: string | null) {
+    if (!clientId) return null;
+    return clients.find((c) => c.user_id === clientId)?.name ?? null;
   }
 
   return (
@@ -58,9 +87,60 @@ export default function SettingsPage() {
         />
       </SettingsGroup>
 
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={palette.groupTitle}>Recordatorios de seguimiento</div>
+        <button onClick={() => setShowAddReminder(true)} style={{
+          display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 8, border: "none",
+          background: `${palette.accent}18`, color: palette.accent, fontWeight: 600, fontSize: 12, cursor: "pointer", marginBottom: 10,
+        }}>
+          <Plus size={13} /> Nuevo
+        </button>
+      </div>
+
+      {reminders.length === 0 ? (
+        <div style={{ ...palette.glassPanel, padding: 18, color: palette.inkDim, fontSize: 13, textAlign: "center", marginBottom: 8 }}>
+          No tienes recordatorios pendientes. Crea uno para acordarte de revisar o progresar la rutina de un cliente.
+        </div>
+      ) : (
+        reminders.map((r) => (
+          <div key={r.id} style={{
+            ...palette.glassPanel, padding: "13px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+            opacity: r.done ? 0.55 : 1,
+          }}>
+            <button onClick={() => toggleDone(r)} style={{
+              width: 22, height: 22, borderRadius: "50%", flexShrink: 0, cursor: "pointer",
+              border: `1.5px solid ${r.done ? palette.accent : palette.panelBorder}`,
+              background: r.done ? palette.accent : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {r.done && <Check size={13} color={palette.bg} />}
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 500, textDecoration: r.done ? "line-through" : "none" }}>{r.note}</div>
+              <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
+                {clientName(r.client_id) ? `${clientName(r.client_id)} · ` : ""}{new Date(r.remind_at).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+              </div>
+            </div>
+            <button onClick={() => deleteReminder(r.id)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", flexShrink: 0 }}>
+              <Trash2 size={15} />
+            </button>
+          </div>
+        ))
+      )}
+
       {showWhatsappEdit && (
         <Modal title="Tu número de WhatsApp" onClose={() => setShowWhatsappEdit(false)} maxWidth={340}>
           <WhatsappEditor initial={whatsappNumber} onSave={saveWhatsapp} />
+        </Modal>
+      )}
+
+      {showAddReminder && (
+        <Modal title="Nuevo recordatorio" onClose={() => setShowAddReminder(false)} maxWidth={360}>
+          <AddReminderForm
+            trainerId={uid}
+            clients={clients}
+            onSaved={() => { setShowAddReminder(false); load(); }}
+          />
         </Modal>
       )}
     </div>
@@ -98,6 +178,60 @@ function WhatsappEditor({ initial, onSave }: { initial: string; onSave: (v: stri
       />
       <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
         Guardar
+      </button>
+    </div>
+  );
+}
+
+function AddReminderForm({ trainerId, clients, onSaved }: { trainerId: string; clients: ClientOption[]; onSaved: () => void }) {
+  const palette = usePalette();
+  const supabase = createClient();
+  const [note, setNote] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [remindAt, setRemindAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!note.trim()) return;
+    setSaving(true);
+    await supabase.from("trainer_reminders").insert({
+      trainer_id: trainerId, client_id: clientId || null, note: note.trim(), remind_at: remindAt, done: false,
+    });
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <div>
+      <label style={{ fontSize: 12, color: palette.inkDim, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <Bell size={13} /> Nota
+      </label>
+      <textarea
+        value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: revisar y progresar la rutina de fuerza"
+        style={{ width: "100%", minHeight: 60, padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit", resize: "vertical", marginBottom: 12 }}
+      />
+
+      <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Cliente (opcional)</label>
+      <select
+        value={clientId} onChange={(e) => setClientId(e.target.value)}
+        style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, marginBottom: 12 }}
+      >
+        <option value="">General</option>
+        {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.name}</option>)}
+      </select>
+
+      <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Fecha</label>
+      <input
+        type="date" value={remindAt} onChange={(e) => setRemindAt(e.target.value)}
+        style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, marginBottom: 16 }}
+      />
+
+      <button onClick={save} disabled={saving || !note.trim()} style={{
+        width: "100%", padding: 12, borderRadius: 11, border: "none",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+        fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !note.trim() ? 0.5 : 1,
+      }}>
+        {saving ? "Guardando..." : "Guardar recordatorio"}
       </button>
     </div>
   );

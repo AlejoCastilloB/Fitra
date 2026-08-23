@@ -2,12 +2,27 @@
 
 import { useLayoutEffect, useState } from "react";
 import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
-import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut } from "lucide-react";
+import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const MAIN_NAV = [
+  { href: "/coach", icon: Home, label: "Hoy" },
+  { href: "/coach/clients", icon: Users, label: "Clientes" },
+  { href: "/coach/routines", icon: Dumbbell, label: "Rutinas" },
+  { href: "/coach/settings", icon: Settings, label: "Ajustes" },
+];
+
+const MORE_NAV = [
+  { href: "/coach/exercises", icon: Dumbbell, label: "Ejercicios" },
+  { href: "/coach/message", icon: MessageSquare, label: "Mensajes" },
+];
 
 export default function CoachShell({ userEmail, children, initialTheme }: { userEmail: string | undefined; children: React.ReactNode; initialTheme: ThemeName }) {
   const palette = usePalette();
   const { hydrateTheme } = useTheme();
+  const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useLayoutEffect(() => { hydrateTheme(initialTheme); }, [initialTheme]);
 
@@ -29,10 +44,10 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
       }} />
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", minHeight: "100vh" }}>
-        <aside style={{
+        <aside className="coach-desktop-only" style={{
           width: 230, flexShrink: 0, borderRight: `1px solid ${palette.panelBorder}`,
           background: palette.panel, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-          padding: "24px 14px", display: "flex", flexDirection: "column", gap: 4,
+          padding: "24px 14px", flexDirection: "column", gap: 4,
         }}>
           <div style={{ fontWeight: 700, fontSize: 17, padding: "0 10px 24px", letterSpacing: "-0.01em" }}>FitTrack</div>
 
@@ -67,8 +82,83 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
           </div>
         </aside>
 
-        <main style={{ flex: 1, padding: 32 }}>{children}</main>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div className="coach-mobile-topbar" style={{
+            alignItems: "center", justifyContent: "space-between", padding: "16px 18px",
+            borderBottom: `1px solid ${palette.panelBorder}`, background: palette.panel,
+            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", position: "sticky", top: 0, zIndex: 40,
+          }}>
+            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em" }}>FitTrack</span>
+            <button onClick={() => setMoreOpen(true)} aria-label="Más opciones" style={{
+              background: "none", border: "none", color: palette.ink, cursor: "pointer", display: "flex",
+            }}>
+              <Menu size={22} />
+            </button>
+          </div>
+
+          <main className="coach-main" style={{ flex: 1 }}>{children}</main>
+        </div>
       </div>
+
+      <nav className="coach-mobile-only" style={{
+        position: "fixed", left: "50%", bottom: 14, zIndex: 50, transform: "translateX(-50%)",
+        gap: 2, padding: 6, borderRadius: 18,
+        background: palette.panel, border: `1px solid ${palette.panelBorder}`,
+        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        boxShadow: "0 12px 40px -12px rgba(0,0,0,0.5)",
+      }}>
+        {MAIN_NAV.map(({ href, icon: Icon, label }) => {
+          const active = pathname === href;
+          return (
+            <Link key={href} href={href} style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 15px",
+              borderRadius: 13, color: active ? palette.accent : palette.inkDim, textDecoration: "none",
+              background: active ? `${palette.accent}18` : "transparent",
+            }}>
+              <Icon size={18} />
+              <span style={{ fontSize: 9.5, fontWeight: 600 }}>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {moreOpen && (
+        <div
+          onClick={() => setMoreOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "flex-end",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ ...palette.glassPanel, width: "100%", padding: 18, paddingBottom: "calc(18px + env(safe-area-inset-bottom))" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Más</span>
+              <button onClick={() => setMoreOpen(false)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+            {MORE_NAV.map(({ href, icon: Icon, label }) => (
+              <Link key={href} href={href} onClick={() => setMoreOpen(false)} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "13px 6px",
+                color: palette.ink, textDecoration: "none", fontSize: 14.5, fontWeight: 500,
+              }}>
+                <Icon size={18} color={palette.accent} /> {label}
+              </Link>
+            ))}
+            <form action="/auth/signout" method="post">
+              <button type="submit" style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "13px 6px", width: "100%",
+                background: "none", border: "none", color: palette.inkDim, cursor: "pointer", fontSize: 14.5, fontWeight: 500, textAlign: "left",
+              }}>
+                <LogOut size={18} /> Cerrar sesión
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
