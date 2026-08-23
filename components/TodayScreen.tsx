@@ -8,18 +8,29 @@ import TodayCards from "@/components/TodayCards";
 
 type RoutineSummary = { id: string; name: string; source: string };
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Buenos días";
+  if (hour < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 export default function TodayScreen({
-  todaysRoutine, otherRoutines,
+  displayName, todaysRoutine, otherRoutines,
 }: {
+  displayName: string | null;
   todaysRoutine: RoutineSummary | null;
   otherRoutines: RoutineSummary[];
 }) {
   const palette = usePalette();
+  const firstName = displayName?.trim().split(" ")[0] || null;
 
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Hoy</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>
+          {getGreeting()}{firstName ? `, ${firstName}` : ""}
+        </h1>
         <p style={{ color: palette.inkDim, fontSize: 14 }}>Listo para entrenar</p>
       </div>
 

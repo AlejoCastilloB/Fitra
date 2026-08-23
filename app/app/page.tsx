@@ -7,6 +7,7 @@ export default async function ClientToday() {
   const uid = user!.id;
 
   const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
+  const { data: userRow } = await supabase.from("users").select("display_name").eq("id", uid).single();
 
   const { data: routines } = await supabase
     .from("routines")
@@ -20,6 +21,7 @@ export default async function ClientToday() {
 
   return (
     <TodayScreen
+      displayName={userRow?.display_name ?? null}
       todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name, source: todaysRoutine.source } : null}
       otherRoutines={otherRoutines.map((r) => ({ id: r.id, name: r.name, source: r.source }))}
     />

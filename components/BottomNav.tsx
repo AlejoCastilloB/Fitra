@@ -7,7 +7,7 @@ import { Home, TrendingUp, User } from "lucide-react";
 import { usePalette } from "@/lib/theme";
 
 const ITEMS = [
-  { href: "/app", icon: Home, label: "Hoy" },
+  { href: "/app", icon: Home, label: "Inicio" },
   { href: "/app/progress", icon: TrendingUp, label: "Progreso" },
   { href: "/app/profile", icon: User, label: "Perfil" },
 ];
