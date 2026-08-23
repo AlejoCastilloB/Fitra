@@ -48,7 +48,7 @@ export async function GET(req: Request) {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify({
             title: "Hora de registrar tu progreso",
-            body: "Sumá una foto, tus medidas o tu peso para seguir viendo tu evolución.",
+            body: "Suma una foto, tus medidas o tu peso para seguir viendo tu evolución.",
             url: "/app/profile",
           })
         );

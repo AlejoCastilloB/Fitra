@@ -313,7 +313,7 @@ export default function ProfilePage() {
               Tu mejor marca en este ejercicio, lograda el {new Date(selectedPR.date).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}.
             </p>
             <p style={{ fontSize: 12.5, color: palette.ink, lineHeight: 1.5, marginBottom: 18 }}>
-              Superaste tu marca anterior levantando más peso del que habías movido hasta ahora en este ejercicio — seguí progresando de a poco cada semana para desbloquear el siguiente.
+              Superaste tu marca anterior levantando más peso del que habías movido hasta ahora en este ejercicio — sigue progresando de a poco cada semana para desbloquear el siguiente.
             </p>
             {selectedPR.workout_log_id && (
               <Link
