@@ -54,7 +54,7 @@ export default function CoachMessagesPage() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 16, height: "calc(100vh - 100px)" }}>
-      <div style={{ ...palette.glassPanel, padding: 10, overflowY: "auto" }}>
+      <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 10, overflowY: "auto" }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", padding: "6px 8px 10px" }}>Clientes</h2>
         {clients.length === 0 ? (
           <p style={{ fontSize: 12, color: palette.inkDim, padding: 10 }}>Todavía no tienes clientes.</p>
@@ -69,7 +69,7 @@ export default function CoachMessagesPage() {
         ))}
       </div>
 
-      <div style={{ ...palette.glassPanel, display: "flex", flexDirection: "column", padding: 16 }}>
+      <div className="ft-fade-in-up" style={{ ...palette.glassPanel, display: "flex", flexDirection: "column", padding: 16, animationDelay: ".05s" }}>
         {!selected ? (
           <p style={{ color: palette.inkDim, fontSize: 13, margin: "auto" }}>Selecciona un cliente para chatear.</p>
         ) : (

@@ -267,7 +267,7 @@ export default function RoutineBuilder({
       </div>
 
       {showLibrary && (
-        <div style={{ ...palette.glassPanel, padding: 14, marginBottom: 18 }}>
+        <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 14, marginBottom: 18 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ position: "relative", flex: 1 }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
@@ -478,7 +478,7 @@ export default function RoutineBuilder({
         </div>
       )}
 
-      <div style={{ ...palette.glassPanel, padding: 14, marginBottom: 14 }}>
+      <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 14, marginBottom: 14 }}>
         <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>Resumen</div>
         <div style={{ fontSize: 13 }}>{picked.length} ejercicios</div>
         <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>

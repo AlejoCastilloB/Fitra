@@ -56,8 +56,8 @@ export default function RoutinesContent() {
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {routines.map((r) => (
-            <div key={r.id} style={{ ...palette.glassPanel, padding: 16 }}>
+          {routines.map((r, i) => (
+            <div key={r.id} className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 16, animationDelay: `${Math.min(i, 8) * 0.03}s` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Link href={`/app/workout/${r.id}`} style={{ flex: 1, textDecoration: "none", color: palette.ink }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>

@@ -102,8 +102,8 @@ export default function ExercisesPage() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
-          {filtered.map((ex) => (
-            <div key={ex.id} style={{ ...palette.glassPanel, overflow: "hidden" }}>
+          {filtered.map((ex, i) => (
+            <div key={ex.id} className="ft-fade-in-up" style={{ ...palette.glassPanel, overflow: "hidden", animationDelay: `${Math.min(i, 10) * 0.025}s` }}>
               {ex.media_url ? (
                 <img src={ex.media_url} alt={ex.name} style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }} />
               ) : (

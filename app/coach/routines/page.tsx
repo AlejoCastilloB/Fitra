@@ -65,8 +65,8 @@ export default function RoutinesPage() {
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {routines.map((r) => (
-            <div key={r.id} style={{ ...palette.glassPanel, padding: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          {routines.map((r, i) => (
+            <div key={r.id} className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", animationDelay: `${Math.min(i, 8) * 0.03}s` }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
                 <Dumbbell size={16} />
               </div>

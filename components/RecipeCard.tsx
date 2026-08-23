@@ -14,7 +14,7 @@ export default function RecipeCard({
   const palette = usePalette();
   if (compact) {
     return (
-      <div style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
           <ChefHat size={16} />
         </div>

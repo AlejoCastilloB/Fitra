@@ -25,19 +25,21 @@ export type Palette = {
 
 type PaletteBase = Omit<Palette, "glassPanel" | "cleanGroup" | "groupTitle">;
 
-function buildPalette(base: PaletteBase): Palette {
+function buildPalette(base: PaletteBase & { glassFill: string; glassBorder: string; glassHighlight: string; glassShadow: string }): Palette {
+  const { glassFill, glassBorder, glassHighlight, glassShadow, ...rest } = base;
   const glassPanel: React.CSSProperties = {
-    background: base.panel,
-    border: `1px solid ${base.panelBorder}`,
-    backdropFilter: "blur(20px)",
-    WebkitBackdropFilter: "blur(20px)",
-    borderRadius: 16,
+    background: glassFill,
+    border: `1px solid ${glassBorder}`,
+    backdropFilter: "blur(28px) saturate(170%)",
+    WebkitBackdropFilter: "blur(28px) saturate(170%)",
+    borderRadius: 20,
+    boxShadow: `inset 0 1px 0 ${glassHighlight}, 0 8px 28px -10px ${glassShadow}`,
   };
   const cleanGroup: React.CSSProperties = { ...glassPanel, padding: 0, overflow: "hidden" };
   const groupTitle: React.CSSProperties = {
     fontSize: 12.5, fontWeight: 700, color: base.inkDim, marginBottom: 8, paddingLeft: 4,
   };
-  return { ...base, glassPanel, cleanGroup, groupTitle };
+  return { ...rest, glassPanel, cleanGroup, groupTitle };
 }
 
 export const darkPalette: Palette = buildPalette({
@@ -54,6 +56,10 @@ export const darkPalette: Palette = buildPalette({
   divider: "rgba(255,255,255,0.08)",
   metallic: "linear-gradient(135deg, #EDEFF3 0%, #C9D0DA 40%, #8A93A0 75%, #5B6472 100%)",
   metallicBorder: "linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.05))",
+  glassFill: "rgba(255,255,255,0.07)",
+  glassBorder: "rgba(255,255,255,0.14)",
+  glassHighlight: "rgba(255,255,255,0.12)",
+  glassShadow: "rgba(0,0,0,0.4)",
 });
 
 export const lightPalette: Palette = buildPalette({
@@ -70,6 +76,10 @@ export const lightPalette: Palette = buildPalette({
   divider: "rgba(15,18,24,0.09)",
   metallic: "linear-gradient(135deg, #3D4451 0%, #545C6B 40%, #6B7280 75%, #8A93A0 100%)",
   metallicBorder: "linear-gradient(135deg, rgba(0,0,0,0.18), rgba(0,0,0,0.02))",
+  glassFill: "rgba(255,255,255,0.55)",
+  glassBorder: "rgba(255,255,255,0.75)",
+  glassHighlight: "rgba(255,255,255,0.9)",
+  glassShadow: "rgba(20,20,30,0.14)",
 });
 
 type ThemeContextValue = {

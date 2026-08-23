@@ -66,7 +66,7 @@ export default function ClientMessagesPage() {
       {loading ? (
         <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", marginTop: 40 }}>Cargando...</p>
       ) : !trainerId ? (
-        <div style={{ ...palette.glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, margin: "auto" }}>
+        <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, margin: "auto" }}>
           Todavía no tienes un coach asignado.
         </div>
       ) : (

@@ -12,7 +12,7 @@ export default function SettingsPage() {
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Ajustes</h1>
       <p style={{ color: palette.inkDim, fontSize: 14, marginBottom: 24 }}>Preferencias de tu cuenta</p>
 
-      <div style={{ ...palette.glassPanel, padding: 20 }}>
+      <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 20 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: palette.accent, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
           Tema
         </div>
