@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
+import { getDisplayStreak } from "@/lib/streak";
+import { getWeightComparison } from "@/lib/weightComparisons";
+import { toPng } from "html-to-image";
 import Link from "next/link";
-import { Settings, Camera, Trophy, Dumbbell, Award, Flame } from "lucide-react";
+import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2 } from "lucide-react";
 import Modal from "@/components/Modal";
 
 function computeBadges(streak: number, totalWorkouts: number, totalPRs: number) {
@@ -42,6 +45,8 @@ export default function ProfilePage() {
   const [stats, setStats] = useState({ totalWorkouts: 0, totalVolume: 0, totalPRs: 0 });
   const [activeDays, setActiveDays] = useState<boolean[]>(Array(7).fill(false));
   const [topPRs, setTopPRs] = useState<any[]>([]);
+  const [selectedPR, setSelectedPR] = useState<any | null>(null);
+  const [showVolumeDetail, setShowVolumeDetail] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -53,8 +58,8 @@ export default function ProfilePage() {
       const { data: userRow } = await supabase.from("users").select("display_name, avatar_url").eq("id", id).single();
       if (userRow) { setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || ""); }
 
-      const { data: streakRow } = await supabase.from("streaks").select("current_weeks").eq("client_id", id).single();
-      setStreak(streakRow?.current_weeks ?? 0);
+      const { data: streakRow } = await supabase.from("streaks").select("current_weeks, last_workout_date").eq("client_id", id).single();
+      setStreak(getDisplayStreak(streakRow?.current_weeks ?? 0, streakRow?.last_workout_date ?? null));
 
       const { data: photoRows } = await supabase.from("progress_photos").select("*").eq("client_id", id).order("date", { ascending: false });
       setPhotos(photoRows ?? []);
@@ -66,7 +71,7 @@ export default function ProfilePage() {
       const { data: workoutRows, count: workoutCount } = await supabase.from("workout_logs").select("id, date, duration_sec, total_volume, routines(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(20);
       const { data: allVolumeRows } = await supabase.from("workout_logs").select("total_volume, date").eq("client_id", id);
       const { data: nutritionRows } = await supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20);
-      const { data: prRows, count: prCount } = await supabase.from("personal_records").select("id, value, date, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5);
+      const { data: prRows, count: prCount } = await supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5);
 
       const totalVolume = (allVolumeRows ?? []).reduce((sum, w) => sum + (w.total_volume ?? 0), 0);
       setStats({ totalWorkouts: workoutCount ?? 0, totalVolume, totalPRs: prCount ?? 0 });
@@ -121,7 +126,7 @@ export default function ProfilePage() {
         .ft-profile-in { animation: ftProfileIn .4s cubic-bezier(.16,.8,.24,1) both; }
       `}</style>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -6 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
         <Link href="/app/profile/settings" style={{ color: palette.inkDim, padding: 6, display: "flex" }}>
           <Settings size={19} />
         </Link>
@@ -166,7 +171,7 @@ export default function ProfilePage() {
 
       <div className="ft-profile-in" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16, animationDelay: "0.05s" }}>
         <StatBox icon={<Dumbbell size={14} />} value={stats.totalWorkouts} label="Entrenos" />
-        <StatBox icon={<Award size={14} />} value={`${Math.round(stats.totalVolume / 1000)}t`} label="Volumen total" />
+        <StatBox icon={<Award size={14} />} value={`${Math.round(stats.totalVolume / 1000)}t`} label="Volumen total" onClick={() => setShowVolumeDetail(true)} />
         <StatBox icon={<Trophy size={14} />} value={stats.totalPRs} label="Récords" />
       </div>
 
@@ -192,7 +197,7 @@ export default function ProfilePage() {
           <div style={sectionLabelStyle(palette)}>Récords recientes</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {topPRs.map((pr) => (
-              <div key={pr.id} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+              <button key={pr.id} onClick={() => setSelectedPR(pr)} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer", color: palette.ink }}>
                 <div style={{ width: 30, height: 30, borderRadius: 9, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
                   <Trophy size={14} />
                 </div>
@@ -200,7 +205,7 @@ export default function ProfilePage() {
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{pr.exercises?.name}</div>
                   <div style={{ fontSize: 10.5, color: palette.inkDim }}>{pr.value} kg · {new Date(pr.date).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -266,6 +271,42 @@ export default function ProfilePage() {
           <p style={{ fontSize: 15, fontWeight: 600 }}>{selectedHistory.detail}</p>
         </Modal>
       )}
+
+      {selectedPR && (
+        <Modal title="" onClose={() => setSelectedPR(null)} maxWidth={340}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{
+              width: 60, height: 60, borderRadius: "50%", background: `${palette.accent}22`,
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: palette.accent,
+            }}>
+              <Trophy size={26} />
+            </div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>{selectedPR.exercises?.name}</h3>
+            <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 4 }}>{selectedPR.value} kg</div>
+            <p style={{ fontSize: 12, color: palette.inkDim, marginBottom: 16 }}>
+              Tu mejor marca en este ejercicio, lograda el {new Date(selectedPR.date).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}.
+            </p>
+            <p style={{ fontSize: 12.5, color: palette.ink, lineHeight: 1.5, marginBottom: 18 }}>
+              Superaste tu marca anterior levantando más peso del que habías movido hasta ahora en este ejercicio — seguí progresando de a poco cada semana para desbloquear el siguiente.
+            </p>
+            {selectedPR.workout_log_id && (
+              <Link
+                href={`/app/workout-log/${selectedPR.workout_log_id}`}
+                onClick={() => setSelectedPR(null)}
+                style={{
+                  display: "block", width: "100%", padding: 12, borderRadius: 11, textDecoration: "none",
+                  background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+                  fontWeight: 700, fontSize: 13.5,
+                }}
+              >
+                Ver ese entrenamiento
+              </Link>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {showVolumeDetail && <VolumeDetailModal volume={stats.totalVolume} onClose={() => setShowVolumeDetail(false)} />}
     </div>
   );
 }
@@ -288,14 +329,77 @@ function HistoryRowContent({ h }: { h: any }) {
   );
 }
 
-function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) {
+function StatBox({ icon, value, label, onClick }: { icon: React.ReactNode; value: string | number; label: string; onClick?: () => void }) {
   const palette = usePalette();
+  const Tag = onClick ? "button" : "div";
   return (
-    <div style={{ ...palette.glassPanel, padding: 12, textAlign: "center" }}>
+    <Tag onClick={onClick} style={{ ...palette.glassPanel, padding: 12, textAlign: "center", border: "none", width: "100%", cursor: onClick ? "pointer" : "default", color: palette.ink }}>
       <div style={{ color: palette.accent, marginBottom: 4, display: "flex", justifyContent: "center" }}>{icon}</div>
       <div style={{ fontSize: 16, fontWeight: 700 }}>{value}</div>
       <div style={{ fontSize: 9, color: palette.inkDim, marginTop: 1 }}>{label}</div>
-    </div>
+    </Tag>
+  );
+}
+
+function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () => void }) {
+  const palette = usePalette();
+  const comparison = getWeightComparison(volume);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+
+  async function share() {
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "volumen-fittrack.png";
+        link.click();
+      }
+    } catch {
+      alert("No pudimos generar la imagen, intenta de nuevo.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  return (
+    <Modal title="" onClose={onClose} maxWidth={340}>
+      <div ref={cardRef} style={{
+        borderRadius: 20, padding: "28px 20px", textAlign: "center",
+        background: `radial-gradient(circle at 50% 0%, ${palette.accentDeep}44, ${palette.bg} 65%)`,
+        border: `1px solid ${palette.panelBorder}`, marginBottom: 16,
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
+          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: palette.accent,
+        }}>
+          <Award size={22} />
+        </div>
+        <p style={{ fontSize: 11.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Volumen total movido</p>
+        <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{volume.toLocaleString()}</div>
+        <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
+        <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
+        <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>
+        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · la IA de Alejo</div>
+      </div>
+
+      <button onClick={share} disabled={sharing} style={{
+        width: "100%", padding: 13, borderRadius: 12, border: "none",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+        fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        opacity: sharing ? 0.7 : 1,
+      }}>
+        <Share2 size={15} /> {sharing ? "Generando imagen..." : "Compartir como imagen"}
+      </button>
+    </Modal>
   );
 }
 

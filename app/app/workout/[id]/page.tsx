@@ -219,7 +219,7 @@ export default function WorkoutPage() {
       if (bestWeight > 0) {
         const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", ex.id).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
         if (!prevPr || bestWeight > prevPr.value) {
-          await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight });
+          await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight, workout_log_id: workoutLog!.id });
           prsHit.push(ex.name);
         }
       }
