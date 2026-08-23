@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { ChevronLeft, Send } from "lucide-react";
 
 export default function ClientMessagesPage() {
+  const palette = usePalette();
   const supabase = createClient();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -65,7 +66,7 @@ export default function ClientMessagesPage() {
       {loading ? (
         <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", marginTop: 40 }}>Cargando...</p>
       ) : !trainerId ? (
-        <div style={{ ...glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, margin: "auto" }}>
+        <div style={{ ...palette.glassPanel, padding: 24, textAlign: "center", color: palette.inkDim, margin: "auto" }}>
           Todavía no tienes un coach asignado.
         </div>
       ) : (

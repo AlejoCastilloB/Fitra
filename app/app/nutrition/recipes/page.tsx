@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { ChevronLeft, Send, Camera, Sparkles, Loader2, X } from "lucide-react";
 import RecipeCard, { Recipe } from "@/components/RecipeCard";
 
 type Msg = { role: "user" | "assistant"; content: string; recipe?: Recipe | null; saved?: boolean };
 
 export default function RecipeChatPage() {
+  const palette = usePalette();
   const router = useRouter();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -146,7 +147,7 @@ export default function RecipeChatPage() {
         ))}
         {sending && (
           <div className="ft-bubble" style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ ...glassPanel, padding: "12px 16px" }} className="ft-typing"><span>●</span> <span>●</span> <span>●</span></div>
+            <div style={{ ...palette.glassPanel, padding: "12px 16px" }} className="ft-typing"><span>●</span> <span>●</span> <span>●</span></div>
           </div>
         )}
       </div>

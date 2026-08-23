@@ -1,8 +1,9 @@
 "use client";
 
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 export default function RestTimerRing({ secondsLeft, totalSeconds, onSkip }: { secondsLeft: number; totalSeconds: number; onSkip: () => void }) {
+  const palette = usePalette();
   const size = 74;
   const stroke = 6;
   const r = (size - stroke) / 2;

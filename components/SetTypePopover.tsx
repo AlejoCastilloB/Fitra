@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 
-const TYPES = [
-  { value: "warmup", letter: "C", label: "Calentamiento", color: "#FBBF24" },
-  { value: "normal", letter: "#", label: "Normal", color: palette.accent },
-  { value: "dropset", letter: "D", label: "Dropset", color: "#C77DFF" },
-  { value: "failure", letter: "F", label: "Al fallo", color: "#F87171" },
-];
+function getTypes(palette: Palette) {
+  return [
+    { value: "warmup", letter: "C", label: "Calentamiento", color: "#FBBF24" },
+    { value: "normal", letter: "#", label: "Normal", color: palette.accent },
+    { value: "dropset", letter: "D", label: "Dropset", color: "#C77DFF" },
+    { value: "failure", letter: "F", label: "Al fallo", color: "#F87171" },
+  ];
+}
 
 export default function SetTypePopover({
   current, x, y, onSelect, onClose,
 }: { current: string; x: number; y: number; onSelect: (type: string) => void; onClose: () => void }) {
+  const palette = usePalette();
+  const TYPES = getTypes(palette);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { MoreVertical, Save, Trash2, X } from "lucide-react";
 
 type ExerciseGroup = {
@@ -16,6 +16,7 @@ type ExerciseGroup = {
 export default function WorkoutLogMenu({
   workoutLogId, routineName, exercises,
 }: { workoutLogId: string; routineName: string; exercises: ExerciseGroup[] }) {
+  const palette = usePalette();
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
@@ -73,10 +74,10 @@ export default function WorkoutLogMenu({
             backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 14, padding: 6,
             boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
           }}>
-            <button onClick={saveAsRoutine} disabled={saving} style={menuItem}>
+            <button onClick={saveAsRoutine} disabled={saving} style={menuItem(palette)}>
               <Save size={14} /> {saving ? "Guardando..." : "Guardar como rutina"}
             </button>
-            <button onClick={() => { setConfirmDelete(true); setOpen(false); }} style={{ ...menuItem, color: "#f87171" }}>
+            <button onClick={() => { setConfirmDelete(true); setOpen(false); }} style={{ ...menuItem(palette), color: "#f87171" }}>
               <Trash2 size={14} /> Borrar entrenamiento
             </button>
           </div>
@@ -104,8 +105,10 @@ export default function WorkoutLogMenu({
   );
 }
 
-const menuItem: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 10px",
-  borderRadius: 9, background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
-  color: palette.ink, textAlign: "left",
-};
+function menuItem(palette: Palette): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 10px",
+    borderRadius: 9, background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+    color: palette.ink, textAlign: "left",
+  };
+}

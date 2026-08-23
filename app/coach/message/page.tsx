@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Send } from "lucide-react";
 
 export default function CoachMessagesPage() {
+  const palette = usePalette();
   const supabase = createClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +54,7 @@ export default function CoachMessagesPage() {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 16, height: "calc(100vh - 100px)" }}>
-      <div style={{ ...glassPanel, padding: 10, overflowY: "auto" }}>
+      <div style={{ ...palette.glassPanel, padding: 10, overflowY: "auto" }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", padding: "6px 8px 10px" }}>Clientes</h2>
         {clients.length === 0 ? (
           <p style={{ fontSize: 12, color: palette.inkDim, padding: 10 }}>Todavía no tienes clientes.</p>
@@ -68,7 +69,7 @@ export default function CoachMessagesPage() {
         ))}
       </div>
 
-      <div style={{ ...glassPanel, display: "flex", flexDirection: "column", padding: 16 }}>
+      <div style={{ ...palette.glassPanel, display: "flex", flexDirection: "column", padding: 16 }}>
         {!selected ? (
           <p style={{ color: palette.inkDim, fontSize: 13, margin: "auto" }}>Selecciona un cliente para chatear.</p>
         ) : (

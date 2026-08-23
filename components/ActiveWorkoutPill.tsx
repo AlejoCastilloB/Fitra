@@ -2,10 +2,11 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useWorkoutSession } from "@/lib/workoutSession";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Dumbbell } from "lucide-react";
 
 export default function ActiveWorkoutPill() {
+  const palette = usePalette();
   const { session, now } = useWorkoutSession();
   const pathname = usePathname();
   const router = useRouter();

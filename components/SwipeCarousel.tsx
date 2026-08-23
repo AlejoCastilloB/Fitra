@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 export default function SwipeCarousel({ children }: { children: React.ReactNode[] }) {
+  const palette = usePalette();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
@@ -21,6 +21,7 @@ import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 
 export default function WorkoutPage() {
+  const palette = usePalette();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
@@ -471,7 +472,7 @@ export default function WorkoutPage() {
 
       {confirmCancel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
-          <div style={{ ...glassPanel, padding: 22, width: "100%", maxWidth: 340 }}>
+          <div style={{ ...palette.glassPanel, padding: 22, width: "100%", maxWidth: 340 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Cancelar entrenamiento?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se perderá todo el progreso de esta sesión, no se guarda nada.</p>
             <div style={{ display: "flex", gap: 10 }}>
@@ -486,6 +487,7 @@ export default function WorkoutPage() {
 }
 
 function SessionStat({ label, value }: { label: string; value: string }) {
+  const palette = usePalette();
   return (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 15, fontWeight: 700 }}>{value}</div>
@@ -495,6 +497,7 @@ function SessionStat({ label, value }: { label: string; value: string }) {
 }
 
 function InfoLine({ label, value }: { label: string; value: string }) {
+  const palette = usePalette();
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontSize: 10.5, color: palette.accent, fontWeight: 700, textTransform: "uppercase" }}>{label}</div>
@@ -504,6 +507,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 }
 
 function SetInput({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
+  const palette = usePalette();
   return (
     <input
       type="number" inputMode="decimal" min={0} value={value ?? ""}
@@ -516,6 +520,7 @@ function SetInput({ value, onChange }: { value?: number; onChange: (v: number) =
 function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, breakdown, onDone }: {
   workoutLogId: string; routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number>; onDone: () => void;
 }) {
+  const palette = usePalette();
   const supabase = createClient();
   const minutes = Math.floor(durationSec / 60);
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);

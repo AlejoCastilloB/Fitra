@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { computeWarmupSets } from "@/lib/warmupCalculator";
 import Modal from "@/components/Modal";
 
 export default function WarmupCalculator({
   onClose, onApply, initialTarget,
 }: { onClose: () => void; onApply: (sets: { weight: number; reps: number }[]) => void; initialTarget?: number }) {
+  const palette = usePalette();
   const [target, setTarget] = useState(initialTarget ? String(initialTarget) : "");
   const sets = computeWarmupSets(+target || 0);
 

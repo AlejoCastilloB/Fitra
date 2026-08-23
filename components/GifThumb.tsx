@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 export default function GifThumb({ src, size = 40 }: { src?: string; size?: number }) {
+  const palette = usePalette();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

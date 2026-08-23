@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 export default function SeedAdminPage() {
+  const palette = usePalette();
   const [secret, setSecret] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
@@ -58,7 +59,7 @@ export default function SeedAdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ ...glassPanel, padding: 28, width: "100%", maxWidth: 460 }}>
+      <div style={{ ...palette.glassPanel, padding: 28, width: "100%", maxWidth: 460 }}>
         <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 16 }}>Seed de biblioteca de ejercicios</h1>
 
         <input

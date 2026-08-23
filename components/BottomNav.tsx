@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, TrendingUp, User } from "lucide-react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 const ITEMS = [
   { href: "/app", icon: Home, label: "Hoy" },
@@ -17,6 +17,7 @@ function getScrollY() {
 }
 
 export default function BottomNav() {
+  const palette = usePalette();
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const lastY = useRef(0);

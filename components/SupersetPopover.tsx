@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Check } from "lucide-react";
 
 export default function SupersetPopover({
@@ -12,6 +12,7 @@ export default function SupersetPopover({
   onToggle: (id: string) => void;
   onClose: () => void;
 }) {
+  const palette = usePalette();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

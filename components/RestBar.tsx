@@ -1,11 +1,12 @@
 "use client";
 
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Minus, Plus, SkipForward } from "lucide-react";
 
 export default function RestBar({
   secondsLeft, totalSeconds, onAdjust, onSkip,
 }: { secondsLeft: number; totalSeconds: number; onAdjust: (delta: number) => void; onSkip: () => void }) {
+  const palette = usePalette();
   const pct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import Modal from "@/components/Modal";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Check } from "lucide-react";
 
 const TYPES = [
@@ -14,6 +14,7 @@ const TYPES = [
 export default function SetTypeSheet({
   current, onSelect, onClose,
 }: { current: string; onSelect: (type: string) => void; onClose: () => void }) {
+  const palette = usePalette();
   return (
     <Modal title="Tipo de serie" onClose={onClose} maxWidth={300}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

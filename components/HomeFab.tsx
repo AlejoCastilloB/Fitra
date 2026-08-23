@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
 
 const WHATSAPP_NUMBER = "573000000000"; // reemplaza por el número real de soporte de Alejo
 
 export default function HomeFab() {
+  const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
   const [open, setOpen] = useState(false);

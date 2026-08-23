@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Dumbbell } from "lucide-react";
@@ -11,6 +11,7 @@ import { Dumbbell } from "lucide-react";
 const DAILY_KCAL_GOAL = 2200;
 
 function DumbbellRing({ done }: { done: boolean }) {
+  const palette = usePalette();
   const size = 46;
   const dotCount = 16;
   const radius = size / 2 - 3;
@@ -34,6 +35,7 @@ function DumbbellRing({ done }: { done: boolean }) {
 }
 
 export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: string; name: string } | null }) {
+  const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
   const [kcalConsumed, setKcalConsumed] = useState(0);

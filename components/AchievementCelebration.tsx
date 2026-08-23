@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Achievement } from "@/lib/achievements";
 import { Share2, Award, X } from "lucide-react";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import Link from "next/link";
 export default function AchievementCelebration({
   achievement, onClose,
 }: { achievement: Achievement; onClose: () => void }) {
+  const palette = usePalette();
   async function share() {
     const text = `Desbloqueé la insignia "${achievement.title}" en FitTrack ${achievement.emoji}`;
     if (navigator.share) await navigator.share({ text });

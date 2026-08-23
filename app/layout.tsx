@@ -1,5 +1,6 @@
 import "./globals.css";
 import PWARegister from "@/components/PWARegister";
+import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata = {
   title: "FitTrack",
@@ -19,8 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body>
-        <PWARegister />
-        {children}
+        <ThemeProvider>
+          <PWARegister />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

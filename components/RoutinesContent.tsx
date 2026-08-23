@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import Link from "next/link";
 import { Play, Pencil, Sparkles, ChevronRight } from "lucide-react";
 
 export default function RoutinesContent() {
+  const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
   const [routines, setRoutines] = useState<any[]>([]);
@@ -56,7 +57,7 @@ export default function RoutinesContent() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {routines.map((r) => (
-            <div key={r.id} style={{ ...glassPanel, padding: 16 }}>
+            <div key={r.id} style={{ ...palette.glassPanel, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Link href={`/app/workout/${r.id}`} style={{ flex: 1, textDecoration: "none", color: palette.ink }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>

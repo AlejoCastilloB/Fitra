@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import Link from "next/link";
 import { Settings, Camera, Trophy, Dumbbell, Award, Flame } from "lucide-react";
 import Modal from "@/components/Modal";
@@ -22,6 +22,7 @@ function computeBadges(streak: number, totalWorkouts: number, totalPRs: number) 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
 export default function ProfilePage() {
+  const palette = usePalette();
   const supabase = createClient();
   const avatarRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -127,7 +128,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="ft-profile-in" style={{
-        ...glassPanel, padding: 20, marginBottom: 16, position: "relative", overflow: "hidden",
+        ...palette.glassPanel, padding: 20, marginBottom: 16, position: "relative", overflow: "hidden",
         border: "1px solid transparent", backgroundImage: `linear-gradient(${palette.panel}, ${palette.panel}), ${palette.metallicBorder}`,
         backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box",
       }}>
@@ -169,7 +170,7 @@ export default function ProfilePage() {
         <StatBox icon={<Trophy size={14} />} value={stats.totalPRs} label="Récords" />
       </div>
 
-      <div className="ft-profile-in" style={{ ...glassPanel, padding: 16, marginBottom: 16, animationDelay: "0.1s" }}>
+      <div className="ft-profile-in" style={{ ...palette.glassPanel, padding: 16, marginBottom: 16, animationDelay: "0.1s" }}>
         <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 10 }}>Actividad de la semana</div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           {DOW_LABELS.map((label, i) => (
@@ -188,10 +189,10 @@ export default function ProfilePage() {
 
       {topPRs.length > 0 && (
         <div style={{ marginBottom: 22 }}>
-          <div style={sectionLabel}>Récords recientes</div>
+          <div style={sectionLabelStyle(palette)}>Récords recientes</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {topPRs.map((pr) => (
-              <div key={pr.id} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={pr.id} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: 9, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
                   <Trophy size={14} />
                 </div>
@@ -205,7 +206,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div style={sectionLabel}>Fotos de progreso</div>
+      <div style={sectionLabelStyle(palette)}>Fotos de progreso</div>
       <div style={{ marginBottom: 22 }}>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleUploadPhoto} style={{ display: "none" }} />
         <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
@@ -238,18 +239,18 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div style={sectionLabel}>Historial reciente</div>
+      <div style={sectionLabelStyle(palette)}>Historial reciente</div>
       {history.length === 0 ? (
         <p style={{ fontSize: 12.5, color: palette.inkDim, textAlign: "center", padding: 12 }}>Todavía no tienes registros.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {history.map((h, i) => (
             h.type === "workout" && h.id ? (
-              <Link key={i} href={`/app/workout-log/${h.id}`} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: palette.ink }}>
+              <Link key={i} href={`/app/workout-log/${h.id}`} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: palette.ink }}>
                 <HistoryRowContent h={h} />
               </Link>
             ) : (
-              <button key={i} onClick={() => setSelectedHistory(h)} style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}>
+              <button key={i} onClick={() => setSelectedHistory(h)} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer" }}>
                 <HistoryRowContent h={h} />
               </button>
             )
@@ -270,6 +271,7 @@ export default function ProfilePage() {
 }
 
 function HistoryRowContent({ h }: { h: any }) {
+  const palette = usePalette();
   return (
     <>
       <div style={{
@@ -287,8 +289,9 @@ function HistoryRowContent({ h }: { h: any }) {
 }
 
 function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) {
+  const palette = usePalette();
   return (
-    <div style={{ ...glassPanel, padding: 12, textAlign: "center" }}>
+    <div style={{ ...palette.glassPanel, padding: 12, textAlign: "center" }}>
       <div style={{ color: palette.accent, marginBottom: 4, display: "flex", justifyContent: "center" }}>{icon}</div>
       <div style={{ fontSize: 16, fontWeight: 700 }}>{value}</div>
       <div style={{ fontSize: 9, color: palette.inkDim, marginTop: 1 }}>{label}</div>
@@ -296,7 +299,9 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string 
   );
 }
 
-const sectionLabel: React.CSSProperties = {
-  fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase",
-  letterSpacing: "0.04em", marginBottom: 10,
-};
+function sectionLabelStyle(palette: Palette): React.CSSProperties {
+  return {
+    fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase",
+    letterSpacing: "0.04em", marginBottom: 10,
+  };
+}

@@ -1,11 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 
 export default function Modal({
   title, onClose, children, maxWidth = 440,
 }: { title: string; onClose: () => void; children: React.ReactNode; maxWidth?: number }) {
+  const palette = usePalette();
   return (
     <div
       onClick={onClose}
@@ -18,7 +19,7 @@ export default function Modal({
       <div
         onClick={(e) => e.stopPropagation()}
         className="ft-modal-pop"
-        style={{ ...glassPanel, width: "100%", maxWidth, padding: 22, maxHeight: "80vh", overflowY: "auto" }}
+        style={{ ...palette.glassPanel, width: "100%", maxWidth, padding: 22, maxHeight: "80vh", overflowY: "auto" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700 }}>{title}</h2>

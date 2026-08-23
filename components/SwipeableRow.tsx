@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Trash2, Pencil } from "lucide-react";
 
 type Action = { label: string; icon?: "delete" | "edit"; color: string; onClick: () => void };
@@ -9,6 +9,7 @@ type Action = { label: string; icon?: "delete" | "edit"; color: string; onClick:
 export default function SwipeableRow({
   children, rightAction, leftAction, actionWidth = 76,
 }: { children: React.ReactNode; rightAction?: Action; leftAction?: Action; actionWidth?: number }) {
+  const palette = usePalette();
   const [translateX, setTranslateX] = useState(0);
   const startX = useRef(0);
   const dragging = useRef(false);

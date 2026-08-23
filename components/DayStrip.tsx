@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import Modal from "@/components/Modal";
 import { Dumbbell, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
@@ -28,6 +28,7 @@ function getMonday(offsetWeeks: number) {
 }
 
 export default function DayStrip() {
+  const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
   const [weekOffset, setWeekOffset] = useState(0);
@@ -98,11 +99,11 @@ export default function DayStrip() {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <button onClick={() => setWeekOffset((w) => Math.max(w - 1, -8))} style={arrowBtn}><ChevronLeft size={15} /></button>
+        <button onClick={() => setWeekOffset((w) => Math.max(w - 1, -8))} style={arrowBtn(palette)}><ChevronLeft size={15} /></button>
         <span style={{ fontSize: 11, color: palette.inkDim, fontWeight: 600 }}>
           {weekOffset === 0 ? "Esta semana" : `${Math.abs(weekOffset)} semana${Math.abs(weekOffset) > 1 ? "s" : ""} atrás`}
         </span>
-        <button onClick={() => setWeekOffset((w) => Math.min(w + 1, 0))} disabled={weekOffset === 0} style={{ ...arrowBtn, opacity: weekOffset === 0 ? 0.3 : 1 }}>
+        <button onClick={() => setWeekOffset((w) => Math.min(w + 1, 0))} disabled={weekOffset === 0} style={{ ...arrowBtn(palette), opacity: weekOffset === 0 ? 0.3 : 1 }}>
           <ChevronRight size={15} />
         </button>
       </div>
@@ -197,7 +198,9 @@ export default function DayStrip() {
   );
 }
 
-const arrowBtn: React.CSSProperties = {
-  width: 26, height: 26, borderRadius: 8, border: "none", background: "none",
-  color: palette.inkDim, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-};
+function arrowBtn(palette: Palette): React.CSSProperties {
+  return {
+    width: 26, height: 26, borderRadius: 8, border: "none", background: "none",
+    color: palette.inkDim, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+  };
+}

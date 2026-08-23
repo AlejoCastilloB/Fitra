@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Plus, Dumbbell, Pencil, Trash2 } from "lucide-react";
 
 export default function RoutinesPage() {
+  const palette = usePalette();
   const supabase = createClient();
   const [routines, setRoutines] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -59,13 +60,13 @@ export default function RoutinesPage() {
       </div>
 
       {loading ? (
-        <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Cargando...</div>
+        <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Cargando...</div>
       ) : routines.length === 0 ? (
-        <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
+        <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {routines.map((r) => (
-            <div key={r.id} style={{ ...glassPanel, padding: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div key={r.id} style={{ ...palette.glassPanel, padding: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
                 <Dumbbell size={16} />
               </div>

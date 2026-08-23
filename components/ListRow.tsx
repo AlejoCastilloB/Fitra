@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { ChevronRight } from "lucide-react";
 
 export default function ListRow({
@@ -13,6 +13,7 @@ export default function ListRow({
   showChevron?: boolean;
   danger?: boolean;
 }) {
+  const palette = usePalette();
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { requestPushPermissionAndSubscribe, unsubscribeFromPush } from "@/lib/push";
-import { palette } from "@/lib/theme";
+import { usePalette, useTheme } from "@/lib/theme";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Play } from "lucide-react";
@@ -22,6 +22,7 @@ const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }>
 const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla"];
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  const palette = usePalette();
   return (
     <button onClick={onChange} style={{
       width: 42, height: 25, borderRadius: 999, border: "none", cursor: "pointer", position: "relative",
@@ -36,13 +37,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 }
 
 export default function ProfileSettingsPage() {
+  const palette = usePalette();
+  const { theme, setTheme } = useTheme();
   const supabase = createClient();
   const router = useRouter();
 
   const [uid, setUid] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [timerSound, setTimerSound] = useState("clasico");
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
@@ -64,9 +66,9 @@ export default function ProfileSettingsPage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("theme_pref, timer_sound, display_name, auto_warmup_prompt").eq("id", id).single();
+      const { data: userRow } = await supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt").eq("id", id).single();
       if (userRow) {
-        setTheme(userRow.theme_pref); setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || "");
+        setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || "");
         setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
       }
 
@@ -80,11 +82,6 @@ export default function ProfileSettingsPage() {
       if ("Notification" in window) setNotifEnabled(Notification.permission === "granted");
     })();
   }, []);
-
-  async function updateTheme(t: "light" | "dark") {
-    setTheme(t);
-    await supabase.from("users").update({ theme_pref: t }).eq("id", uid);
-  }
 
   async function updateSound(key: string) {
     setTimerSound(key);
@@ -162,8 +159,8 @@ export default function ProfileSettingsPage() {
       </div>
 
       <SettingsGroup title="Apariencia">
-        <ListRow label="Oscuro" right={theme === "dark" && <span style={{ color: palette.accent }}>✓</span>} onClick={() => updateTheme("dark")} />
-        <ListRow label="Claro" right={theme === "light" && <span style={{ color: palette.accent }}>✓</span>} onClick={() => updateTheme("light")} />
+        <ListRow label="Oscuro" right={theme === "dark" && <span style={{ color: palette.accent }}>✓</span>} onClick={() => setTheme("dark")} />
+        <ListRow label="Claro" right={theme === "light" && <span style={{ color: palette.accent }}>✓</span>} onClick={() => setTheme("light")} />
       </SettingsGroup>
 
       <SettingsGroup title="Entrenamiento">
@@ -273,6 +270,7 @@ export default function ProfileSettingsPage() {
 }
 
 function NameEditor({ initial, onSave }: { initial: string; onSave: (v: string) => void }) {
+  const palette = usePalette();
   const [val, setVal] = useState(initial);
   return (
     <div>
@@ -283,6 +281,7 @@ function NameEditor({ initial, onSave }: { initial: string; onSave: (v: string) 
 }
 
 function WeightEditor({ initial, onSave }: { initial: string; onSave: (v: string) => void }) {
+  const palette = usePalette();
   const [val, setVal] = useState(initial);
   return (
     <div>

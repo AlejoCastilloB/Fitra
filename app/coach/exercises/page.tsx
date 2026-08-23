@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { Search, Plus, X } from "lucide-react";
 
 const MEASUREMENT_LABELS: Record<string, string> = {
@@ -13,6 +13,7 @@ const MEASUREMENT_LABELS: Record<string, string> = {
 };
 
 export default function ExercisesPage() {
+  const palette = usePalette();
   const supabase = createClient();
   const [exercises, setExercises] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,11 +91,11 @@ export default function ExercisesPage() {
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} style={{ ...glassPanel, height: 140, opacity: 0.4 }} />
+            <div key={i} style={{ ...palette.glassPanel, height: 140, opacity: 0.4 }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>
+        <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>
           {exercises.length === 0
             ? "Todavía no hay ejercicios cargados (falta correr el seed de la biblioteca base)."
             : "Ningún ejercicio coincide con tu búsqueda."}
@@ -102,7 +103,7 @@ export default function ExercisesPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
           {filtered.map((ex) => (
-            <div key={ex.id} style={{ ...glassPanel, overflow: "hidden" }}>
+            <div key={ex.id} style={{ ...palette.glassPanel, overflow: "hidden" }}>
               {ex.media_url ? (
                 <img src={ex.media_url} alt={ex.name} style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }} />
               ) : (
@@ -128,6 +129,7 @@ export default function ExercisesPage() {
 }
 
 function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const palette = usePalette();
   const supabase = createClient();
   const [name, setName] = useState("");
   const [muscleGroup, setMuscleGroup] = useState("");
@@ -163,7 +165,7 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
       alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20,
     }}>
       <form onSubmit={handleSubmit} style={{
-        ...glassPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
+        ...palette.glassPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700 }}>Nuevo ejercicio</h2>
@@ -174,19 +176,19 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <FormField label="Nombre">
-            <input required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+            <input required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle(palette)} />
           </FormField>
 
           <FormField label="Grupo muscular">
-            <input value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} placeholder="Ej: pecho, espalda, cuádriceps" style={inputStyle} />
+            <input value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} placeholder="Ej: pecho, espalda, cuádriceps" style={inputStyle(palette)} />
           </FormField>
 
           <FormField label="Equipamiento">
-            <input value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Ej: barra, mancuernas, banda" style={inputStyle} />
+            <input value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Ej: barra, mancuernas, banda" style={inputStyle(palette)} />
           </FormField>
 
           <FormField label="Forma de medición">
-            <select value={measurementType} onChange={(e) => setMeasurementType(e.target.value)} style={inputStyle}>
+            <select value={measurementType} onChange={(e) => setMeasurementType(e.target.value)} style={inputStyle(palette)}>
               <option value="reps_weight">Reps y peso</option>
               <option value="time">Tiempo</option>
               <option value="time_distance">Tiempo y distancia</option>
@@ -195,11 +197,11 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
           </FormField>
 
           <FormField label="Descripción">
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle(palette), minHeight: 60, resize: "vertical" }} />
           </FormField>
 
           <FormField label="Anotaciones para el entrenamiento (opcional)">
-            <textarea value={annotations} onChange={(e) => setAnnotations(e.target.value)} placeholder="Ej: mantener espalda recta, tempo 2-1-2" style={{ ...inputStyle, minHeight: 50, resize: "vertical" }} />
+            <textarea value={annotations} onChange={(e) => setAnnotations(e.target.value)} placeholder="Ej: mantener espalda recta, tempo 2-1-2" style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical" }} />
           </FormField>
 
           <button type="submit" disabled={saving} style={{
@@ -215,12 +217,15 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
-  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
-};
+function inputStyle(palette: Palette): React.CSSProperties {
+  return {
+    width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
+    background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
+  };
+}
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  const palette = usePalette();
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: palette.inkDim }}>
       {label}

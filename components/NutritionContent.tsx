@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
@@ -14,10 +14,12 @@ const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
 const WATER_GOAL = 2500;
 const WATER_STEP = 250;
 
-const modalInput: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
-  background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
-};
+function modalInput(palette: Palette): React.CSSProperties {
+  return {
+    width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
+    background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
+  };
+}
 
 function computeHealthScore(fiber: number, sugar: number, sodium: number, protein: number) {
   const fiberScore = Math.min(100, (fiber / HEALTH_TARGETS.fiber) * 100);
@@ -28,6 +30,7 @@ function computeHealthScore(fiber: number, sugar: number, sodium: number, protei
 }
 
 export default function NutritionContent() {
+  const palette = usePalette();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -253,15 +256,15 @@ export default function NutritionContent() {
         </SwipeCarousel>
       </div>
 
-      <div className="ft-pop" style={{ ...glassPanel, padding: 16, marginBottom: 14, animationDelay: "0.05s" }}>
+      <div className="ft-pop" style={{ ...palette.glassPanel, padding: 16, marginBottom: 14, animationDelay: "0.05s" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Droplet size={16} color="#7DC4E8" />
             <span style={{ fontSize: 13, fontWeight: 600 }}>{(water / 1000).toFixed(1)}L / {(WATER_GOAL / 1000).toFixed(1)}L</span>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="ft-drop" onClick={() => addWater(-WATER_STEP)} style={waterBtn}>−</button>
-            <button className="ft-drop" onClick={() => addWater(WATER_STEP)} style={{ ...waterBtn, background: palette.accent, color: "#0A0C10" }}>+</button>
+            <button className="ft-drop" onClick={() => addWater(-WATER_STEP)} style={waterBtn(palette)}>−</button>
+            <button className="ft-drop" onClick={() => addWater(WATER_STEP)} style={{ ...waterBtn(palette), background: palette.accent, color: "#0A0C10" }}>+</button>
           </div>
         </div>
         <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -295,10 +298,10 @@ export default function NutritionContent() {
       </button>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <button onClick={() => setShowManual(true)} style={secondaryBtn}><Plus size={14} /> Manual</button>
-        <button onClick={() => setShowSaved(true)} style={secondaryBtn}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
+        <button onClick={() => setShowManual(true)} style={secondaryBtn(palette)}><Plus size={14} /> Manual</button>
+        <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
       </div>
-      <Link href="/app/nutrition/recipes" style={{ ...secondaryBtn, textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
+      <Link href="/app/nutrition/recipes" style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
         <Sparkles size={14} color={palette.accent} /> Preguntarle a la IA de Alejo por recetas
       </Link>
 
@@ -309,7 +312,7 @@ export default function NutritionContent() {
       )}
 
       {coachTip && (
-        <div className="ft-pop" style={{ ...glassPanel, padding: 14, marginBottom: 14, border: `1px solid ${palette.accent}55`, display: "flex", gap: 10 }}>
+        <div className="ft-pop" style={{ ...palette.glassPanel, padding: 14, marginBottom: 14, border: `1px solid ${palette.accent}55`, display: "flex", gap: 10 }}>
           <Sparkles size={16} color={palette.accent} style={{ flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 12.5, lineHeight: 1.5 }}>{coachTip}</p>
         </div>
@@ -328,7 +331,7 @@ export default function NutritionContent() {
           {logs.map((l, idx) => {
             const isOpen = expandedId === l.id;
             return (
-              <div key={l.id} className="ft-pop" style={{ ...glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
+              <div key={l.id} className="ft-pop" style={{ ...palette.glassPanel, overflow: "hidden", animationDelay: `${idx * 0.04}s` }}>
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {l.photo_url && (
                     <img src={l.photo_url} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", margin: "10px 0 10px 14px", flexShrink: 0 }} />
@@ -385,6 +388,7 @@ export default function NutritionContent() {
 }
 
 function MacroRow({ label, value }: { label: string; value: string }) {
+  const palette = usePalette();
   return (
     <div>
       <div style={{ fontSize: 10.5, color: palette.inkDim }}>{label}</div>
@@ -393,17 +397,22 @@ function MacroRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const waterBtn: React.CSSProperties = {
-  width: 30, height: 30, borderRadius: 9, border: `1px solid ${palette.panelBorder}`,
-  background: palette.inputBg, color: palette.ink, fontSize: 16, fontWeight: 700, cursor: "pointer",
-};
-const secondaryBtn: React.CSSProperties = {
-  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px",
-  borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
-  fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-};
+function waterBtn(palette: Palette): React.CSSProperties {
+  return {
+    width: 30, height: 30, borderRadius: 9, border: `1px solid ${palette.panelBorder}`,
+    background: palette.inputBg, color: palette.ink, fontSize: 16, fontWeight: 700, cursor: "pointer",
+  };
+}
+function secondaryBtn(palette: Palette): React.CSSProperties {
+  return {
+    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px",
+    borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+  };
+}
 
 function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const palette = usePalette();
   const supabase = createClient();
   const [name, setName] = useState("");
   const [kcal, setKcal] = useState(""); const [protein, setProtein] = useState("");
@@ -425,12 +434,12 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
   return (
     <Modal title="Comida manual" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={modalInput} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={modalInput(palette)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <input value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" type="number" style={modalInput} />
-          <input value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="Proteína (g)" type="number" style={modalInput} />
-          <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput} />
-          <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput} />
+          <input value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" type="number" style={modalInput(palette)} />
+          <input value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="Proteína (g)" type="number" style={modalInput(palette)} />
+          <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput(palette)} />
+          <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput(palette)} />
         </div>
         <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
           {saving ? "Guardando..." : "Registrar"}
@@ -441,6 +450,7 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 }
 
 function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: () => void; onPick: (m: any) => void }) {
+  const palette = usePalette();
   return (
     <Modal title="Comidas guardadas" onClose={onClose}>
       {meals.length === 0 ? (
@@ -450,7 +460,7 @@ function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: ()
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {meals.map((m) => (
-            <button key={m.id} onClick={() => onPick(m)} style={{ ...glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
+            <button key={m.id} onClick={() => onPick(m)} style={{ ...palette.glassPanel, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", border: "none", textAlign: "left", width: "100%" }}>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{m.name}</div>
                 <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(m.kcal)} kcal · P: {Math.round(m.protein)}g</div>

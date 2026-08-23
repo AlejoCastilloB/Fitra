@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import Modal from "@/components/Modal";
 import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
@@ -16,6 +16,7 @@ export default function WorkoutSettingsSheet({
   trackRpe: boolean;
   onUpdated: (v: { defaultRest?: number; keepAwake?: boolean; trackRpe?: boolean }) => void;
 }) {
+  const palette = usePalette();
   const supabase = createClient();
   const [editingRest, setEditingRest] = useState(false);
   const [restVal, setRestVal] = useState(String(defaultRest));
@@ -71,6 +72,7 @@ export default function WorkoutSettingsSheet({
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  const palette = usePalette();
   return (
     <button onClick={onChange} style={{
       width: 42, height: 25, borderRadius: 999, border: "none", cursor: "pointer", position: "relative",

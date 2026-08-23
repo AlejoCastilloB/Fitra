@@ -2,13 +2,14 @@
 
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { palette } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import Modal from "@/components/Modal";
 import { Sparkles, Camera, Mic, Square, X, Loader2 } from "lucide-react";
 
 export default function AIRoutineGenerator({
   onClose, onGenerated,
 }: { onClose: () => void; onGenerated: (result: { name: string; exercises: any[] }) => void }) {
+  const palette = usePalette();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -127,8 +128,8 @@ export default function AIRoutineGenerator({
       <input ref={fileRef} type="file" accept="image/*" onChange={handlePickImage} style={{ display: "none" }} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button onClick={() => fileRef.current?.click()} style={pillBtn}><Camera size={13} /> Foto</button>
-        <button onClick={toggleRecording} style={{ ...pillBtn, borderColor: recording ? "#f87171" : palette.panelBorder, color: recording ? "#f87171" : palette.ink }}>
+        <button onClick={() => fileRef.current?.click()} style={pillBtn(palette)}><Camera size={13} /> Foto</button>
+        <button onClick={toggleRecording} style={{ ...pillBtn(palette), borderColor: recording ? "#f87171" : palette.panelBorder, color: recording ? "#f87171" : palette.ink }}>
           {recording ? <><Square size={13} /> Detener</> : <><Mic size={13} /> Audio</>}
         </button>
         {audioBlob && !recording && <span style={{ fontSize: 11, color: palette.accent, alignSelf: "center" }}>✓ Audio listo</span>}
@@ -148,8 +149,10 @@ export default function AIRoutineGenerator({
   );
 }
 
-const pillBtn: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 10,
-  border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
-  fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-};
+function pillBtn(palette: Palette): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 10,
+    border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+  };
+}

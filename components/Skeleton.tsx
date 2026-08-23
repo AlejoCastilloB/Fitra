@@ -1,8 +1,11 @@
-import { palette } from "@/lib/theme";
+"use client";
+
+import { usePalette } from "@/lib/theme";
 
 export default function Skeleton({
   width = "100%", height = 16, radius = 8, style = {},
 }: { width?: string | number; height?: number; radius?: number; style?: React.CSSProperties }) {
+  const palette = usePalette();
   return (
     <div
       style={{

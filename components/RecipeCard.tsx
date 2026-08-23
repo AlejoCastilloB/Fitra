@@ -1,6 +1,6 @@
 "use client";
 
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette } from "@/lib/theme";
 import { Flame, ChefHat, Check } from "lucide-react";
 
 export type Recipe = {
@@ -11,9 +11,10 @@ export type Recipe = {
 export default function RecipeCard({
   recipe, compact = false, onSave, saved,
 }: { recipe: Recipe; compact?: boolean; onSave?: () => void; saved?: boolean }) {
+  const palette = usePalette();
   if (compact) {
     return (
-      <div style={{ ...glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
           <ChefHat size={16} />
         </div>
@@ -27,7 +28,7 @@ export default function RecipeCard({
 
   return (
     <div className="ft-recipe-grow" style={{
-      ...glassPanel, padding: 20, border: `1px solid ${palette.accent}55`,
+      ...palette.glassPanel, padding: 20, border: `1px solid ${palette.accent}55`,
       backgroundImage: `linear-gradient(${palette.panel}, ${palette.panel}), ${palette.metallicBorder}`,
       backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box",
     }}>

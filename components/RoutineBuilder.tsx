@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { palette, glassPanel } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { POPULAR_EXERCISE_KEYWORDS } from "@/lib/popularExercises";
 import { getSetBadge } from "@/lib/setBadges";
@@ -41,6 +41,7 @@ export default function RoutineBuilder({
   initialDays?: number[];
   role?: "trainer" | "client";
 }) {
+  const palette = usePalette();
   const supabase = createClient();
   const router = useRouter();
   const isEditing = !!routineId;
@@ -249,7 +250,7 @@ export default function RoutineBuilder({
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
         <input
           value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la rutina"
-          style={{ ...inputStyle, flex: 1, fontSize: 16, fontWeight: 700 }}
+          style={{ ...inputStyle(palette), flex: 1, fontSize: 16, fontWeight: 700 }}
         />
         <button
           onClick={() => setShowLibrary((v) => !v)}
@@ -265,13 +266,13 @@ export default function RoutineBuilder({
       </div>
 
       {showLibrary && (
-        <div style={{ ...glassPanel, padding: 14, marginBottom: 18 }}>
+        <div style={{ ...palette.glassPanel, padding: 14, marginBottom: 18 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ position: "relative", flex: 1 }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar ejercicio..." style={{ ...inputStyle, paddingLeft: 32, fontSize: 13 }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar ejercicio..." style={{ ...inputStyle(palette), paddingLeft: 32, fontSize: 13 }} />
             </div>
-            <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...inputStyle, width: 130, fontSize: 12.5 }}>
+            <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...inputStyle(palette), width: 130, fontSize: 12.5 }}>
               <option value="">Músculo</option>
               {muscles.map((m) => <option key={m} value={m}>{muscleLabel(m)}</option>)}
             </select>
@@ -319,16 +320,16 @@ export default function RoutineBuilder({
       {showDetails && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
           {role === "trainer" && (
-            <label style={fieldLabel}>
+            <label style={fieldLabel(palette)}>
               Asignar a
-              <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
+              <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle(palette)}>
                 <option value="">Plantilla (sin asignar)</option>
                 {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
               </select>
             </label>
           )}
 
-          <label style={fieldLabel}>
+          <label style={fieldLabel(palette)}>
             Días de la semana (opcional)
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
               {["D", "L", "M", "M", "J", "V", "S"].map((label, i) => (
@@ -342,15 +343,15 @@ export default function RoutineBuilder({
             </div>
           </label>
 
-          <label style={fieldLabel}>
+          <label style={fieldLabel(palette)}>
             Notas generales de la rutina
-            <textarea value={routineNotes} onChange={(e) => setRoutineNotes(e.target.value)} placeholder="Ej: enfocada en fuerza, progresar peso cada 2 semanas" style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+            <textarea value={routineNotes} onChange={(e) => setRoutineNotes(e.target.value)} placeholder="Ej: enfocada en fuerza, progresar peso cada 2 semanas" style={{ ...inputStyle(palette), minHeight: 60, resize: "vertical" }} />
           </label>
         </div>
       )}
 
       {picked.length === 0 ? (
-        <div style={{ ...glassPanel, padding: 32, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
+        <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
           Agrega ejercicios desde "Ejercicios" arriba o pídele a la IA de Alejo que arme la rutina.
         </div>
       ) : (
@@ -361,7 +362,7 @@ export default function RoutineBuilder({
             return (
               <div key={ex.id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
                 style={{
-                  ...glassPanel, padding: 14, opacity: dragIndex === idx ? 0.4 : 1, cursor: "grab",
+                  ...palette.glassPanel, padding: 14, opacity: dragIndex === idx ? 0.4 : 1, cursor: "grab",
                   borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
                 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -408,7 +409,7 @@ export default function RoutineBuilder({
                         value={ex.notes}
                         onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
                         placeholder="Notas para el cliente: técnica, tempo, foco..."
-                        style={{ ...inputStyle, minHeight: 50, resize: "vertical", fontSize: 12.5, paddingRight: 38 }}
+                        style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical", fontSize: 12.5, paddingRight: 38 }}
                       />
                       <button
                         onClick={() => toggleNoteRecording(ex.id)}
@@ -434,7 +435,7 @@ export default function RoutineBuilder({
                     value={ex.notes}
                     onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
                     placeholder="Ej: mantener espalda recta, tempo 2-1-2, foco en la fase excéntrica..."
-                    style={{ ...inputStyle, minHeight: 50, resize: "vertical", fontSize: 12.5, marginBottom: 10 }}
+                    style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical", fontSize: 12.5, marginBottom: 10 }}
                   />
                 )}
 
@@ -448,15 +449,15 @@ export default function RoutineBuilder({
                     }}>{badge.text}</button>
                     {ex.measurement_type === "reps_weight" && (
                       <>
-                        <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.id, i, "reps", +e.target.value)} placeholder="reps" style={smallInput} />
-                        <input type="number" value={s.weight ?? ""} onChange={(e) => updateSet(ex.id, i, "weight", +e.target.value)} placeholder="kg" style={smallInput} />
+                        <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.id, i, "reps", +e.target.value)} placeholder="reps" style={smallInput(palette)} />
+                        <input type="number" value={s.weight ?? ""} onChange={(e) => updateSet(ex.id, i, "weight", +e.target.value)} placeholder="kg" style={smallInput(palette)} />
                       </>
                     )}
                     {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-                      <input type="number" value={s.time_sec ?? ""} onChange={(e) => updateSet(ex.id, i, "time_sec", +e.target.value)} placeholder="seg" style={smallInput} />
+                      <input type="number" value={s.time_sec ?? ""} onChange={(e) => updateSet(ex.id, i, "time_sec", +e.target.value)} placeholder="seg" style={smallInput(palette)} />
                     )}
                     {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-                      <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.id, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput} />
+                      <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.id, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput(palette)} />
                     )}
                     <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <Trash2 size={13} />
@@ -474,7 +475,7 @@ export default function RoutineBuilder({
         </div>
       )}
 
-      <div style={{ ...glassPanel, padding: 14, marginBottom: 14 }}>
+      <div style={{ ...palette.glassPanel, padding: 14, marginBottom: 14 }}>
         <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>Resumen</div>
         <div style={{ fontSize: 13 }}>{picked.length} ejercicios</div>
         <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>
@@ -515,6 +516,12 @@ export default function RoutineBuilder({
   );
 }
 
-const fieldLabel: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: palette.inkDim };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit" };
-const smallInput: React.CSSProperties = { width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 };
+function fieldLabel(palette: Palette): React.CSSProperties {
+  return { display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: palette.inkDim };
+}
+function inputStyle(palette: Palette): React.CSSProperties {
+  return { width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit" };
+}
+function smallInput(palette: Palette): React.CSSProperties {
+  return { width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 };
+}
