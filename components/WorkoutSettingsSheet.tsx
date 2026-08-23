@@ -79,7 +79,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
       background: checked ? palette.accent : palette.inputBg, transition: "background .2s",
     }}>
       <div style={{
-        width: 20, height: 20, borderRadius: "50%", background: checked ? "#0A0C10" : palette.inkDim,
+        width: 20, height: 20, borderRadius: "50%", background: checked ? palette.bg : palette.inkDim,
         position: "absolute", top: 2.5, left: checked ? 20 : 3, transition: "left .2s",
       }} />
     </button>

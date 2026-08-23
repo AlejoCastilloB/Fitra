@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { usePalette } from "@/lib/theme";
 
 export default function MacroRing({
   value, max, size = 100, stroke = 9, colorFrom, colorTo, label, sublabel,
 }: { value: number; max: number; size?: number; stroke?: number; colorFrom: string; colorTo: string; label: string; sublabel?: string }) {
+  const palette = usePalette();
   const [animated, setAnimated] = useState(0);
   const gradId = useId();
   const r = (size - stroke) / 2;
@@ -18,7 +20,7 @@ export default function MacroRing({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: size > 100 ? 12.5 : 10.5, color: "rgba(255,255,255,0.55)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+      <span style={{ fontSize: size > 100 ? 12.5 : 10.5, color: palette.inkDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
         {label}
       </span>
       <div style={{ position: "relative", width: size, height: size }}>
@@ -29,7 +31,7 @@ export default function MacroRing({
               <stop offset="100%" stopColor={colorTo} />
             </linearGradient>
           </defs>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={palette.divider} strokeWidth={stroke} />
           <circle
             cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#${gradId})`} strokeWidth={stroke}
             strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - animated)}

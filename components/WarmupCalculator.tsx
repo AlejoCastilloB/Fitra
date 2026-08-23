@@ -41,7 +41,7 @@ export default function WarmupCalculator({
         disabled={sets.length === 0}
         style={{
           width: "100%", padding: 12, borderRadius: 11, border: "none",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sets.length === 0 ? 0.5 : 1,
         }}
       >

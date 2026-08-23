@@ -179,7 +179,7 @@ export default function ProfilePage() {
                 width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
                 background: activeDays[i] ? palette.accent : palette.inputBg, border: `1px solid ${activeDays[i] ? palette.accent : palette.panelBorder}`,
               }}>
-                {activeDays[i] && <Flame size={12} color="#0A0C10" />}
+                {activeDays[i] && <Flame size={12} color={palette.bg} />}
               </div>
               <span style={{ fontSize: 9.5, color: palette.inkDim }}>{label}</span>
             </div>

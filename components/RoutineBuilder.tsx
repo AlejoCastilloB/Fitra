@@ -483,7 +483,7 @@ export default function RoutineBuilder({
 
       <button onClick={handleSave} disabled={saving || !name || picked.length === 0} style={{
         width: "100%", padding: 14, borderRadius: 14, border: "none",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5, cursor: "pointer", opacity: (saving || !name || picked.length === 0) ? 0.5 : 1,
       }}>
         {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}

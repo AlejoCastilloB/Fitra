@@ -29,7 +29,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
       background: checked ? palette.accent : palette.inputBg, transition: "background .2s",
     }}>
       <div style={{
-        width: 20, height: 20, borderRadius: "50%", background: checked ? "#0A0C10" : palette.inkDim,
+        width: 20, height: 20, borderRadius: "50%", background: checked ? palette.bg : palette.inkDim,
         position: "absolute", top: 2.5, left: checked ? 20 : 3, transition: "left .2s",
       }} />
     </button>
@@ -246,7 +246,7 @@ export default function ProfileSettingsPage() {
               }}>{item}</button>
             ))}
           </div>
-          <button onClick={saveDietaryInfo} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+          <button onClick={saveDietaryInfo} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
             Guardar
           </button>
         </Modal>
@@ -275,7 +275,7 @@ function NameEditor({ initial, onSave }: { initial: string; onSave: (v: string) 
   return (
     <div>
       <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Tu nombre" style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 14 }} />
-      <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
+      <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
     </div>
   );
 }
@@ -286,7 +286,7 @@ function WeightEditor({ initial, onSave }: { initial: string; onSave: (v: string
   return (
     <div>
       <input type="number" value={val} onChange={(e) => setVal(e.target.value)} placeholder="kg" style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 14 }} />
-      <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
+      <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
     </div>
   );
 }

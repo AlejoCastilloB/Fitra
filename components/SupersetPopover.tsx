@@ -62,7 +62,7 @@ export default function SupersetPopover({
             width: 16, height: 16, borderRadius: 5, border: `1.5px solid ${o.linked ? palette.accent : palette.panelBorder}`,
             background: o.linked ? palette.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
-            {o.linked && <Check size={11} color="#0A0C10" />}
+            {o.linked && <Check size={11} color={palette.bg} />}
           </span>
           <span style={{ fontSize: 12.5, color: palette.ink, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.name}</span>
         </button>

@@ -18,7 +18,7 @@ export default function RestTimerRing({ secondsLeft, totalSeconds, onSkip }: { s
     }}>
       <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={palette.divider} strokeWidth={stroke} />
           <circle
             cx={size / 2} cy={size / 2} r={r} fill="none" stroke={palette.accent} strokeWidth={stroke}
             strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
@@ -31,7 +31,7 @@ export default function RestTimerRing({ secondsLeft, totalSeconds, onSkip }: { s
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, color: palette.accent, fontWeight: 700 }}>Descansando</div>
-        <div style={{ fontSize: 11, color: palette.inkDim }}>Preparate para la próxima serie</div>
+        <div style={{ fontSize: 11, color: palette.inkDim }}>Prepárate para la próxima serie</div>
       </div>
       <button onClick={onSkip} style={{
         fontSize: 11.5, color: palette.inkDim, background: palette.inputBg, border: `1px solid ${palette.panelBorder}`,

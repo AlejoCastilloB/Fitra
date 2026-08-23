@@ -75,7 +75,7 @@ export default function SeedAdminPage() {
 
         <button onClick={runSeed} disabled={running || !secret} style={{
           width: "100%", padding: 12, borderRadius: 11, border: "none", cursor: "pointer",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           fontWeight: 700, fontSize: 14, opacity: (running || !secret) ? 0.6 : 1, marginBottom: 18,
         }}>
           {running ? `Cargando... (${total} hasta ahora)` : "Iniciar seed"}

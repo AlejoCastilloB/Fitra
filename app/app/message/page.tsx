@@ -82,7 +82,7 @@ export default function ClientMessagesPage() {
                   borderBottomLeftRadius: m.sender === "trainer" ? 4 : 15,
                   background: m.sender === "client" ? `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})` : palette.panel,
                   border: m.sender === "trainer" ? `1px solid ${palette.panelBorder}` : "none",
-                  color: m.sender === "client" ? "#0A0C10" : palette.ink,
+                  color: m.sender === "client" ? palette.bg : palette.ink,
                   fontSize: 13.5, lineHeight: 1.4,
                 }}>
                   {m.content}
@@ -99,7 +99,7 @@ export default function ClientMessagesPage() {
             />
             <button onClick={send} style={{
               width: 44, height: 44, borderRadius: 14, border: "none",
-              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
               display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
             }}>
               <Send size={17} />

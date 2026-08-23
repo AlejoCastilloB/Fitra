@@ -39,7 +39,7 @@ export default function RoutinesContent() {
           width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}>
-          <Sparkles size={21} color="#0A0C10" />
+          <Sparkles size={21} color={palette.bg} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
@@ -69,7 +69,7 @@ export default function RoutinesContent() {
                   <Link href={`/app/routines/${r.id}/edit`} style={{ color: palette.inkDim, display: "flex" }}><Pencil size={16} /></Link>
                 )}
                 <Link href={`/app/workout/${r.id}`} style={{ width: 32, height: 32, borderRadius: "50%", background: palette.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Play size={13} color="#0A0C10" fill="#0A0C10" />
+                  <Play size={13} color={palette.bg} fill={palette.bg} />
                 </Link>
               </div>
               {r.notes && (

@@ -243,7 +243,7 @@ export default function WorkoutPage() {
       {prToast && (
         <div style={{
           position: "fixed", top: 16, left: 16, right: 16, zIndex: 200,
-          background: palette.accent, color: "#0A0C10", borderRadius: 14, padding: "12px 16px",
+          background: palette.accent, color: palette.bg, borderRadius: 14, padding: "12px 16px",
           fontSize: 13, fontWeight: 700, textAlign: "center", boxShadow: "0 10px 30px -6px rgba(0,0,0,0.4)",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         }}>
@@ -374,7 +374,7 @@ export default function WorkoutPage() {
                   return (
                     <div key={i} style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
-                      background: i % 2 === 1 ? "rgba(255,255,255,0.025)" : "transparent",
+                      background: i % 2 === 1 ? palette.panel : "transparent",
                       borderRadius: 8, opacity: s.done ? 0.55 : 1,
                     }}>
                       <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
@@ -405,7 +405,7 @@ export default function WorkoutPage() {
                         width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
                         background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
                       }}>
-                        <Check size={13} color={s.done ? "#0A0C10" : palette.inkDim} />
+                        <Check size={13} color={s.done ? palette.bg : palette.inkDim} />
                       </button>
                     </div>
                   );
@@ -434,7 +434,7 @@ export default function WorkoutPage() {
         }}>Cancelar</button>
         <button onClick={finishWorkout} style={{
           flex: 1, padding: 14, borderRadius: 14, border: "none",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           fontWeight: 700, fontSize: 14.5, cursor: "pointer",
         }}>
           Terminar entreno
@@ -658,7 +658,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
         </div>
       </div>
 
-      <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
+      <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
         {sharing ? "Generando imagen..." : "Compartir como imagen"}
       </button>
       <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>

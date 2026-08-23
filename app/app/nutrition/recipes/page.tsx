@@ -133,7 +133,7 @@ export default function RecipeChatPage() {
               borderBottomLeftRadius: m.role === "assistant" ? 4 : 16,
               background: m.role === "user" ? `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})` : palette.panel,
               border: m.role === "assistant" ? `1px solid ${palette.panelBorder}` : "none",
-              color: m.role === "user" ? "#0A0C10" : palette.ink,
+              color: m.role === "user" ? palette.bg : palette.ink,
               fontSize: 13.5, lineHeight: 1.5, whiteSpace: "pre-wrap",
             }}>
               {m.content}
@@ -179,7 +179,7 @@ export default function RecipeChatPage() {
         />
         <button onClick={sendMessage} disabled={sending || (!input.trim() && !stagedImage)} style={{
           width: 42, height: 42, borderRadius: 12, border: "none",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
           opacity: sending || (!input.trim() && !stagedImage) ? 0.5 : 1,
         }}>

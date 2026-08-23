@@ -134,7 +134,7 @@ export default function DayStrip() {
                   width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 13, fontWeight: 700, position: "relative",
                   background: isToday ? palette.accent : day.trained ? `${palette.accent}22` : "transparent",
-                  color: isToday ? "#0A0C10" : palette.ink,
+                  color: isToday ? palette.bg : palette.ink,
                   border: isToday ? "none" : `1px solid ${day.trained ? palette.accent : palette.panelBorder}`,
                 }}>
                   {parseInt(day.date.slice(-2), 10)}

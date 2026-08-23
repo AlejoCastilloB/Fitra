@@ -82,7 +82,7 @@ export default function CoachMessagesPage() {
                     borderBottomRightRadius: m.sender === "trainer" ? 4 : 14,
                     borderBottomLeftRadius: m.sender === "client" ? 4 : 14,
                     background: m.sender === "trainer" ? `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})` : palette.inputBg,
-                    color: m.sender === "trainer" ? "#0A0C10" : palette.ink,
+                    color: m.sender === "trainer" ? palette.bg : palette.ink,
                     fontSize: 13, lineHeight: 1.4,
                   }}>
                     {m.content}
@@ -99,7 +99,7 @@ export default function CoachMessagesPage() {
               />
               <button onClick={send} style={{
                 width: 42, height: 42, borderRadius: 12, border: "none",
-                background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+                background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
                 display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
               }}>
                 <Send size={16} />

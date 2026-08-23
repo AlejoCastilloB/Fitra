@@ -52,7 +52,7 @@ export default function RoutinesPage() {
         </div>
         <Link href="/coach/routines/new" style={{
           display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 12,
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           fontWeight: 700, fontSize: 13.5, textDecoration: "none",
         }}>
           <Plus size={15} /> Nueva rutina

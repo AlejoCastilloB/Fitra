@@ -26,7 +26,7 @@ export default function ProgressTabs() {
 function segBtn(active: boolean, palette: Palette): React.CSSProperties {
   return {
     flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer",
-    background: active ? palette.accent : "transparent", color: active ? "#0A0C10" : palette.inkDim,
+    background: active ? palette.accent : "transparent", color: active ? palette.bg : palette.inkDim,
     fontSize: 13, fontWeight: 700, transition: "all .2s ease",
   };
 }

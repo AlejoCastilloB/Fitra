@@ -72,7 +72,7 @@ export default function RecipeCard({
         <button onClick={onSave} disabled={saved} style={{
           width: "100%", padding: 11, borderRadius: 11, border: "none",
           background: saved ? palette.inputBg : `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
-          color: saved ? palette.inkDim : "#0A0C10", fontWeight: 700, fontSize: 13, cursor: saved ? "default" : "pointer",
+          color: saved ? palette.inkDim : palette.bg, fontWeight: 700, fontSize: 13, cursor: saved ? "default" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
         }}>
           {saved ? <><Check size={14} /> Guardada en tu registro</> : "Agregar a mi registro de hoy"}

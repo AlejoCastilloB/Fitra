@@ -216,7 +216,7 @@ export default function NutritionContent() {
       <div className="ft-pop" style={{ marginBottom: 14 }}>
         <SwipeCarousel>
           <div style={{
-            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            background: palette.panel, border: `1px solid ${palette.panelBorder}`,
             backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
             padding: 22, position: "relative", overflow: "hidden",
           }}>
@@ -231,7 +231,7 @@ export default function NutritionContent() {
           </div>
 
           <div style={{
-            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            background: palette.panel, border: `1px solid ${palette.panelBorder}`,
             backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
             padding: 22, position: "relative", overflow: "hidden",
           }}>
@@ -245,7 +245,7 @@ export default function NutritionContent() {
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: palette.ink }}>Puntuación de salud</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: palette.accent }}>{healthScore !== null ? healthScore : "N/D"}</span>
               </div>
-              <div style={{ height: 6, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{ height: 6, borderRadius: 4, background: palette.divider, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${healthScore ?? 0}%`, background: `linear-gradient(90deg, ${palette.accentDeep}, ${palette.accent})`, borderRadius: 4, transition: "width .6s cubic-bezier(.16,.8,.24,1)" }} />
               </div>
               {healthScore === null && (
@@ -264,10 +264,10 @@ export default function NutritionContent() {
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button className="ft-drop" onClick={() => addWater(-WATER_STEP)} style={waterBtn(palette)}>−</button>
-            <button className="ft-drop" onClick={() => addWater(WATER_STEP)} style={{ ...waterBtn(palette), background: palette.accent, color: "#0A0C10" }}>+</button>
+            <button className="ft-drop" onClick={() => addWater(WATER_STEP)} style={{ ...waterBtn(palette), background: palette.accent, color: palette.bg }}>+</button>
           </div>
         </div>
-        <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div style={{ height: 8, borderRadius: 4, background: palette.divider, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${Math.min(100, (water / WATER_GOAL) * 100)}%`, background: "#7DC4E8", borderRadius: 4, transition: "width .5s cubic-bezier(.16,.8,.24,1)" }} />
         </div>
       </div>
@@ -290,7 +290,7 @@ export default function NutritionContent() {
 
       <button onClick={() => fileRef.current?.click()} disabled={analyzing} style={{
         width: "100%", padding: 16, borderRadius: 14, border: "none", marginBottom: 8,
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: analyzing ? 0.7 : 1,
       }}>
@@ -441,7 +441,7 @@ function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
           <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput(palette)} />
           <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput(palette)} />
         </div>
-        <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
+        <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
           {saving ? "Guardando..." : "Registrar"}
         </button>
       </div>

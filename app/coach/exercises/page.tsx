@@ -53,7 +53,7 @@ export default function ExercisesPage() {
         </div>
         <button onClick={() => setShowForm(true)} style={{
           display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 12, border: "none",
-          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
           fontWeight: 700, fontSize: 13.5, cursor: "pointer",
         }}>
           <Plus size={15} /> Crear ejercicio
@@ -206,7 +206,7 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
           <button type="submit" disabled={saving} style={{
             marginTop: 6, padding: 12, borderRadius: 11, border: "none", cursor: "pointer",
-            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
             fontWeight: 700, fontSize: 14, opacity: saving ? 0.7 : 1,
           }}>
             {saving ? "Guardando..." : "Crear ejercicio"}

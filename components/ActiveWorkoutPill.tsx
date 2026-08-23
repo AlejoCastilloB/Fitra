@@ -26,7 +26,7 @@ export default function ActiveWorkoutPill() {
         position: "fixed", left: "50%", bottom: 88, transform: "translateX(-50%)", zIndex: 40,
         display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 999,
         background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, border: "none",
-        boxShadow: "0 10px 30px -8px rgba(0,0,0,0.5)", cursor: "pointer", color: "#0A0C10",
+        boxShadow: "0 10px 30px -8px rgba(0,0,0,0.5)", cursor: "pointer", color: palette.bg,
       }}
     >
       <Dumbbell size={15} />

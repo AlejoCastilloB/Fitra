@@ -139,7 +139,7 @@ export default function AIRoutineGenerator({
 
       <button onClick={generate} disabled={loading || (!prompt.trim() && !stagedImage && !audioBlob)} style={{
         width: "100%", padding: 13, borderRadius: 12, border: "none",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: loading || (!prompt.trim() && !stagedImage && !audioBlob) ? 0.5 : 1,
       }}>
