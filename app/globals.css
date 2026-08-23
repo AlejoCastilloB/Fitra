@@ -2,7 +2,7 @@
 
 html, body {
   height: 100%;
-  background: #0A0C10;
+  background: #F4F5F7;
   overscroll-behavior-y: none;
   touch-action: pan-x pan-y;
 }
