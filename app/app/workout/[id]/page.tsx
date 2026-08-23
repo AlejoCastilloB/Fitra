@@ -15,6 +15,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Camera, Link2, StickyNote } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
+import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import SetTypePopover from "@/components/SetTypePopover";
 import RestBar from "@/components/RestBar";
 import WarmupCalculator from "@/components/WarmupCalculator";
@@ -41,6 +42,7 @@ export default function WorkoutPage() {
   const [trackRpe, setTrackRpe] = useState(false);
   const [previousMap, setPreviousMap] = useState<Record<string, Record<number, any>>>({});
   const [bestPRMap, setBestPRMap] = useState<Record<string, number>>({});
+  const [videoLinkMap, setVideoLinkMap] = useState<Record<string, string>>({});
   const [prToast, setPrToast] = useState<string | null>(null);
   const [warmupFor, setWarmupFor] = useState<number | null>(null);
   const [warmupTarget, setWarmupTarget] = useState<number | undefined>(undefined);
@@ -105,6 +107,11 @@ export default function WorkoutPage() {
       const prMap: Record<string, number> = {};
       (prRows ?? []).forEach((r: any) => { if (!prMap[r.exercise_id] || r.value > prMap[r.exercise_id]) prMap[r.exercise_id] = r.value; });
       setBestPRMap(prMap);
+
+      const { data: videoRows } = await supabase.from("exercise_video_links").select("exercise_id, video_url").eq("user_id", uid);
+      const videoMap: Record<string, string> = {};
+      (videoRows ?? []).forEach((r: any) => { videoMap[r.exercise_id] = r.video_url; });
+      setVideoLinkMap(videoMap);
 
       startSession(id, routine?.name ?? "Entrenamiento", built);
       setLoading(false);
@@ -334,6 +341,7 @@ export default function WorkoutPage() {
                         </ol>
                       </div>
                     )}
+                    <ExerciseVideoLink exerciseId={ex.id} initialUrl={videoLinkMap[ex.id] ?? null} />
                   </div>
                 )}
 

@@ -13,6 +13,7 @@ import GifThumb from "@/components/GifThumb";
 import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
+import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number };
@@ -438,6 +439,8 @@ export default function RoutineBuilder({
                     style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical", fontSize: 12.5, marginBottom: 10 }}
                   />
                 )}
+
+                <ExerciseVideoLink exerciseId={ex.id} />
 
                 {ex.sets.map((s, i) => {
                   const badge = getSetBadge(ex.sets, i, palette.accent);
