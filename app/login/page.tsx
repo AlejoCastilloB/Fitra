@@ -91,13 +91,6 @@ export default function LoginPage() {
     setLoading(false);
   }
 
-  async function handleGoogle() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-  }
-
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>
       <div style={{
@@ -189,13 +182,6 @@ export default function LoginPage() {
                 {mode === "login"
                   ? (loading ? "Entrando..." : <>Entrar <ArrowRight size={16} /></>)
                   : (loading ? "Creando cuenta..." : <>Crear cuenta <ArrowRight size={16} /></>)}
-              </button>
-
-              <button type="button" onClick={handleGoogle} style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px", borderRadius: 12,
-                border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, fontWeight: 600, cursor: "pointer",
-              }}>
-                Continuar con Google
               </button>
 
               <button

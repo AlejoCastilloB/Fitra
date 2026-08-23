@@ -6,8 +6,10 @@ export default async function ClientToday() {
   const { data: { user } } = await supabase.auth.getUser();
   const uid = user!.id;
 
-  const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
-  const { data: userRow } = await supabase.from("users").select("display_name").eq("id", uid).single();
+  const [{ data: clientRow }, { data: userRow }] = await Promise.all([
+    supabase.from("clients").select("trainer_id").eq("user_id", uid).single(),
+    supabase.from("users").select("display_name").eq("id", uid).single(),
+  ]);
 
   const { data: routines } = await supabase
     .from("routines")

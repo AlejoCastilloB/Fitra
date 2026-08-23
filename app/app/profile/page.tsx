@@ -61,35 +61,46 @@ export default function ProfilePage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single();
+      const [
+        { data: userRow },
+        { data: clientRow },
+        { data: measurementRows },
+        { data: streakRow },
+        { data: photoRows },
+        { data: workoutRows, count: workoutCount },
+        { data: allVolumeRows },
+        { data: nutritionRows },
+        { data: prRows, count: prCount },
+      ] = await Promise.all([
+        supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single(),
+        supabase.from("clients").select("current_weight").eq("user_id", id).single(),
+        supabase.from("body_measurements").select("measurement_key, value_cm").eq("user_id", id).order("date", { ascending: false }),
+        supabase.from("streaks").select("current_weeks, last_workout_date").eq("client_id", id).single(),
+        supabase.from("progress_photos").select("*").eq("client_id", id).order("date", { ascending: false }),
+        supabase.from("workout_logs").select("id, date, duration_sec, total_volume, routines(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(20),
+        supabase.from("workout_logs").select("total_volume, date").eq("client_id", id),
+        supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20),
+        supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5),
+      ]);
+
       if (userRow) {
         setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || "");
         setUnitSystemState((userRow.unit_system as UnitSystem) ?? "metric");
         setMeasurementZones(userRow.measurement_zones || []);
       }
-
-      const { data: clientRow } = await supabase.from("clients").select("current_weight").eq("user_id", id).single();
       setCurrentWeight(clientRow?.current_weight ? String(clientRow.current_weight) : "");
 
-      const { data: measurementRows } = await supabase.from("body_measurements").select("measurement_key, value_cm").eq("user_id", id).order("date", { ascending: false });
       const latest: Record<string, number> = {};
       (measurementRows ?? []).forEach((m: any) => { if (!(m.measurement_key in latest)) latest[m.measurement_key] = m.value_cm; });
       setLatestMeasurements(latest);
 
-      const { data: streakRow } = await supabase.from("streaks").select("current_weeks, last_workout_date").eq("client_id", id).single();
       setStreak(getDisplayStreak(streakRow?.current_weeks ?? 0, streakRow?.last_workout_date ?? null));
 
-      const { data: photoRows } = await supabase.from("progress_photos").select("*").eq("client_id", id).order("date", { ascending: false });
       setPhotos(photoRows ?? []);
       if (photoRows && photoRows.length >= 2) {
         setCompareA(photoRows[photoRows.length - 1].photo_url);
         setCompareB(photoRows[0].photo_url);
       }
-
-      const { data: workoutRows, count: workoutCount } = await supabase.from("workout_logs").select("id, date, duration_sec, total_volume, routines(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(20);
-      const { data: allVolumeRows } = await supabase.from("workout_logs").select("total_volume, date").eq("client_id", id);
-      const { data: nutritionRows } = await supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20);
-      const { data: prRows, count: prCount } = await supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5);
 
       const totalVolume = (allVolumeRows ?? []).reduce((sum, w) => sum + (w.total_volume ?? 0), 0);
       setStats({ totalWorkouts: workoutCount ?? 0, totalVolume, totalPRs: prCount ?? 0 });

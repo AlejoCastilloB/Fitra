@@ -128,7 +128,7 @@ function OnboardingForm() {
 
     const aiContext = buildAiContext({ goal, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment });
 
-    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: displayName.trim() });
+    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: displayName.trim(), theme_pref: "light" });
     await supabase.from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
@@ -156,7 +156,7 @@ function OnboardingForm() {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
 
-    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "trainer" });
+    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "trainer", theme_pref: "light" });
     await supabase.from("trainers").insert({ user_id: uid });
 
     router.push("/coach");

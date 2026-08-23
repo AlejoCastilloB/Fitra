@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { usePalette } from "@/lib/theme";
+import { useLayoutEffect, useState } from "react";
+import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
 import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut } from "lucide-react";
 import Link from "next/link";
 
-export default function CoachShell({ userEmail, children }: { userEmail: string | undefined; children: React.ReactNode }) {
+export default function CoachShell({ userEmail, children, initialTheme }: { userEmail: string | undefined; children: React.ReactNode; initialTheme: ThemeName }) {
   const palette = usePalette();
+  const { hydrateTheme } = useTheme();
+
+  useLayoutEffect(() => { hydrateTheme(initialTheme); }, [initialTheme]);
 
   return (
     <div style={{

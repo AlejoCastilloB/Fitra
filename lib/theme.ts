@@ -76,6 +76,7 @@ type ThemeContextValue = {
   theme: ThemeName;
   palette: Palette;
   setTheme: (theme: ThemeName) => void;
+  hydrateTheme: (theme: ThemeName) => void;
 };
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null);

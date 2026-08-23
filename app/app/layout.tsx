@@ -8,13 +8,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: userRow } = await supabase.from("users").select("role").eq("id", user.id).single();
+  const { data: userRow } = await supabase.from("users").select("role, theme_pref").eq("id", user.id).single();
   if (!userRow) redirect("/onboarding");
   if (userRow.role !== "client") redirect("/coach");
 
   return (
     <WorkoutSessionProvider>
-      <AppShell>{children}</AppShell>
+      <AppShell initialTheme={userRow.theme_pref === "dark" ? "dark" : "light"}>{children}</AppShell>
     </WorkoutSessionProvider>
   );
 }

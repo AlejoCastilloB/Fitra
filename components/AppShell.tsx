@@ -1,6 +1,7 @@
 "use client";
 
-import { usePalette } from "@/lib/theme";
+import { useLayoutEffect } from "react";
+import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
 import BottomNav from "@/components/BottomNav";
 import ActiveWorkoutPill from "@/components/ActiveWorkoutPill";
 import AchievementChecker from "@/components/AchievementChecker";
@@ -8,8 +9,11 @@ import HomeFab from "@/components/HomeFab";
 import RestAlarm from "@/components/RestAlarm";
 import TimezoneSync from "@/components/TimezoneSync";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, initialTheme }: { children: React.ReactNode; initialTheme: ThemeName }) {
   const palette = usePalette();
+  const { hydrateTheme } = useTheme();
+
+  useLayoutEffect(() => { hydrateTheme(initialTheme); }, [initialTheme]);
 
   return (
     <div style={{
