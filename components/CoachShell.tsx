@@ -40,7 +40,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
           <NavItem href="/coach/clients" icon={<Users size={17} />} label="Clientes" />
           <NavItem href="/coach/routines" icon={<Dumbbell size={17} />} label="Rutinas" />
           <NavItem href="/coach/exercises" icon={<Dumbbell size={17} />} label="Ejercicios" />
-          <NavItem href="/coach/messages" icon={<MessageSquare size={17} />} label="Mensajes" />
+          <NavItem href="/coach/message" icon={<MessageSquare size={17} />} label="Mensajes" />
 
           <div style={{ flex: 1 }} />
 

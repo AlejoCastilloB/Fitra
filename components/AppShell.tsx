@@ -8,6 +8,7 @@ import AchievementChecker from "@/components/AchievementChecker";
 import HomeFab from "@/components/HomeFab";
 import RestAlarm from "@/components/RestAlarm";
 import TimezoneSync from "@/components/TimezoneSync";
+import InviteBanner from "@/components/InviteBanner";
 
 export default function AppShell({ children, initialTheme }: { children: React.ReactNode; initialTheme: ThemeName }) {
   const palette = usePalette();
@@ -34,6 +35,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <AchievementChecker />
       <RestAlarm />
       <TimezoneSync />
+      <InviteBanner />
       <HomeFab />
       <BottomNav />
     </div>
