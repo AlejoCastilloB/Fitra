@@ -16,7 +16,7 @@ export default function RecipeChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Hola, soy la IA de Alejo 👋 Contame qué ingredientes tenés disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." },
+    { role: "assistant", content: "Hola, soy la IA de Alejo 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." },
   ]);
   const [input, setInput] = useState("");
   const [stagedImage, setStagedImage] = useState<string | null>(null);

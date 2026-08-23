@@ -33,7 +33,7 @@ export default async function CoachToday() {
       {/* lista completa de clientes */}
       <Section title="Todos tus clientes">
         {(!clients || clients.length === 0) ? (
-          <EmptyState text="Todavía no tenés clientes asignados. Generá un link de invitación para sumar el primero." />
+          <EmptyState text="Todavía no tienes clientes asignados. Genera un link de invitación para sumar el primero." />
         ) : (
           clients.map((c: any) => (
             <div key={c.user_id} style={{

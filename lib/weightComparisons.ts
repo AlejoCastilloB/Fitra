@@ -35,7 +35,7 @@ const COMPARISONS: WeightComparison[] = [
   { threshold: 20000, emoji: "✈️", text: "¡un avión pequeño completo!" },
 ];
 
-const BEYOND: WeightComparison = { threshold: 20000, emoji: "🚀", text: "rompiste la escala — sos una máquina" };
+const BEYOND: WeightComparison = { threshold: 20000, emoji: "🚀", text: "rompiste la escala — eres una máquina" };
 
 export function getWeightComparison(volumeKg: number): WeightComparison {
   if (volumeKg > 20000) return BEYOND;

@@ -11,7 +11,7 @@ webpush.setVapidDetails(
 const MEAL_SLOTS = [
   {
     key: "breakfast", hour: 8, windowStart: 5, windowEnd: 11,
-    title: "¿Ya desayunaste?", body: "Registrá tu desayuno para llevar bien el conteo de calorías de hoy.",
+    title: "¿Ya desayunaste?", body: "Registra tu desayuno para llevar bien el conteo de calorías de hoy.",
   },
   {
     key: "lunch", hour: 13, windowStart: 11, windowEnd: 16,
@@ -19,7 +19,7 @@ const MEAL_SLOTS = [
   },
   {
     key: "dinner", hour: 20, windowStart: 18, windowEnd: 23,
-    title: "¿Ya cenaste?", body: "Registrá tu cena para cerrar el día con tus macros completos.",
+    title: "¿Ya cenaste?", body: "Registra tu cena para cerrar el día con tus macros completos.",
   },
 ] as const;
 

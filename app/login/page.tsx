@@ -68,7 +68,7 @@ export default function LoginPage() {
         {screen === "select" && (
           <>
             <h2 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Entrar a FitTrack</h2>
-            <p style={{ color: palette.inkDim, fontSize: 14.5, margin: "0 0 26px" }}>¿Cómo querés entrar hoy?</p>
+            <p style={{ color: palette.inkDim, fontSize: 14.5, margin: "0 0 26px" }}>¿Cómo quieres entrar hoy?</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <RoleCard icon={<Users size={20} />} title="Soy entrenador" sub="Gestiona clientes y rutinas" onClick={() => setScreen("trainer")} />
               <RoleCard icon={<Dumbbell size={20} />} title="Soy usuario" sub="Entrena y sigue tu plan" onClick={() => setScreen("user")} />
