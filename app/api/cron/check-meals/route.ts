@@ -10,16 +10,20 @@ webpush.setVapidDetails(
 
 const MEAL_SLOTS = [
   {
-    key: "breakfast", hour: 8, windowStart: 5, windowEnd: 11,
-    title: "¿Ya desayunaste?", body: "Registra tu desayuno para llevar bien el conteo de calorías de hoy.",
+    key: "breakfast", hour: 7, minute: 0, windowStart: 5, windowEnd: 10,
+    title: "¿Qué vas a desayunar hoy?", body: "Registra tu desayuno para arrancar bien el día.",
   },
   {
-    key: "lunch", hour: 13, windowStart: 11, windowEnd: 16,
-    title: "Hora del almuerzo", body: "No olvides registrar tu almuerzo en FitTrack.",
+    key: "morning_snack", hour: 11, minute: 30, windowStart: 10, windowEnd: 13,
+    title: "¿Piensas comer algún snack?", body: "Regístralo y sigue sumando a tu progreso.",
   },
   {
-    key: "dinner", hour: 20, windowStart: 18, windowEnd: 23,
-    title: "¿Ya cenaste?", body: "Registra tu cena para cerrar el día con tus macros completos.",
+    key: "afternoon_snack", hour: 15, minute: 30, windowStart: 13, windowEnd: 17,
+    title: "¿Merienda a la vista?", body: "Regístrala y sigue sumando a tu progreso.",
+  },
+  {
+    key: "dinner", hour: 18, minute: 30, windowStart: 17, windowEnd: 22,
+    title: "¿Qué vas a cenar?", body: "Registra tu cena para cerrar el día con tus macros completos.",
   },
 ] as const;
 
@@ -63,7 +67,11 @@ export async function GET(req: Request) {
       continue;
     }
 
-    const slot = MEAL_SLOTS.find((s) => local!.hour === s.hour && local!.minute < 15);
+    const localTotalMin = local.hour * 60 + local.minute;
+    const slot = MEAL_SLOTS.find((s) => {
+      const diff = localTotalMin - (s.hour * 60 + s.minute);
+      return diff >= 0 && diff < 15;
+    });
     if (!slot) continue;
 
     const { data: already } = await admin
