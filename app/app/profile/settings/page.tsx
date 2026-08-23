@@ -10,6 +10,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
+import { MEASUREMENT_ZONES, REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
 
 const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }> = {
   clasico: { label: "Clásico", freq: 880, pattern: [0.35] },
@@ -51,11 +52,15 @@ export default function ProfileSettingsPage() {
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
   const [currentWeight, setCurrentWeight] = useState("");
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
+  const [measurementZones, setMeasurementZones] = useState<string[]>([]);
+  const [progressReminderDays, setProgressReminderDays] = useState<number | null>(null);
 
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [showWeightEdit, setShowWeightEdit] = useState(false);
   const [showDietEdit, setShowDietEdit] = useState(false);
+  const [showProgressEdit, setShowProgressEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -66,10 +71,13 @@ export default function ProfileSettingsPage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt").eq("id", id).single();
+      const { data: userRow } = await supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days").eq("id", id).single();
       if (userRow) {
         setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || "");
         setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
+        setUnitSystem((userRow.unit_system as UnitSystem) ?? "metric");
+        setMeasurementZones(userRow.measurement_zones || []);
+        setProgressReminderDays(userRow.progress_reminder_days ?? null);
       }
 
       const { data: clientRow } = await supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight").eq("user_id", id).single();
@@ -139,6 +147,21 @@ export default function ProfileSettingsPage() {
     setKitchenEquipment((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
   }
 
+  function toggleZone(key: string) {
+    setMeasurementZones((prev) => {
+      if (prev.includes(key)) return prev.filter((z) => z !== key);
+      if (prev.length >= 5) return prev;
+      return [...prev, key];
+    });
+  }
+
+  async function saveProgressSettings() {
+    await supabase.from("users").update({
+      unit_system: unitSystem, measurement_zones: measurementZones, progress_reminder_days: progressReminderDays,
+    }).eq("id", uid);
+    setShowProgressEdit(false);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -183,6 +206,15 @@ export default function ProfileSettingsPage() {
       <SettingsGroup title="Nutrición">
         <ListRow label="Restricciones alimentarias" sublabel={dietaryRestrictions || "Ninguna configurada"} showChevron onClick={() => setShowDietEdit(true)} />
         <ListRow label="Utensilios de cocina" sublabel={kitchenEquipment.length > 0 ? kitchenEquipment.join(", ") : "Ninguno configurado"} showChevron onClick={() => setShowDietEdit(true)} />
+      </SettingsGroup>
+
+      <SettingsGroup title="Registro de progreso">
+        <ListRow
+          label="Unidades y medidas"
+          sublabel={`${unitSystem === "imperial" ? "Pulgadas" : "Centímetros"} · ${measurementZones.length > 0 ? `${measurementZones.length} zonas` : "sin zonas"} · ${REMINDER_OPTIONS.find((r) => r.value === progressReminderDays)?.label ?? "Nunca"}`}
+          showChevron
+          onClick={() => setShowProgressEdit(true)}
+        />
       </SettingsGroup>
 
       <SettingsGroup title="Cuenta">
@@ -247,6 +279,52 @@ export default function ProfileSettingsPage() {
             ))}
           </div>
           <button onClick={saveDietaryInfo} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            Guardar
+          </button>
+        </Modal>
+      )}
+
+      {showProgressEdit && (
+        <Modal title="Registro de progreso" onClose={() => setShowProgressEdit(false)} maxWidth={380}>
+          <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Sistema de medidas</label>
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            {(["metric", "imperial"] as UnitSystem[]).map((u) => (
+              <button key={u} onClick={() => setUnitSystem(u)} style={{
+                flex: 1, padding: "9px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                border: `1px solid ${unitSystem === u ? palette.accent : palette.panelBorder}`,
+                background: unitSystem === u ? `${palette.accent}22` : palette.inputBg,
+                color: unitSystem === u ? palette.accent : palette.inkDim,
+              }}>
+                {u === "metric" ? "Métrico (cm, kg)" : "Imperial (in, lb)"}
+              </button>
+            ))}
+          </div>
+
+          <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Zonas a medir (hasta 5)</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+            {MEASUREMENT_ZONES.map((z) => (
+              <button key={z.key} onClick={() => toggleZone(z.key)} style={{
+                padding: "7px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer", fontWeight: 600,
+                border: `1px solid ${measurementZones.includes(z.key) ? palette.accent : palette.panelBorder}`,
+                background: measurementZones.includes(z.key) ? `${palette.accent}22` : palette.inputBg,
+                color: measurementZones.includes(z.key) ? palette.accent : palette.inkDim,
+              }}>{z.label}</button>
+            ))}
+          </div>
+
+          <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Recordatorio de registro</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+            {REMINDER_OPTIONS.map((r) => (
+              <button key={String(r.value)} onClick={() => setProgressReminderDays(r.value)} style={{
+                padding: "7px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer", fontWeight: 600,
+                border: `1px solid ${progressReminderDays === r.value ? palette.accent : palette.panelBorder}`,
+                background: progressReminderDays === r.value ? `${palette.accent}22` : palette.inputBg,
+                color: progressReminderDays === r.value ? palette.accent : palette.inkDim,
+              }}>{r.label}</button>
+            ))}
+          </div>
+
+          <button onClick={saveProgressSettings} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
             Guardar
           </button>
         </Modal>

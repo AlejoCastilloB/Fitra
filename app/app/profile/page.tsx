@@ -7,8 +7,9 @@ import { getDisplayStreak } from "@/lib/streak";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import { toPng } from "html-to-image";
 import Link from "next/link";
-import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2 } from "lucide-react";
+import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler } from "lucide-react";
 import Modal from "@/components/Modal";
+import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, type UnitSystem } from "@/lib/units";
 
 function computeBadges(streak: number, totalWorkouts: number, totalPRs: number) {
   const badges: { emoji: string; label: string }[] = [];
@@ -47,6 +48,11 @@ export default function ProfilePage() {
   const [topPRs, setTopPRs] = useState<any[]>([]);
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
   const [showVolumeDetail, setShowVolumeDetail] = useState(false);
+  const [unitSystem, setUnitSystemState] = useState<UnitSystem>("metric");
+  const [measurementZones, setMeasurementZones] = useState<string[]>([]);
+  const [currentWeight, setCurrentWeight] = useState("");
+  const [latestMeasurements, setLatestMeasurements] = useState<Record<string, number>>({});
+  const [showMeasurementsModal, setShowMeasurementsModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -55,8 +61,20 @@ export default function ProfilePage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("display_name, avatar_url").eq("id", id).single();
-      if (userRow) { setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || ""); }
+      const { data: userRow } = await supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single();
+      if (userRow) {
+        setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || "");
+        setUnitSystemState((userRow.unit_system as UnitSystem) ?? "metric");
+        setMeasurementZones(userRow.measurement_zones || []);
+      }
+
+      const { data: clientRow } = await supabase.from("clients").select("current_weight").eq("user_id", id).single();
+      setCurrentWeight(clientRow?.current_weight ? String(clientRow.current_weight) : "");
+
+      const { data: measurementRows } = await supabase.from("body_measurements").select("measurement_key, value_cm").eq("user_id", id).order("date", { ascending: false });
+      const latest: Record<string, number> = {};
+      (measurementRows ?? []).forEach((m: any) => { if (!(m.measurement_key in latest)) latest[m.measurement_key] = m.value_cm; });
+      setLatestMeasurements(latest);
 
       const { data: streakRow } = await supabase.from("streaks").select("current_weeks, last_workout_date").eq("client_id", id).single();
       setStreak(getDisplayStreak(streakRow?.current_weeks ?? 0, streakRow?.last_workout_date ?? null));
@@ -211,15 +229,23 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div style={sectionLabelStyle(palette)}>Fotos de progreso</div>
+      <div style={sectionLabelStyle(palette)}>Registra tu progreso</div>
       <div style={{ marginBottom: 22 }}>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleUploadPhoto} style={{ display: "none" }} />
-        <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, borderRadius: 12,
-          border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 14,
-        }}>
-          <Camera size={15} /> {uploading ? "Subiendo..." : "Agregar foto"}
-        </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 12,
+            border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            <Camera size={15} /> {uploading ? "Subiendo..." : "Agregar foto"}
+          </button>
+          <button onClick={() => setShowMeasurementsModal(true)} style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 12,
+            border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            <Ruler size={15} /> Medidas y peso
+          </button>
+        </div>
 
         {compareA && compareB && (
           <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", marginBottom: 14, aspectRatio: "3/4", background: palette.inputBg }}>
@@ -307,6 +333,22 @@ export default function ProfilePage() {
       )}
 
       {showVolumeDetail && <VolumeDetailModal volume={stats.totalVolume} onClose={() => setShowVolumeDetail(false)} />}
+
+      {showMeasurementsModal && (
+        <MeasurementsModal
+          uid={uid}
+          unitSystem={unitSystem}
+          zones={measurementZones}
+          latestMeasurements={latestMeasurements}
+          currentWeight={currentWeight}
+          onClose={() => setShowMeasurementsModal(false)}
+          onSaved={(weight, updated) => {
+            setCurrentWeight(weight);
+            setLatestMeasurements((prev) => ({ ...prev, ...updated }));
+            setShowMeasurementsModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -398,6 +440,78 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
         opacity: sharing ? 0.7 : 1,
       }}>
         <Share2 size={15} /> {sharing ? "Generando imagen..." : "Compartir como imagen"}
+      </button>
+    </Modal>
+  );
+}
+
+function MeasurementsModal({
+  uid, unitSystem, zones, latestMeasurements, currentWeight, onClose, onSaved,
+}: {
+  uid: string; unitSystem: UnitSystem; zones: string[]; latestMeasurements: Record<string, number>;
+  currentWeight: string; onClose: () => void; onSaved: (weight: string, updated: Record<string, number>) => void;
+}) {
+  const palette = usePalette();
+  const supabase = createClient();
+  const [weight, setWeight] = useState(currentWeight);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const activeZones = MEASUREMENT_ZONES.filter((z) => zones.includes(z.key));
+
+  async function save() {
+    setSaving(true);
+    if (weight.trim()) {
+      await supabase.from("clients").update({ current_weight: +weight || null }).eq("user_id", uid);
+    }
+
+    const updated: Record<string, number> = {};
+    const rows = activeZones
+      .filter((z) => values[z.key]?.trim())
+      .map((z) => {
+        const valueCm = displayToCm(+values[z.key], unitSystem);
+        updated[z.key] = valueCm;
+        return { user_id: uid, measurement_key: z.key, value_cm: valueCm };
+      });
+    if (rows.length > 0) await supabase.from("body_measurements").insert(rows);
+
+    setSaving(false);
+    onSaved(weight, updated);
+  }
+
+  return (
+    <Modal title="Medidas y peso" onClose={onClose} maxWidth={380}>
+      <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 6 }}>
+        Peso actual ({unitSystem === "imperial" ? "lb" : "kg"})
+      </label>
+      <input
+        type="number" value={weight} onChange={(e) => setWeight(e.target.value)}
+        style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 16 }}
+      />
+
+      {activeZones.length === 0 ? (
+        <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, marginBottom: 16 }}>
+          Todavía no configuraste qué zonas medir. Puedes elegirlas en{" "}
+          <Link href="/app/profile/settings" onClick={onClose} style={{ color: palette.accent }}>Ajustes</Link>.
+        </p>
+      ) : (
+        activeZones.map((z) => (
+          <div key={z.key} style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 6 }}>
+              {z.label} ({unitLabel(unitSystem)})
+            </label>
+            <input
+              type="number"
+              value={values[z.key] ?? ""}
+              onChange={(e) => setValues((prev) => ({ ...prev, [z.key]: e.target.value }))}
+              placeholder={latestMeasurements[z.key] ? String(cmToDisplay(latestMeasurements[z.key], unitSystem)) : undefined}
+              style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14 }}
+            />
+          </div>
+        ))
+      )}
+
+      <button onClick={save} disabled={saving} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", marginTop: 6, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+        {saving ? "Guardando..." : "Guardar"}
       </button>
     </Modal>
   );
