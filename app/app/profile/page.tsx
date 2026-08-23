@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { getDisplayStreak } from "@/lib/streak";
 import { getWeightComparison } from "@/lib/weightComparisons";
-import { toPng } from "html-to-image";
 import Link from "next/link";
 import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler } from "lucide-react";
 import Modal from "@/components/Modal";
@@ -404,6 +403,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
     if (!cardRef.current) return;
     setSharing(true);
     try {
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });

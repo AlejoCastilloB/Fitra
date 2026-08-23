@@ -10,7 +10,6 @@ import { getSetBadge } from "@/lib/setBadges";
 import { computeStreakUpdate } from "@/lib/streak";
 import { supersetColor } from "@/lib/supersetColors";
 import { getWeightComparison } from "@/lib/weightComparisons";
-import { toPng } from "html-to-image";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Camera, Link2, StickyNote } from "lucide-react";
@@ -55,23 +54,40 @@ export default function WorkoutPage() {
     if (session && session.routineId === id) { setLoading(false); return; }
 
     (async () => {
-      const { data: re, error: reError } = await supabase
-        .from("routine_exercises")
-        .select("order_index, target_sets, notes, superset_group, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
-        .eq("routine_id", id)
-        .order("order_index");
+      const [
+        { data: re, error: reError },
+        { data: routine },
+        { data: userRow },
+        { data: prRows },
+        { data: videoRows },
+      ] = await Promise.all([
+        supabase
+          .from("routine_exercises")
+          .select("order_index, target_sets, notes, superset_group, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
+          .eq("routine_id", id)
+          .order("order_index"),
+        supabase.from("routines").select("name").eq("id", id).single(),
+        supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe, auto_warmup_prompt").eq("id", uid).single(),
+        supabase.from("personal_records").select("exercise_id, value").eq("client_id", uid).eq("type", "1rm"),
+        supabase.from("exercise_video_links").select("exercise_id, video_url").eq("user_id", uid),
+      ]);
 
       if (reError) setLoadError(reError.message);
 
-      const { data: routine } = await supabase.from("routines").select("name").eq("id", id).single();
-
-      const { data: userRow } = await supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe, auto_warmup_prompt").eq("id", uid).single();
       if (userRow) {
         setDefaultRest(userRow.default_rest_seconds ?? 90);
         setKeepAwake(userRow.keep_screen_awake ?? false);
         setTrackRpe(userRow.track_rpe ?? false);
         setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
       }
+
+      const prMap: Record<string, number> = {};
+      (prRows ?? []).forEach((r: any) => { if (!prMap[r.exercise_id] || r.value > prMap[r.exercise_id]) prMap[r.exercise_id] = r.value; });
+      setBestPRMap(prMap);
+
+      const videoMap: Record<string, string> = {};
+      (videoRows ?? []).forEach((r: any) => { videoMap[r.exercise_id] = r.video_url; });
+      setVideoLinkMap(videoMap);
 
       const built: LiveExercise[] = (re ?? []).map((r: any) => ({
         id: r.exercises.id, name: r.exercises.name, media_url: r.exercises.media_url,
@@ -102,16 +118,6 @@ export default function WorkoutPage() {
         return [ex.id, bySet] as const;
       }));
       setPreviousMap(Object.fromEntries(prevEntries));
-
-      const { data: prRows } = await supabase.from("personal_records").select("exercise_id, value").eq("client_id", uid).eq("type", "1rm");
-      const prMap: Record<string, number> = {};
-      (prRows ?? []).forEach((r: any) => { if (!prMap[r.exercise_id] || r.value > prMap[r.exercise_id]) prMap[r.exercise_id] = r.value; });
-      setBestPRMap(prMap);
-
-      const { data: videoRows } = await supabase.from("exercise_video_links").select("exercise_id, video_url").eq("user_id", uid);
-      const videoMap: Record<string, string> = {};
-      (videoRows ?? []).forEach((r: any) => { videoMap[r.exercise_id] = r.video_url; });
-      setVideoLinkMap(videoMap);
 
       startSession(id, routine?.name ?? "Entrenamiento", built);
       setLoading(false);
@@ -577,6 +583,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
     if (!cardRef.current) return;
     setSharing(true);
     try {
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });

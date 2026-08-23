@@ -71,7 +71,11 @@ export default function ProfileSettingsPage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const { data: userRow } = await supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days").eq("id", id).single();
+      const [{ data: userRow }, { data: clientRow }] = await Promise.all([
+        supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days").eq("id", id).single(),
+        supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight").eq("user_id", id).single(),
+      ]);
+
       if (userRow) {
         setTimerSound(userRow.timer_sound); setDisplayName(userRow.display_name || "");
         setAutoWarmupPrompt(userRow.auto_warmup_prompt ?? true);
@@ -80,7 +84,6 @@ export default function ProfileSettingsPage() {
         setProgressReminderDays(userRow.progress_reminder_days ?? null);
       }
 
-      const { data: clientRow } = await supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight").eq("user_id", id).single();
       if (clientRow) {
         setDietaryRestrictions(clientRow.dietary_restrictions || "");
         setKitchenEquipment(clientRow.kitchen_equipment || []);
