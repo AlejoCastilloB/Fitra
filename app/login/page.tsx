@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Dumbbell, Users, ChevronLeft, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Dumbbell, Users, ChevronLeft, Mail, Lock, Eye, EyeOff, ArrowRight, MailCheck } from "lucide-react";
 
 const palette = {
   bg: "#0A0C10",
@@ -18,11 +18,14 @@ const palette = {
 
 export default function LoginPage() {
   const [screen, setScreen] = useState<"select" | "trainer" | "user">("select");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -51,6 +54,43 @@ export default function LoginPage() {
     router.push(userRow?.role === "trainer" ? "/coach" : "/app");
   }
 
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setLoading(true);
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message.toLowerCase().includes("already registered") || signUpError.message.toLowerCase().includes("already been registered")
+        ? "Ese correo ya tiene una cuenta. Inicia sesión en vez de crear una nueva."
+        : "No pudimos crear la cuenta, intenta de nuevo.");
+      setLoading(false);
+      return;
+    }
+
+    if (data.session) {
+      router.push("/onboarding");
+      return;
+    }
+
+    setSignupSuccess(true);
+    setLoading(false);
+  }
+
   async function handleGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -76,7 +116,22 @@ export default function LoginPage() {
           </>
         )}
 
-        {screen !== "select" && (
+        {screen !== "select" && signupSuccess && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: palette.accent,
+            }}>
+              <MailCheck size={24} />
+            </div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>Revisa tu correo</h2>
+            <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.5 }}>
+              Te enviamos un link a <strong style={{ color: palette.ink }}>{email}</strong> para confirmar tu cuenta. Una vez lo confirmes, ya puedes iniciar sesión.
+            </p>
+          </div>
+        )}
+
+        {screen !== "select" && !signupSuccess && (
           <>
             <button onClick={() => setScreen("select")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: palette.inkDim, fontSize: 13, cursor: "pointer", padding: "4px 6px", marginBottom: 18, marginLeft: -6 }}>
               <ChevronLeft size={15} /> Volver
@@ -85,9 +140,11 @@ export default function LoginPage() {
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: palette.accent, background: `${palette.accent}1a`, padding: "3px 9px", borderRadius: 999 }}>
               {screen === "trainer" ? "Entrenador" : "Usuario"}
             </span>
-            <h2 style={{ fontSize: 23, fontWeight: 700, margin: "8px 0 4px" }}>Bienvenido de vuelta</h2>
+            <h2 style={{ fontSize: 23, fontWeight: 700, margin: "8px 0 4px" }}>
+              {mode === "login" ? "Bienvenido de vuelta" : "Creemos tu cuenta"}
+            </h2>
 
-            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
+            <form onSubmit={mode === "login" ? handleLogin : handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
               <Field
                 icon={<Mail size={16} />}
                 type="email"
@@ -110,6 +167,17 @@ export default function LoginPage() {
                 </button>
               </div>
 
+              {mode === "signup" && (
+                <Field
+                  icon={<Lock size={16} />}
+                  type={showPw ? "text" : "password"}
+                  placeholder="••••••••"
+                  label="Confirmar contraseña"
+                  value={confirmPassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                />
+              )}
+
               {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
 
               <button type="submit" disabled={loading} style={{
@@ -118,7 +186,9 @@ export default function LoginPage() {
                 color: "#0A0C10", fontWeight: 700, fontSize: 14.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 opacity: loading ? 0.7 : 1,
               }}>
-                {loading ? "Entrando..." : <>Entrar <ArrowRight size={16} /></>}
+                {mode === "login"
+                  ? (loading ? "Entrando..." : <>Entrar <ArrowRight size={16} /></>)
+                  : (loading ? "Creando cuenta..." : <>Crear cuenta <ArrowRight size={16} /></>)}
               </button>
 
               <button type="button" onClick={handleGoogle} style={{
@@ -126,6 +196,14 @@ export default function LoginPage() {
                 border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}>
                 Continuar con Google
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setMode((m) => (m === "login" ? "signup" : "login")); setError(null); }}
+                style={{ background: "none", border: "none", color: palette.accent, fontSize: 12.5, cursor: "pointer", marginTop: 2, textAlign: "center" }}
+              >
+                {mode === "login" ? "¿No tienes cuenta? Crear una" : "¿Ya tienes cuenta? Inicia sesión"}
               </button>
             </form>
           </>
