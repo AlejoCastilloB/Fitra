@@ -63,7 +63,7 @@ export default function HomeFab() {
   const items = [
     { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/progress", external: false },
     { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
-    { icon: <Sparkles size={17} />, label: "Preguntarle a la IA de Alejo", href: "/app/nutrition/recipes", external: false },
+    { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
     { icon: <Phone size={17} />, label: "Hablar con Alejo", href: `https://wa.me/${WHATSAPP_NUMBER}`, external: true },
   ];
 

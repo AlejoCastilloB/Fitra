@@ -679,7 +679,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
           </div>
         )}
 
-        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · la IA de Alejo</div>
+        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · Fitra</div>
       </div>
 
       <div style={{ marginBottom: 22 }}>

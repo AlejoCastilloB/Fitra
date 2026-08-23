@@ -20,7 +20,7 @@ export default function RecipeCard({
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{recipe.title}</div>
-          <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(recipe.kcal)} kcal · sugerida por la IA de Alejo</div>
+          <div style={{ fontSize: 11, color: palette.inkDim }}>{Math.round(recipe.kcal)} kcal · sugerida por Fitra</div>
         </div>
       </div>
     );

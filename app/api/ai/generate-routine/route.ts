@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
   if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
-    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con la IA de Alejo hoy. Vuelve mañana.` }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy. Vuelve mañana.` }, { status: 429 });
   }
 
   const MUSCLE_KEYWORDS: Record<string, string[]> = {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
   const candidateList = candidates.map((c) => `${c.id}|${c.name}|${c.muscle_group}|${c.equipment}|${c.measurement_type}`).join("\n");
 
-  const systemPrompt = `Eres la IA de Alejo, el asistente de entrenamiento de FitTrack. Tu tono es positivo y motivador. Vas a armar una rutina de entrenamiento según lo que te pida el usuario (por texto, foto o audio).
+  const systemPrompt = `Eres Fitra, el asistente de entrenamiento de FitTrack. Tu tono es positivo y motivador. Vas a armar una rutina de entrenamiento según lo que te pida el usuario (por texto, foto o audio).
 
 REGLA CRÍTICA: solo puedes usar ejercicios de esta lista (formato id|nombre|músculo|equipo|tipo_medición), nunca inventes ejercicios ni uses ids que no estén aquí:
 ${candidateList}

@@ -12,7 +12,7 @@ const palette = {
 };
 
 const FEATURES = [
-  { icon: Dumbbell, title: "Rutinas a tu medida", text: "Arma tu propio plan o deja que la IA de Alejo te lo arme según tu objetivo y tu nivel." },
+  { icon: Dumbbell, title: "Rutinas a tu medida", text: "Arma tu propio plan o deja que Fitra te lo arme según tu objetivo y tu nivel." },
   { icon: Camera, title: "Registra comidas con una foto", text: "Toma una foto de tu plato y la IA calcula calorías y macros al instante." },
   { icon: ChefHat, title: "Recetas a tu manera", text: "Pide ideas de comida a la IA según lo que tengas disponible en tu cocina." },
   { icon: MessagesSquare, title: "Tu coach, siempre cerca", text: "Tu entrenador ve tu progreso real y te acompaña desde la misma app." },
@@ -59,7 +59,7 @@ export default function Home() {
           display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
           color: palette.accent, background: `${palette.accent}18`, padding: "5px 12px", borderRadius: 999, marginBottom: 18,
         }}>
-          <Sparkles size={11} /> Con la IA de Alejo
+          <Sparkles size={11} /> Con Fitra
         </span>
         <h1 style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.2, margin: "0 0 14px" }}>
           Entrena, come mejor y avanza con tu coach
@@ -156,7 +156,7 @@ export default function Home() {
       </div>
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "0 20px 30px", fontSize: 11, color: palette.inkDim }}>
-        FitTrack · la IA de Alejo
+        FitTrack · Fitra
       </div>
     </main>
   );

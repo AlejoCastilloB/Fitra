@@ -17,7 +17,7 @@ export default function RecipeChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Hola, soy la IA de Alejo 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." },
+    { role: "assistant", content: "Hola, soy Fitra 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." },
   ]);
   const [input, setInput] = useState("");
   const [stagedImage, setStagedImage] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export default function RecipeChatPage() {
       });
       const data = await res.json();
 
-      if (!res.ok) setError(data.message || data.error || "Error al hablar con la IA de Alejo");
+      if (!res.ok) setError(data.message || data.error || "Error al hablar con Fitra");
       else {
         setMessages([...nextMessages, { role: "assistant", content: data.reply, recipe: data.recipe }]);
         setRemaining(data.remaining);
@@ -94,7 +94,7 @@ export default function RecipeChatPage() {
   async function saveRecipe(msgIdx: number, recipe: Recipe) {
     const { data: auth } = await supabase.auth.getUser();
     await supabase.from("nutrition_logs").insert({
-      client_id: auth.user!.id, food_name: recipe.title, portion: "Receta sugerida por la IA de Alejo",
+      client_id: auth.user!.id, food_name: recipe.title, portion: "Receta sugerida por Fitra",
       kcal: recipe.kcal, protein: recipe.protein, carbs: recipe.carbs, fat: recipe.fat,
       source: "manual", recipe_data: recipe,
     });
@@ -118,7 +118,7 @@ export default function RecipeChatPage() {
         </button>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-            <Sparkles size={14} color={palette.accent} /> IA de Alejo
+            <Sparkles size={14} color={palette.accent} /> Fitra
           </div>
           <div style={{ fontSize: 11, color: palette.inkDim }}>Sugerencias de recetas</div>
         </div>

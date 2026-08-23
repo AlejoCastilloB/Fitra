@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
   if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
-    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con la IA de Alejo hoy.` }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy.` }, { status: 429 });
   }
 
   const prompt = `Transcribe esta nota de voz de un entrenador sobre un ejercicio, y devuélvela como una nota escrita clara y ordenada (corrige muletillas, ordena la idea, mantén el sentido técnico exacto de lo que dijo). Máximo 3-4 líneas. Responde SOLO con el texto final de la nota, sin comillas ni explicación adicional, en español neutro colombiano/latinoamericano sin voseo.`;

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
 
   if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
-    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con la IA de Alejo hoy. Vuelve mañana.` }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy. Vuelve mañana.` }, { status: 429 });
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     fat: Math.max(0, DAILY_GOALS.fat - consumed.fat),
   };
 
-  const systemPrompt = `Eres la IA de Alejo, el asistente de nutrición de FitTrack. Tu personalidad es siempre positiva, cercana y motivadora — guías al usuario, nunca lo juzgas. Tu especialidad es sugerir recetas prácticas y saludables según los ingredientes que el usuario tiene disponibles, y siempre buscas ayudarlo a completar sus metas del día de forma inteligente.
+  const systemPrompt = `Eres Fitra, el asistente de nutrición de FitTrack. Tu personalidad es siempre positiva, cercana y motivadora — guías al usuario, nunca lo juzgas. Tu especialidad es sugerir recetas prácticas y saludables según los ingredientes que el usuario tiene disponibles, y siempre buscas ayudarlo a completar sus metas del día de forma inteligente.
 
 Al usuario le quedan hoy aproximadamente: ${Math.round(remainingMacros.kcal)} kcal, ${Math.round(remainingMacros.protein)}g de proteína, ${Math.round(remainingMacros.carbs)}g de carbohidratos y ${Math.round(remainingMacros.fat)}g de grasa por consumir. Usa este dato para orientar tus sugerencias cuando tenga sentido.
 

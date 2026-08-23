@@ -309,7 +309,7 @@ function OnboardingForm() {
               {displayName ? `¡Listo, ${displayName.trim()}!` : "¡Todo listo!"}
             </h2>
             <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 26 }}>
-              Ya armamos tu perfil. La IA de Alejo va a usar todo esto para darte mejores recomendaciones desde el primer día.
+              Ya armamos tu perfil. Fitra va a usar todo esto para darte mejores recomendaciones desde el primer día.
             </p>
             <button onClick={() => router.push("/app")} disabled={saving} style={{
               width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",

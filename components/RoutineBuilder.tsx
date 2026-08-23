@@ -305,7 +305,7 @@ export default function RoutineBuilder({
         border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
         fontSize: 12.5, fontWeight: 700, cursor: "pointer",
       }}>
-        ✨ Pedirle a la IA de Alejo que arme la rutina
+        ✨ Pedirle a Fitra que arme la rutina
       </button>
 
       <button onClick={() => setShowDetails((v) => !v)} style={{
@@ -353,7 +353,7 @@ export default function RoutineBuilder({
 
       {picked.length === 0 ? (
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
-          Agrega ejercicios desde "Ejercicios" arriba o pídele a la IA de Alejo que arme la rutina.
+          Agrega ejercicios desde "Ejercicios" arriba o pídele a Fitra que arme la rutina.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -414,7 +414,7 @@ export default function RoutineBuilder({
                       />
                       <button
                         onClick={() => toggleNoteRecording(ex.id)}
-                        title="Díselo a la IA para que lo escriba por ti"
+                        title="Díselo a Fitra para que lo escriba por ti"
                         style={{
                           position: "absolute", right: 8, top: 8, width: 26, height: 26, borderRadius: 8, border: "none",
                           background: recordingFor === ex.id ? "#f8717122" : `${palette.accent}18`,
@@ -426,7 +426,7 @@ export default function RoutineBuilder({
                       </button>
                     </div>
                     <p style={{ fontSize: 10, color: palette.inkDim, marginTop: 4 }}>
-                      {transcribingFor === ex.id ? "La IA de Alejo está escribiendo tu nota..." : "🎙️ Díselo a la IA para que lo escriba por ti"}
+                      {transcribingFor === ex.id ? "Fitra está escribiendo tu nota..." : "🎙️ Díselo a Fitra para que lo escriba por ti"}
                     </p>
                   </div>
                 )}

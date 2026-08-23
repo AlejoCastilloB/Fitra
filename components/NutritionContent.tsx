@@ -210,7 +210,7 @@ export default function NutritionContent() {
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Nutrición</h1>
       <p style={{ color: palette.inkDim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 18 }}>
-        Toma una foto, escríbelo o graba una nota — la IA de Alejo se encarga del resto.
+        Toma una foto, escríbelo o graba una nota — Fitra se encarga del resto.
       </p>
 
       <div className="ft-pop" style={{ marginBottom: 14 }}>
@@ -277,7 +277,7 @@ export default function NutritionContent() {
           <Sparkles size={11} /> Contexto extra (opcional)
         </p>
         <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 10, lineHeight: 1.4 }}>
-          Darle más detalles a la IA de Alejo ayuda a que el cálculo sea más preciso.
+          Darle más detalles a Fitra ayuda a que el cálculo sea más preciso.
         </p>
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: 2 tazas de arroz, con aceite de oliva..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
         <button onClick={toggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}>
@@ -294,7 +294,7 @@ export default function NutritionContent() {
         fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: analyzing ? 0.7 : 1,
       }}>
-        {analyzing ? <><Loader2 size={17} /> La IA de Alejo está analizando...</> : <><Camera size={17} /> Foto de tu comida</>}
+        {analyzing ? <><Loader2 size={17} /> Fitra está analizando...</> : <><Camera size={17} /> Foto de tu comida</>}
       </button>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -302,7 +302,7 @@ export default function NutritionContent() {
         <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
       </div>
       <Link href="/app/nutrition/recipes" style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
-        <Sparkles size={14} color={palette.accent} /> Preguntarle a la IA de Alejo por recetas
+        <Sparkles size={14} color={palette.accent} /> Preguntarle a Fitra por recetas
       </Link>
 
       {remaining !== null && (

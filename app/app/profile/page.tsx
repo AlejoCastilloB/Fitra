@@ -441,7 +441,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
         <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
         <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
         <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>
-        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · la IA de Alejo</div>
+        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · Fitra</div>
       </div>
 
       <button onClick={share} disabled={sharing} style={{

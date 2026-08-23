@@ -105,7 +105,7 @@ export default function AIRoutineGenerator({
   }
 
   return (
-    <Modal title="Generar rutina con IA de Alejo" onClose={onClose} maxWidth={420}>
+    <Modal title="Generar rutina con Fitra" onClose={onClose} maxWidth={420}>
       <p style={{ fontSize: 12, color: palette.inkDim, marginBottom: 12, lineHeight: 1.5 }}>
         Describe lo que buscas (duración, enfoque, equipo disponible). También puedes adjuntar una foto o nota de voz.
       </p>
