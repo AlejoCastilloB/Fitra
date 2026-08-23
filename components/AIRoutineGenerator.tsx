@@ -16,6 +16,7 @@ export default function AIRoutineGenerator({
   const audioChunksRef = useRef<Blob[]>([]);
 
   const [prompt, setPrompt] = useState("");
+  const [minutesAvailable, setMinutesAvailable] = useState("");
   const [stagedImage, setStagedImage] = useState<string | null>(null);
   const [stagedPreview, setStagedPreview] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
@@ -82,6 +83,7 @@ export default function AIRoutineGenerator({
     setError("");
     try {
       const body: any = { prompt };
+      if (minutesAvailable.trim()) body.minutesAvailable = +minutesAvailable;
       if (stagedImage) { body.imageBase64 = stagedImage; body.mimeType = "image/jpeg"; }
       if (audioBlob) { body.audioBase64 = await fileToBase64(audioBlob, false); body.audioMimeType = "audio/webm"; }
 
@@ -113,8 +115,18 @@ export default function AIRoutineGenerator({
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Ej: rutina de 45 min, enfoque en pierna, tengo mancuernas y banco"
+        placeholder="Ej: rutina enfoque en pierna, tengo mancuernas y banco"
         style={{ width: "100%", minHeight: 70, padding: 12, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit", resize: "vertical", marginBottom: 10 }}
+      />
+
+      <label style={{ fontSize: 11.5, color: palette.inkDim, display: "block", marginBottom: 6 }}>
+        Minutos disponibles (opcional, ayuda a calcular cuánto entra)
+      </label>
+      <input
+        type="number" inputMode="numeric" min={0} value={minutesAvailable}
+        onChange={(e) => setMinutesAvailable(e.target.value)}
+        placeholder="Ej: 45"
+        style={{ width: "100%", padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, marginBottom: 10 }}
       />
 
       {stagedPreview && (

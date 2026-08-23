@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "falta GEMINI_API_KEY en Vercel" }, { status: 500 });
   }
 
-  const { prompt, imageBase64, mimeType, audioBase64, audioMimeType } = await request.json();
+  const { prompt, imageBase64, mimeType, audioBase64, audioMimeType, minutesAvailable } = await request.json();
 
   const { data: usageRow } = await supabase
     .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
@@ -72,15 +72,32 @@ export async function POST(request: Request) {
 
   const candidateList = candidates.map((c) => `${c.id}|${c.name}|${c.muscle_group}|${c.equipment}|${c.measurement_type}`).join("\n");
 
+  const minutes = Number(minutesAvailable) || null;
+  const timeBudgetLine = minutes
+    ? `\nTIEMPO DISPONIBLE: el usuario tiene ${minutes} minutos para esta sesión. Cada serie efectiva (sin contar calentamiento) ocupa en promedio ~2.5 minutos entre ejecutarla y descansar — usá ese criterio para calcular cuántos ejercicios y series totales entran realmente en ${minutes} minutos, en vez de usar siempre el mismo rango por defecto. Si el tiempo es corto (30 min o menos), preferí menos ejercicios con superseries o dropsets en vez de recortar todos los ejercicios a 1-2 series.`
+    : "";
+
   const systemPrompt = `Eres Fitra, el asistente de entrenamiento de FitTrack. Tu tono es positivo y motivador. Vas a armar una rutina de entrenamiento según lo que te pida el usuario (por texto, foto o audio).
 
 REGLA CRÍTICA: solo puedes usar ejercicios de esta lista (formato id|nombre|músculo|equipo|tipo_medición), nunca inventes ejercicios ni uses ids que no estén aquí:
 ${candidateList}
+${timeBudgetLine}
 
 Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto:
-{"name": string, "exercises": [{"exercise_id": string, "sets": [{"set_type": "normal", "reps": number, "weight": number}]}]}
+{"name": string, "exercises": [{"exercise_id": string, "superset_group": number | null, "sets": [{"set_type": "normal", "reps": number, "weight": number}]}]}
 
-Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para distancia {"set_type":"normal","distance_m":number}, para tiempo y distancia ambos campos. El "exercise_id" debe ser EXACTAMENTE uno de los ids de la lista. Si el usuario menciona varios grupos musculares o una zona amplia (ej: "brazos" = bíceps + tríceps + antebrazo), reparte el balance entre TODOS esos subgrupos, no te concentres solo en uno. Evita elegir dos ejercicios casi idénticos (mismo patrón de movimiento, mismo ángulo); si el equipo disponible es limitado y no hay suficiente variedad, prefiere usar menos ejercicios distintos pero marcar una de sus series como "dropset" en vez de repetir el mismo movimiento dos veces. Arma entre 4 y 8 ejercicios según lo pedido, con 3-4 series cada uno salvo que el usuario pida otra cosa. Responde en español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`;
+Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para distancia {"set_type":"normal","distance_m":number}, para tiempo y distancia ambos campos. El "exercise_id" debe ser EXACTAMENTE uno de los ids de la lista.
+
+CÓMO ARMAR LA RUTINA:
+- Balance entre grupos musculares: si el usuario menciona varios grupos o una zona amplia (ej: "brazos" = bíceps + tríceps + antebrazo), reparte el volumen entre TODOS esos subgrupos, no te concentres solo en uno.
+- Frecuencia por grupo muscular dentro de la misma sesión: no seguidos más de 2 ejercicios enfocados en el mismo grupo muscular principal salvo que el usuario lo pida explícitamente (ej: "solo pierna hoy") — intercalá grupos para que el cuerpo tenga tiempo de recuperar entre series indirectas del mismo músculo.
+- Reparto de series por sesión: la cantidad de series de cada grupo muscular debe ser proporcional a cuántos grupos distintos se estén trabajando esa sesión (si son 2 grupos, cada uno se lleva más series; si son 5 grupos, menos series por grupo para no pasarte del tiempo/volumen razonable).
+- Evita elegir dos ejercicios casi idénticos (mismo patrón de movimiento, mismo ángulo).
+- Superseries (bi-series): cuando el tiempo disponible es limitado, o cuando dos ejercicios trabajan grupos musculares antagonistas o no compiten por el mismo equipo, podés agruparlos como superserie asignándoles el mismo número en "superset_group" (ej: ambos con superset_group: 1). Los ejercicios que NO son parte de ninguna superserie llevan "superset_group": null. No abuses de esto — solo cuando de verdad ahorra tiempo real.
+- Dropset: si el equipo disponible es limitado y no hay suficiente variedad de ejercicios, preferí usar menos ejercicios distintos pero marcar una de sus series como "set_type":"dropset" en vez de repetir el mismo movimiento dos veces. Ejemplo de sets con dropset: [{"set_type":"normal","reps":10,"weight":20},{"set_type":"normal","reps":10,"weight":20},{"set_type":"dropset","reps":8,"weight":14}].
+- Arma entre 4 y 8 ejercicios según lo pedido, con 3-4 series cada uno salvo que el usuario pida otra cosa o el tiempo disponible indique otro número.
+
+Responde en español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`;
 
   const parts: any[] = [{ text: prompt || "Arma una rutina general de cuerpo completo." }];
   if (imageBase64) parts.push({ inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } });
@@ -130,6 +147,7 @@ Para ejercicios de tiempo usa {"set_type":"normal","time_sec":number}, para dist
       muscle_group: byId[e.exercise_id].muscle_group,
       measurement_type: byId[e.exercise_id].measurement_type,
       sets: e.sets ?? [],
+      superset_group: typeof e.superset_group === "number" ? e.superset_group : undefined,
     }));
 
   await supabase.rpc("increment_ai_usage", { p_user_id: user.id });

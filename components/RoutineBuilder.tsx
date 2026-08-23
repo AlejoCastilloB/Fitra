@@ -201,7 +201,7 @@ export default function RoutineBuilder({
     setName(result.name);
     setPicked(result.exercises.map((e: any) => ({
       id: e.id, name: e.name, media_url: e.media_url, measurement_type: e.measurement_type,
-      sets: e.sets, notes: "",
+      sets: e.sets, notes: "", supersetGroup: typeof e.superset_group === "number" ? e.superset_group : undefined,
     })));
     setShowAI(false);
   }
