@@ -47,8 +47,17 @@ export default function HomeFab() {
   function closeMenu() {
     setOpen(false);
     setClosing(true);
+    // fallback por si el evento de fin de transición no llega (ej. el usuario navega antes de que termine)
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => { setMounted(false); setClosing(false); }, ANIM_MS);
+    closeTimer.current = setTimeout(() => { setMounted(false); setClosing(false); }, ANIM_MS + 150);
+  }
+
+  function handleBackdropTransitionEnd() {
+    if (!open) {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      setMounted(false);
+      setClosing(false);
+    }
   }
 
   const items = [
@@ -63,6 +72,7 @@ export default function HomeFab() {
       {mounted && (
         <div
           onClick={closeMenu}
+          onTransitionEnd={handleBackdropTransitionEnd}
           style={{
             position: "fixed", inset: 0, zIndex: 60,
             background: "rgba(0,0,0,0.35)",
