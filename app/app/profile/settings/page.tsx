@@ -19,7 +19,7 @@ const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }>
   digital: { label: "Digital", freq: 1400, pattern: [0.08, 0.08, 0.08, 0.08] },
 };
 
-const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla"];
+const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   const palette = usePalette();

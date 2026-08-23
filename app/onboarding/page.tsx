@@ -14,11 +14,18 @@ import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 const GOALS = [
   { id: "fuerza", label: "Fuerza" },
   { id: "perdida_grasa", label: "Pérdida de grasa" },
+  { id: "masa_muscular", label: "Ganancia de masa muscular" },
   { id: "rendimiento", label: "Rendimiento deportivo" },
-  { id: "salud", label: "Salud general" },
+  { id: "salud", label: "Salud general / Fitness en general" },
+  { id: "todo", label: "Un poco de todo" },
 ];
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
-const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla"];
+const LEVEL_DESCRIPTIONS: Record<string, string> = {
+  Principiante: "Menos de 6 meses entrenando, o recién estás empezando.",
+  Intermedio: "Entre 6 meses y 2 años de experiencia entrenando.",
+  Avanzado: "Más de 2-3 años entrenando de forma constante.",
+};
+const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
 
 const STEP_COUNT = 11;
 const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
@@ -79,7 +86,7 @@ function OnboardingForm() {
   function toggleSport(sport: string) {
     setSports((prev) => {
       if (prev.includes(sport)) return prev.filter((s) => s !== sport);
-      if (prev.length >= 2) return prev;
+      if (prev.length >= 3) return prev;
       return [...prev, sport];
     });
   }
@@ -205,13 +212,16 @@ function OnboardingForm() {
                 <Pill key={l} active={level === l} onClick={() => setLevel(l)}>{l}</Pill>
               ))}
             </div>
+            {level && (
+              <p style={{ fontSize: 12, color: palette.inkDim, marginTop: 12, lineHeight: 1.5 }}>{LEVEL_DESCRIPTIONS[level]}</p>
+            )}
           </AnamnesisStep>
         )}
 
         {role === "client" && step === 2 && (
           <AnamnesisStep title="¿Cuántos días a la semana puedes entrenar?" onBack={() => setStep(1)} onNext={() => setStep(3)}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+              {[1, 2, 3, 4, 5, 6].map((n) => (
                 <Pill key={n} active={daysAvailable === n} onClick={() => setDaysAvailable(n)}>{n}</Pill>
               ))}
             </div>
@@ -223,7 +233,7 @@ function OnboardingForm() {
         )}
 
         {role === "client" && step === 4 && (
-          <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 2." onBack={() => setStep(3)} onNext={() => setStep(5)}>
+          <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 3." onBack={() => setStep(3)} onNext={() => setStep(5)}>
             <SportSelector
               selected={sports}
               onToggle={toggleSport}
@@ -253,6 +263,9 @@ function OnboardingForm() {
               placeholder="Otras afecciones médicas relevantes (opcional)"
               style={{ ...taStyle, marginTop: 10 }}
             />
+            <p style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 10, lineHeight: 1.5 }}>
+              Esto nos ayuda a armar un perfil más personalizado y evitar ejercicios que puedan afectarte.
+            </p>
           </AnamnesisStep>
         )}
 
@@ -270,6 +283,9 @@ function OnboardingForm() {
                 <Pill key={item} active={kitchenEquipment.includes(item)} onClick={() => toggleEquipment(item)}>{item}</Pill>
               ))}
             </div>
+            <p style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 12, lineHeight: 1.5 }}>
+              Con esto podemos sugerirte recetas y planificar comidas que realmente puedas preparar en tu cocina.
+            </p>
           </AnamnesisStep>
         )}
 
