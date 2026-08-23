@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
 
 const WHATSAPP_NUMBER = "573000000000"; // reemplaza por el número real de soporte de Alejo
-const ANIM_MS = 200;
+const ANIM_MS = 260;
 
 export default function HomeFab() {
   const palette = usePalette();
@@ -65,8 +65,9 @@ export default function HomeFab() {
           onClick={closeMenu}
           style={{
             position: "fixed", inset: 0, zIndex: 60,
-            background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
+            background: "rgba(0,0,0,0.35)",
             opacity: open ? 1 : 0, transition: `opacity ${ANIM_MS}ms ease`,
+            pointerEvents: open ? "auto" : "none",
           }}
         />
       )}
@@ -81,8 +82,7 @@ export default function HomeFab() {
             onClick={closeMenu}
             style={{
               display: "flex", alignItems: "center", gap: 10, padding: "11px 16px 11px 14px", borderRadius: 999,
-              background: `${palette.bg}E6`, border: `1px solid ${palette.panelBorder}`,
-              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              background: palette.bg, border: `1px solid ${palette.panelBorder}`,
               color: palette.ink, textDecoration: "none", fontSize: 13, fontWeight: 600,
               boxShadow: "0 8px 24px -8px rgba(0,0,0,0.4)",
               whiteSpace: "nowrap",
@@ -90,6 +90,7 @@ export default function HomeFab() {
               transform: open ? "translate(0, 0)" : closing ? "translateX(26px)" : "translateY(14px)",
               transition: `opacity ${ANIM_MS}ms cubic-bezier(.16,.8,.24,1), transform ${ANIM_MS}ms cubic-bezier(.16,.8,.24,1)`,
               transitionDelay: open ? `${i * 0.04}s` : "0s",
+              pointerEvents: open ? "auto" : "none",
             }}
           >
             <span style={{ color: palette.accent, display: "flex" }}>{item.icon}</span>
