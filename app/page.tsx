@@ -1,5 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { Dumbbell, Camera, ChefHat, MessagesSquare, Bell, TrendingUp, Check, ArrowRight, Sparkles } from "lucide-react";
+import { Dumbbell, Camera, ChefHat, MessagesSquare, Bell, TrendingUp, Check, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import AppTour from "@/components/landing/AppTour";
 
 const palette = {
@@ -13,12 +16,12 @@ const palette = {
 };
 
 const FEATURES = [
-  { icon: Dumbbell, title: "Rutinas a tu medida" },
-  { icon: Camera, title: "Comidas con una foto" },
-  { icon: ChefHat, title: "Recetas al instante" },
-  { icon: MessagesSquare, title: "Tu coach, siempre cerca" },
-  { icon: Bell, title: "Avisos justo a tiempo" },
-  { icon: TrendingUp, title: "Progreso medido" },
+  { icon: Dumbbell, title: "Rutinas a tu medida", text: "Armadas para tu objetivo, nivel y días disponibles — o generadas al instante con IA." },
+  { icon: Camera, title: "Comidas con una foto", text: "Tómale una foto a tu plato y Fitra calcula las calorías y macros por ti." },
+  { icon: ChefHat, title: "Recetas al instante", text: "Cuéntale qué tienes en la cocina y arma una receta con la preparación paso a paso." },
+  { icon: MessagesSquare, title: "Tu coach, siempre cerca", text: "Chatea directo con tu entrenador y sigan tu progreso juntos." },
+  { icon: Bell, title: "Avisos justo a tiempo", text: "Recordatorio de comidas y aviso automático apenas termina tu descanso." },
+  { icon: TrendingUp, title: "Progreso medido", text: "Racha, récords personales y volumen total — tu evolución real, sin adivinar." },
 ];
 
 const STEPS = [
@@ -28,6 +31,8 @@ const STEPS = [
 ];
 
 export default function Home() {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   return (
     <main style={{
       background: palette.bg, color: palette.ink, position: "relative", fontFamily: "system-ui, sans-serif",
@@ -56,12 +61,6 @@ export default function Home() {
 
       {/* hero */}
       <div className="ft-landing-in" style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "24px 20px 40px", maxWidth: 480, margin: "0 auto" }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
-          color: palette.accent, background: `${palette.accent}18`, padding: "5px 12px", borderRadius: 999, marginBottom: 18,
-        }}>
-          <Sparkles size={11} /> Con Fitra
-        </span>
         <h1 style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.2, margin: "0 0 14px" }}>
           Entrena, come mejor y avanza con tu coach
         </h1>
@@ -86,24 +85,62 @@ export default function Home() {
       </div>
 
       {/* features */}
-      <div style={{ position: "relative", zIndex: 1, padding: "0 20px 48px", maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-          {FEATURES.map((f, i) => (
-            <div key={i} className="ft-landing-in" style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 14,
-              background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-              animationDelay: `${0.1 + i * 0.03}s`,
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9, background: `${palette.accent}22`,
-                display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0,
-              }}>
-                <f.icon size={15} />
-              </div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.3 }}>{f.title}</div>
-            </div>
-          ))}
+      <div style={{ position: "relative", zIndex: 1, padding: "0 20px 20px", maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {FEATURES.map((f, i) => {
+            const isOpen = expanded === i;
+            return (
+              <button
+                key={i}
+                onClick={() => setExpanded(isOpen ? null : i)}
+                className="ft-landing-in"
+                style={{
+                  textAlign: "left", cursor: "pointer", padding: "14px 16px", borderRadius: 16,
+                  background: palette.panel, border: `1px solid ${isOpen ? `${palette.accent}55` : palette.panelBorder}`,
+                  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                  animationDelay: `${0.1 + i * 0.03}s`, transition: "border-color .25s ease",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10, background: `${palette.accent}22`,
+                    display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0,
+                  }}>
+                    <f.icon size={16} />
+                  </div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.3, flex: 1 }}>{f.title}</div>
+                  <ChevronDown size={16} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .25s ease", flexShrink: 0 }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows .3s cubic-bezier(.16,.8,.24,1)" }}>
+                  <div style={{ overflow: "hidden" }}>
+                    <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, margin: "10px 0 2px", paddingLeft: 46 }}>{f.text}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* con fitra */}
+      <div className="ft-landing-in" style={{ position: "relative", zIndex: 1, padding: "0 20px 48px", maxWidth: 560, margin: "0 auto", animationDelay: ".3s" }}>
+        <div style={{
+          borderRadius: 20, padding: "24px 22px", display: "flex", alignItems: "flex-start", gap: 14,
+          background: `radial-gradient(circle at 0% 0%, ${palette.accent}22, ${palette.panel} 60%)`,
+          border: `1px solid ${palette.panelBorder}`,
+        }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 12, background: `${palette.accent}22`,
+            display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0,
+          }}>
+            <Sparkles size={19} />
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6 }}>Con Fitra, tu copiloto de IA</div>
+            <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.55 }}>
+              Fitra arma rutinas a tu medida, sugiere recetas con lo que tengas en la cocina y responde tus dudas de entrenamiento y nutrición — todo dentro de la app, en cualquier momento.
+            </p>
+          </div>
         </div>
       </div>
 
