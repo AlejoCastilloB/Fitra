@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 
 const DAILY_LIMIT = 10;
 
@@ -14,10 +15,8 @@ export async function POST(request: Request) {
 
   const { prompt, imageBase64, mimeType, audioBase64, audioMimeType, minutesAvailable } = await request.json();
 
-  const { data: usageRow } = await supabase
-    .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
-
-  if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
+  const { exceeded } = await checkAiQuota(supabase, user.id, "routine_gen", DAILY_LIMIT);
+  if (exceeded) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy. Vuelve mañana.` }, { status: 429 });
   }
 
@@ -93,7 +92,7 @@ CÓMO ARMAR LA RUTINA:
 - Frecuencia por grupo muscular dentro de la misma sesión: no seguidos más de 2 ejercicios enfocados en el mismo grupo muscular principal salvo que el usuario lo pida explícitamente (ej: "solo pierna hoy") — intercalá grupos para que el cuerpo tenga tiempo de recuperar entre series indirectas del mismo músculo.
 - Reparto de series por sesión: la cantidad de series de cada grupo muscular debe ser proporcional a cuántos grupos distintos se estén trabajando esa sesión (si son 2 grupos, cada uno se lleva más series; si son 5 grupos, menos series por grupo para no pasarte del tiempo/volumen razonable).
 - Evita elegir dos ejercicios casi idénticos (mismo patrón de movimiento, mismo ángulo).
-- Superseries (bi-series): cuando el tiempo disponible es limitado, o cuando dos ejercicios trabajan grupos musculares antagonistas o no compiten por el mismo equipo, podés agruparlos como superserie asignándoles el mismo número en "superset_group" (ej: ambos con superset_group: 1). Los ejercicios que NO son parte de ninguna superserie llevan "superset_group": null. No abuses de esto — solo cuando de verdad ahorra tiempo real.
+- Superseries (bi-series): cuando el tiempo disponible es limitado, o cuando dos ejercicios trabajan grupos musculares antagonistas o no compiten por el mismo equipo, puedes agruparlos como superserie asignándoles el mismo número en "superset_group" (ej: ambos con superset_group: 1). Los ejercicios que NO son parte de ninguna superserie llevan "superset_group": null. No abuses de esto — solo cuando de verdad ahorra tiempo real.
 - Dropset: si el equipo disponible es limitado y no hay suficiente variedad de ejercicios, preferí usar menos ejercicios distintos pero marcar una de sus series como "set_type":"dropset" en vez de repetir el mismo movimiento dos veces. Ejemplo de sets con dropset: [{"set_type":"normal","reps":10,"weight":20},{"set_type":"normal","reps":10,"weight":20},{"set_type":"dropset","reps":8,"weight":14}].
 - Arma entre 4 y 8 ejercicios según lo pedido, con 3-4 series cada uno salvo que el usuario pida otra cosa o el tiempo disponible indique otro número.
 
@@ -150,8 +149,7 @@ Responde en español neutro colombiano/latinoamericano, sin voseo ni modismos ar
       superset_group: typeof e.superset_group === "number" ? e.superset_group : undefined,
     }));
 
-  await supabase.rpc("increment_ai_usage", { p_user_id: user.id });
-  const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
+  const usedNow = await incrementAiUsage(supabase, user.id, "routine_gen", new Date().toISOString().slice(0, 10));
 
-  return NextResponse.json({ name: parsed.name || "Rutina generada", exercises, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+  return NextResponse.json({ name: parsed.name || "Rutina generada", exercises, remaining: DAILY_LIMIT - usedNow });
 }

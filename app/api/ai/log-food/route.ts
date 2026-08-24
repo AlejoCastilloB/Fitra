@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 
 const DAILY_LIMIT = 20;
 
@@ -21,14 +22,8 @@ export async function POST(request: Request) {
     kcal: a.kcal + (l.kcal ?? 0), protein: a.protein + (l.protein ?? 0), carbs: a.carbs + (l.carbs ?? 0), fat: a.fat + (l.fat ?? 0),
   }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
 
-  const { data: usageRow } = await supabase
-    .from("ai_usage")
-    .select("messages_used")
-    .eq("user_id", user.id)
-    .eq("date", new Date().toISOString().slice(0, 10))
-    .single();
-
-  if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
+  const { exceeded } = await checkAiQuota(supabase, user.id, "food_log", DAILY_LIMIT);
+  if (exceeded) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis de Fitra hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
   }
 
@@ -72,8 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `no pude interpretar la respuesta de Gemini: ${cleaned.slice(0, 200)}` }, { status: 500 });
   }
 
-  await supabase.rpc("increment_ai_usage", { p_user_id: user.id });
-
     const { data: log, error } = await supabase.from("nutrition_logs").insert({
     client_id: user.id,
     photo_url: photoUrl || null,
@@ -92,7 +85,7 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
+  const usedNow = await incrementAiUsage(supabase, user.id, "food_log", today);
 
-    return NextResponse.json({ ok: true, log, coachTip: parsed.coach_tip, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+  return NextResponse.json({ ok: true, log, coachTip: parsed.coach_tip, remaining: DAILY_LIMIT - usedNow });
 }

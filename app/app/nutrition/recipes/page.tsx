@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
-import { ChevronLeft, Send, Camera, Sparkles, Loader2, X } from "lucide-react";
+import { ChevronLeft, Send, Camera, Sparkles, Loader2, X, RotateCcw } from "lucide-react";
 import RecipeCard, { Recipe } from "@/components/RecipeCard";
 
 type Msg = { role: "user" | "assistant"; content: string; recipe?: Recipe | null; saved?: boolean };
+
+const GREETING: Msg = { role: "assistant", content: "Hola, soy Fitra 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." };
+const CONTEXT_WINDOW = 20;
 
 export default function RecipeChatPage() {
   const palette = usePalette();
@@ -16,9 +19,7 @@ export default function RecipeChatPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Hola, soy Fitra 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." },
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [stagedImage, setStagedImage] = useState<string | null>(null);
   const [stagedPreview, setStagedPreview] = useState<string | null>(null);
@@ -29,6 +30,28 @@ export default function RecipeChatPage() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data: rows } = await supabase
+        .from("chat_messages")
+        .select("role, content, recipe")
+        .eq("user_id", auth.user.id)
+        .order("created_at", { ascending: true });
+      if (rows && rows.length > 0) {
+        setMessages(rows.map((r: any) => ({ role: r.role, content: r.content, recipe: r.recipe ?? undefined })));
+      }
+    })();
+  }, []);
+
+  async function newConversation() {
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth.user) await supabase.from("chat_messages").delete().eq("user_id", auth.user.id);
+    setMessages([GREETING]);
+    setError("");
+  }
 
   function fileToBase64(file: File): Promise<{ base64: string; preview: string }> {
     return new Promise((resolve, reject) => {
@@ -78,14 +101,23 @@ export default function RecipeChatPage() {
     try {
       const res = await fetch("/api/ai/recipe-chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, imageBase64: imgToSend, mimeType: "image/jpeg" }),
+        body: JSON.stringify({ messages: nextMessages.slice(-CONTEXT_WINDOW), imageBase64: imgToSend, mimeType: "image/jpeg" }),
       });
       const data = await res.json();
 
       if (!res.ok) setError(data.message || data.error || "Error al hablar con Fitra");
       else {
-        setMessages([...nextMessages, { role: "assistant", content: data.reply, recipe: data.recipe }]);
+        const assistantMsg: Msg = { role: "assistant", content: data.reply, recipe: data.recipe };
+        setMessages([...nextMessages, assistantMsg]);
         setRemaining(data.remaining);
+
+        const { data: auth } = await supabase.auth.getUser();
+        if (auth.user) {
+          await supabase.from("chat_messages").insert([
+            { user_id: auth.user.id, role: "user", content: userMsg.content },
+            { user_id: auth.user.id, role: "assistant", content: assistantMsg.content, recipe: assistantMsg.recipe ?? null },
+          ]);
+        }
       }
     } catch { setError("Fallo de red, inténtalo de nuevo"); }
     finally { setSending(false); }
@@ -116,12 +148,18 @@ export default function RecipeChatPage() {
         <button onClick={() => router.push("/app/nutrition")} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
           <ChevronLeft size={20} />
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
             <Sparkles size={14} color={palette.accent} /> Fitra
           </div>
           <div style={{ fontSize: 11, color: palette.inkDim }}>Sugerencias de recetas</div>
         </div>
+        <button onClick={newConversation} title="Nueva conversación" style={{
+          display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${palette.panelBorder}`,
+          borderRadius: 10, padding: "6px 10px", color: palette.inkDim, fontSize: 11.5, cursor: "pointer",
+        }}>
+          <RotateCcw size={12} /> Nueva
+        </button>
       </div>
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingBottom: 10 }}>

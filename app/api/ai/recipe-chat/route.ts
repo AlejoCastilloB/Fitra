@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 
-const DAILY_LIMIT = 10;
+const DAILY_LIMIT = 20;
 const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 
 export async function POST(request: Request) {
@@ -15,14 +16,11 @@ export async function POST(request: Request) {
 
   const { messages, imageBase64, mimeType } = await request.json();
 
-  const { data: usageRow } = await supabase
-    .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
-
-  if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
+  const { exceeded, today } = await checkAiQuota(supabase, user.id, "chat", DAILY_LIMIT);
+  if (exceeded) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy. Vuelve mañana.` }, { status: 429 });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
   const { data: todayLogs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", user.id).gte("date", `${today}T00:00:00`);
   const consumed = (todayLogs ?? []).reduce((a, l) => ({
     kcal: a.kcal + (l.kcal ?? 0), protein: a.protein + (l.protein ?? 0), carbs: a.carbs + (l.carbs ?? 0), fat: a.fat + (l.fat ?? 0),
@@ -83,8 +81,7 @@ Responde siempre en español neutro colombiano/latinoamericano. Nunca uses voseo
     } catch {}
   }
 
-  await supabase.rpc("increment_ai_usage", { p_user_id: user.id });
-  const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", today).single();
+  const usedNow = await incrementAiUsage(supabase, user.id, "chat", today);
 
-  return NextResponse.json({ reply, recipe, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+  return NextResponse.json({ reply, recipe, remaining: DAILY_LIMIT - usedNow });
 }

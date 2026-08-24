@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 
 const DAILY_LIMIT = 10;
 
@@ -15,10 +16,8 @@ export async function POST(request: Request) {
   const { audioBase64, audioMimeType } = await request.json();
   if (!audioBase64) return NextResponse.json({ error: "falta audio" }, { status: 400 });
 
-  const { data: usageRow } = await supabase
-    .from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
-
-  if ((usageRow?.messages_used ?? 0) >= DAILY_LIMIT) {
+  const { exceeded, today } = await checkAiQuota(supabase, user.id, "transcribe", DAILY_LIMIT);
+  if (exceeded) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} mensajes con Fitra hoy.` }, { status: 429 });
   }
 
@@ -47,8 +46,7 @@ export async function POST(request: Request) {
   const geminiData = await geminiRes.json();
   const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
 
-  await supabase.rpc("increment_ai_usage", { p_user_id: user.id });
-  const { data: newUsage } = await supabase.from("ai_usage").select("messages_used").eq("user_id", user.id).eq("date", new Date().toISOString().slice(0, 10)).single();
+  const usedNow = await incrementAiUsage(supabase, user.id, "transcribe", today);
 
-  return NextResponse.json({ text, remaining: DAILY_LIMIT - (newUsage?.messages_used ?? 0) });
+  return NextResponse.json({ text, remaining: DAILY_LIMIT - usedNow });
 }
