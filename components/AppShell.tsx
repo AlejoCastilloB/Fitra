@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { usePathname } from "next/navigation";
 import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
 import BottomNav from "@/components/BottomNav";
 import ActiveWorkoutPill from "@/components/ActiveWorkoutPill";
@@ -10,9 +11,13 @@ import RestAlarm from "@/components/RestAlarm";
 import TimezoneSync from "@/components/TimezoneSync";
 import InviteBanner from "@/components/InviteBanner";
 
+const HIDE_FLOATING_NAV_ROUTES = ["/app/nutrition/recipes"];
+
 export default function AppShell({ children, initialTheme }: { children: React.ReactNode; initialTheme: ThemeName }) {
   const palette = usePalette();
   const { hydrateTheme } = useTheme();
+  const pathname = usePathname();
+  const hideFloatingNav = HIDE_FLOATING_NAV_ROUTES.includes(pathname ?? "");
 
   useLayoutEffect(() => { hydrateTheme(initialTheme); }, [initialTheme]);
 
@@ -27,7 +32,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
         pointerEvents: "none", zIndex: 0, transition: "background .3s ease",
       }} />
 
-      <main style={{ position: "relative", zIndex: 1, padding: "24px 20px 110px", maxWidth: 480, margin: "0 auto" }}>
+      <main style={{ position: "relative", zIndex: 1, padding: hideFloatingNav ? "24px 20px" : "24px 20px 110px", maxWidth: 480, margin: "0 auto" }}>
         {children}
       </main>
 
@@ -36,8 +41,8 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <RestAlarm />
       <TimezoneSync />
       <InviteBanner />
-      <HomeFab />
-      <BottomNav />
+      {!hideFloatingNav && <HomeFab />}
+      {!hideFloatingNav && <BottomNav />}
     </div>
   );
 }

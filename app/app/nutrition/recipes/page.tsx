@@ -102,7 +102,7 @@ export default function RecipeChatPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 130px)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 48px)" }}>
       <style>{`
         @keyframes ftBubbleIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
         .ft-bubble { animation: ftBubbleIn .3s cubic-bezier(.16,.8,.24,1) both; }

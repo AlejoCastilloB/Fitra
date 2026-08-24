@@ -58,13 +58,12 @@ export default function BottomNav() {
   return (
     <nav
       style={{
-        position: "fixed", left: "50%", bottom: 18, zIndex: 50,
+        position: "fixed", left: 20, bottom: 18, zIndex: 50,
         display: "flex", gap: 4, padding: 8, borderRadius: 20,
-        background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        background: palette.bg, border: `1px solid ${palette.panelBorder}`,
         boxShadow: "0 12px 40px -12px rgba(0,0,0,0.5)",
-        transform: `translate3d(-50%, ${visible ? 0 : 120}px, 0)`,
-        WebkitTransform: `translate3d(-50%, ${visible ? 0 : 120}px, 0)`,
+        transform: `translate3d(0, ${visible ? 0 : 120}px, 0)`,
+        WebkitTransform: `translate3d(0, ${visible ? 0 : 120}px, 0)`,
         transition: "transform .35s cubic-bezier(.16,.8,.24,1)",
         willChange: "transform",
       }}

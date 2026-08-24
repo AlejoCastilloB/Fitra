@@ -89,7 +89,7 @@ export default function HomeFab() {
         />
       )}
 
-      <div style={{ position: "fixed", right: 20, bottom: 100, zIndex: 70, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+      <div style={{ position: "fixed", right: 20, bottom: 18, zIndex: 70, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
         {mounted && items.map((item, i) => (
           <Link
             key={item.label}
