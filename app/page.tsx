@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Dumbbell, Camera, ChefHat, MessagesSquare, Bell, TrendingUp, Check, ArrowRight, Sparkles } from "lucide-react";
+import AppTour from "@/components/landing/AppTour";
 
 const palette = {
   bg: "#0A0C10",
@@ -12,12 +13,12 @@ const palette = {
 };
 
 const FEATURES = [
-  { icon: Dumbbell, title: "Rutinas a tu medida", text: "Arma tu propio plan o deja que Fitra te lo arme según tu objetivo y tu nivel." },
-  { icon: Camera, title: "Registra comidas con una foto", text: "Toma una foto de tu plato y la IA calcula calorías y macros al instante." },
-  { icon: ChefHat, title: "Recetas a tu manera", text: "Pide ideas de comida a la IA según lo que tengas disponible en tu cocina." },
-  { icon: MessagesSquare, title: "Tu coach, siempre cerca", text: "Tu entrenador ve tu progreso real y te acompaña desde la misma app." },
-  { icon: Bell, title: "Avisos justo a tiempo", text: "Fin de descanso, hora de comer, hora de registrar tu progreso — sin que tengas que acordarte tú." },
-  { icon: TrendingUp, title: "Progreso medido, no adivinado", text: "Fotos, medidas, peso y récords personales, todo en un mismo lugar." },
+  { icon: Dumbbell, title: "Rutinas a tu medida" },
+  { icon: Camera, title: "Comidas con una foto" },
+  { icon: ChefHat, title: "Recetas al instante" },
+  { icon: MessagesSquare, title: "Tu coach, siempre cerca" },
+  { icon: Bell, title: "Avisos justo a tiempo" },
+  { icon: TrendingUp, title: "Progreso medido" },
 ];
 
 const STEPS = [
@@ -76,26 +77,31 @@ export default function Home() {
         </Link>
       </div>
 
+      {/* tour interactivo */}
+      <div className="ft-landing-in" style={{ position: "relative", zIndex: 1, padding: "8px 20px 48px", maxWidth: 560, margin: "0 auto", animationDelay: ".08s" }}>
+        <p style={{ fontSize: 11.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center", marginBottom: 20 }}>
+          Así se ve por dentro
+        </p>
+        <AppTour />
+      </div>
+
       {/* features */}
-      <div style={{ position: "relative", zIndex: 1, padding: "20px 20px 48px", maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+      <div style={{ position: "relative", zIndex: 1, padding: "0 20px 48px", maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
           {FEATURES.map((f, i) => (
             <div key={i} className="ft-landing-in" style={{
-              display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 18px", borderRadius: 16,
+              display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 14,
               background: palette.panel, border: `1px solid ${palette.panelBorder}`,
               backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-              animationDelay: `${0.05 + i * 0.04}s`,
+              animationDelay: `${0.1 + i * 0.03}s`,
             }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 11, background: `${palette.accent}22`,
+                width: 32, height: 32, borderRadius: 9, background: `${palette.accent}22`,
                 display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0,
               }}>
-                <f.icon size={18} />
+                <f.icon size={15} />
               </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{f.title}</div>
-                <div style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5 }}>{f.text}</div>
-              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.3 }}>{f.title}</div>
             </div>
           ))}
         </div>
