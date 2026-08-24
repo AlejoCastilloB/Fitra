@@ -445,16 +445,17 @@ export default function WorkoutPage() {
                   );
                 })}
 
+                <button onClick={() => addSet(exIdx)} style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
+                  background: `${palette.accent}12`, border: `1.5px dashed ${palette.accent}55`, borderRadius: 12,
+                  color: palette.accent, fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: "10px 0", marginTop: 8,
+                }}>
+                  <Plus size={14} /> Agregar serie
+                </button>
+
                 {showRestHere && (
                   <RestBar secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onAdjust={adjustRest} onSkip={skipRest} />
                 )}
-
-                <button onClick={() => addSet(exIdx)} style={{
-                  display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
-                  color: palette.accent, fontSize: 12, cursor: "pointer", padding: "8px 2px 0",
-                }}>
-                  <Plus size={13} /> Agregar serie
-                </button>
               </div>
             );
           })}
