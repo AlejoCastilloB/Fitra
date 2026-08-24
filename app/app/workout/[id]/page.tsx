@@ -48,6 +48,8 @@ export default function WorkoutPage() {
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const autoWarmupPromptedRef = useRef<Set<number>>(new Set());
   const [highlightSet, setHighlightSet] = useState<{ exIdx: number; setIdx: number } | null>(null);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -199,54 +201,94 @@ export default function WorkoutPage() {
   }
 
   async function finishWorkout() {
-    if (!session || !uid) return;
-    const durationSec = Math.round((Date.now() - session.startedAt) / 1000);
+    if (!session || !uid || finishing) return;
 
-    let totalVolume = 0;
-    const prsHit: string[] = [];
-    const breakdown: Record<string, number> = { normal: 0, warmup: 0, dropset: 0, failure: 0 };
-
-    const { data: workoutLog } = await supabase.from("workout_logs").insert({
-      client_id: uid, routine_id: id, duration_sec: durationSec, total_volume: 0,
-    }).select().single();
-
-    for (const ex of session.exercises) {
-      let bestWeight = 0;
-      const doneSets = ex.sets.filter((s) => s.done);
-      doneSets.forEach((s) => { breakdown[s.set_type] = (breakdown[s.set_type] ?? 0) + 1; });
-
-      const rows = doneSets.map((s, i) => {
-        if (s.weight && s.reps && s.set_type !== "warmup") {
-          totalVolume += s.weight * s.reps;
-          if (s.weight > bestWeight) bestWeight = s.weight;
-        }
-        return {
-          workout_log_id: workoutLog!.id, exercise_id: ex.id, set_number: i + 1,
-          weight: s.weight ?? null, reps: s.reps ?? null, time_sec: s.time_sec ?? null,
-          distance_m: s.distance_m ?? null, set_type: s.set_type,
-        };
-      });
-      if (rows.length > 0) await supabase.from("set_logs").insert(rows);
-
-      if (bestWeight > 0) {
-        const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", ex.id).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
-        if (!prevPr || bestWeight > prevPr.value) {
-          await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight, workout_log_id: workoutLog!.id });
-          prsHit.push(ex.name);
-        }
-      }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setFinishError("Sin conexión. Tu entreno queda guardado en este dispositivo y se sincroniza solo en cuanto vuelva la señal.");
+      return;
     }
 
-    await supabase.from("workout_logs").update({ total_volume: totalVolume }).eq("id", workoutLog!.id);
+    setFinishing(true);
+    setFinishError(null);
 
-    const { data: streakRow } = await supabase.from("streaks").select("*").eq("client_id", uid).single();
-    const streakUpdate = computeStreakUpdate(streakRow?.last_workout_date ?? null, streakRow?.current_weeks ?? 0);
-    if (streakRow) await supabase.from("streaks").update(streakUpdate).eq("client_id", uid);
-    else await supabase.from("streaks").insert({ client_id: uid, ...streakUpdate });
+    try {
+      const durationSec = Math.round((Date.now() - session.startedAt) / 1000);
 
-    setFinished({ workoutLogId: workoutLog!.id, routineName: session.routineName, volume: totalVolume, durationSec, prs: prsHit, breakdown });
-    clearSession();
+      const { data: workoutLog, error: workoutLogError } = await supabase.from("workout_logs").insert({
+        client_id: uid, routine_id: id, duration_sec: durationSec, total_volume: 0,
+      }).select().single();
+      if (workoutLogError || !workoutLog) throw workoutLogError ?? new Error("no se pudo crear el registro del entreno");
+
+      const results = await Promise.all(session.exercises.map(async (ex) => {
+        let bestWeight = 0;
+        let exVolume = 0;
+        const doneSets = ex.sets.filter((s) => s.done);
+        const localBreakdown: Record<string, number> = {};
+        doneSets.forEach((s) => { localBreakdown[s.set_type] = (localBreakdown[s.set_type] ?? 0) + 1; });
+
+        const rows = doneSets.map((s, i) => {
+          if (s.weight && s.reps && s.set_type !== "warmup") {
+            exVolume += s.weight * s.reps;
+            if (s.weight > bestWeight) bestWeight = s.weight;
+          }
+          return {
+            workout_log_id: workoutLog.id, exercise_id: ex.id, set_number: i + 1,
+            weight: s.weight ?? null, reps: s.reps ?? null, time_sec: s.time_sec ?? null,
+            distance_m: s.distance_m ?? null, set_type: s.set_type,
+          };
+        });
+
+        if (rows.length > 0) {
+          const { error: setLogsError } = await supabase.from("set_logs").insert(rows);
+          if (setLogsError) throw setLogsError;
+        }
+
+        let prHit: string | null = null;
+        if (bestWeight > 0) {
+          const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", ex.id).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
+          if (!prevPr || bestWeight > prevPr.value) {
+            const { error: prError } = await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight, workout_log_id: workoutLog.id });
+            if (prError) throw prError;
+            prHit = ex.name;
+          }
+        }
+
+        return { volume: exVolume, breakdown: localBreakdown, prHit };
+      }));
+
+      let totalVolume = 0;
+      const prsHit: string[] = [];
+      const breakdown: Record<string, number> = { normal: 0, warmup: 0, dropset: 0, failure: 0 };
+      for (const r of results) {
+        totalVolume += r.volume;
+        if (r.prHit) prsHit.push(r.prHit);
+        for (const [k, v] of Object.entries(r.breakdown)) breakdown[k] = (breakdown[k] ?? 0) + v;
+      }
+
+      const { error: updateError } = await supabase.from("workout_logs").update({ total_volume: totalVolume }).eq("id", workoutLog.id);
+      if (updateError) throw updateError;
+
+      const { data: streakRow } = await supabase.from("streaks").select("*").eq("client_id", uid).single();
+      const streakUpdate = computeStreakUpdate(streakRow?.last_workout_date ?? null, streakRow?.current_weeks ?? 0);
+      if (streakRow) await supabase.from("streaks").update(streakUpdate).eq("client_id", uid);
+      else await supabase.from("streaks").insert({ client_id: uid, ...streakUpdate });
+
+      setFinished({ workoutLogId: workoutLog.id, routineName: session.routineName, volume: totalVolume, durationSec, prs: prsHit, breakdown });
+      clearSession();
+    } catch {
+      setFinishError("No pudimos guardar tu entreno por un problema de conexión. No se perdió nada — reintenta cuando quieras o espera, se reintenta solo en cuanto vuelva la señal.");
+    } finally {
+      setFinishing(false);
+    }
   }
+
+  useEffect(() => {
+    function retryOnReconnect() {
+      if (finishError) finishWorkout();
+    }
+    window.addEventListener("online", retryOnReconnect);
+    return () => window.removeEventListener("online", retryOnReconnect);
+  }, [finishError, session, uid]);
 
   function cancelWorkout() {
     clearSession();
@@ -468,17 +510,21 @@ export default function WorkoutPage() {
         </div>
       )}
 
+      {finishError && (
+        <p style={{ color: "#f87171", fontSize: 12, textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>{finishError}</p>
+      )}
+
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={() => setConfirmCancel(true)} style={{
           padding: "13px 18px", borderRadius: 14, border: `1px solid ${palette.panelBorder}`,
           background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer",
         }}>Cancelar</button>
-        <button onClick={finishWorkout} style={{
+        <button onClick={finishWorkout} disabled={finishing} style={{
           flex: 1, padding: 14, borderRadius: 14, border: "none",
           background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
-          fontWeight: 700, fontSize: 14.5, cursor: "pointer",
+          fontWeight: 700, fontSize: 14.5, cursor: "pointer", opacity: finishing ? 0.6 : 1,
         }}>
-          Terminar entreno
+          {finishing ? "Guardando..." : finishError ? "Reintentar" : "Terminar entreno"}
         </button>
       </div>
 
