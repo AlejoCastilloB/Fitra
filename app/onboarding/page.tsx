@@ -266,6 +266,7 @@ function OnboardingForm() {
 
   const progress = role === "client" ? (step + 1) / STEP_COUNT : 0;
   const showAccountStep = role === "trainer" || (role === "client" && step === 9);
+  const stepKey = role === null ? "role" : showAccountStep ? (awaitingConfirmation ? "confirm" : "account") : `${role}-${step}`;
 
   if (!authChecked) return null;
 
@@ -273,8 +274,8 @@ function OnboardingForm() {
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>
       <div style={{
         width: "100%", maxWidth: 440, background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", borderRadius: 20, padding: "32px 28px",
-        boxShadow: "0 20px 60px -20px rgba(0,0,0,0.35)",
+        backdropFilter: "blur(32px) saturate(180%)", WebkitBackdropFilter: "blur(32px) saturate(180%)", borderRadius: 20, padding: "32px 28px",
+        boxShadow: palette.glassShadow,
       }}>
         {role === "client" && (
           <div style={{ height: 4, borderRadius: 999, background: palette.inputBg, marginBottom: 24, overflow: "hidden" }}>
@@ -282,6 +283,7 @@ function OnboardingForm() {
           </div>
         )}
 
+        <div key={stepKey} className="ft-step-in">
         {role === null && (
           <>
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>¿Cómo entras a FitTrack?</h2>
@@ -491,6 +493,7 @@ function OnboardingForm() {
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

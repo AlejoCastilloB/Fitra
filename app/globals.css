@@ -29,6 +29,14 @@ body {
   animation: ftFadeInUp .45s cubic-bezier(.16,.8,.24,1) both;
 }
 
+@keyframes ftStepIn {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+.ft-step-in {
+  animation: ftStepIn .35s cubic-bezier(.16,.8,.24,1) both;
+}
+
 .coach-desktop-only { display: flex; }
 .coach-mobile-only { display: none; }
 .coach-mobile-topbar { display: none; }

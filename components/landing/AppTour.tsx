@@ -193,7 +193,9 @@ export default function AppTour() {
           borderRadius: 10, background: "#0A0C10", zIndex: 2,
         }} />
         <div style={{ width: "100%", height: "100%", borderRadius: 25, background: app.bg, overflow: "hidden" }}>
-          <Screen />
+          <div key={active} className="ft-step-in" style={{ height: "100%" }}>
+            <Screen />
+          </div>
         </div>
       </div>
 
