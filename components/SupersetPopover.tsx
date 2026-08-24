@@ -36,8 +36,7 @@ export default function SupersetPopover({
       ref={ref}
       style={{
         position: "fixed", left, top, width, zIndex: 100,
-        background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        background: palette.bg, border: `1px solid ${palette.panelBorder}`,
         borderRadius: 14, padding: 8, boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
         maxHeight: 240, overflowY: "auto",
         animation: "ftPopoverIn .18s cubic-bezier(.16,.8,.24,1) both",
