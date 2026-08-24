@@ -21,7 +21,7 @@ export default function AnamnesisStep({
       <div style={{ marginBottom: 22, marginTop: subtitle ? 0 : 18 }}>{children}</div>
       <button onClick={onNext} disabled={nextDisabled} style={{
         width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: nextDisabled ? "default" : "pointer",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
         opacity: nextDisabled ? 0.5 : 1,
       }}>

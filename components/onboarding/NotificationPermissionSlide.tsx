@@ -35,7 +35,7 @@ export default function NotificationPermissionSlide({ onNext }: { onNext: () => 
 
       <button onClick={handleActivate} disabled={requesting} style={{
         width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5, marginBottom: 10, opacity: requesting ? 0.7 : 1,
       }}>
         {requesting ? "Activando..." : "Activar notificaciones"}

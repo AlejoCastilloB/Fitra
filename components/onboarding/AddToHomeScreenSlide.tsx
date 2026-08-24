@@ -28,7 +28,7 @@ export default function AddToHomeScreenSlide({ onNext }: { onNext: () => void })
 
       <button onClick={onNext} style={{
         width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5,
       }}>
         Entendido
@@ -41,7 +41,7 @@ function InstructionRow({ number, icon, text }: { number: number; icon: React.Re
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{
-        width: 24, height: 24, borderRadius: "50%", background: palette.accent, color: "#0A0C10",
+        width: 24, height: 24, borderRadius: "50%", background: palette.accent, color: palette.bg,
         display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0,
       }}>{number}</div>
       <div style={{ color: palette.accent, flexShrink: 0 }}>{icon}</div>

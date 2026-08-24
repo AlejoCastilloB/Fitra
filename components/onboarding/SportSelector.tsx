@@ -8,6 +8,13 @@ export const SPORTS_LIST = [
   "Boxeo/Artes marciales", "Crossfit", "Hyrox", "Patinaje", "Escalada", "Béisbol", "Rugby", "Golf", "Yoga/Pilates",
 ];
 
+export const SPORT_EMOJI: Record<string, string> = {
+  "Fútbol": "⚽", "Baloncesto": "🏀", "Running/Atletismo": "🏃", "Ciclismo": "🚴", "Natación": "🏊",
+  "Tenis": "🎾", "Voleibol": "🏐", "Boxeo/Artes marciales": "🥊", "Crossfit": "🏋️", "Hyrox": "⏱️",
+  "Patinaje": "⛸️", "Escalada": "🧗", "Béisbol": "⚾", "Rugby": "🏉", "Golf": "⛳", "Yoga/Pilates": "🧘",
+  "Otro": "🎯",
+};
+
 export const SPORT_LEVELS = ["Principiante/Amateur", "Intermedio", "Avanzado/Semiprofesional", "Profesional/Élite"];
 export const SPORT_EXPERIENCE = ["Recién quiero empezar", "Menos de 1 año", "1 a 3 años", "3 a 5 años", "Más de 5 años"];
 
@@ -29,9 +36,9 @@ export default function SportSelector({
     <div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: hasOther ? 10 : 20 }}>
         {SPORTS_LIST.map((s) => (
-          <SportPill key={s} active={selected.includes(s)} onClick={() => onToggle(s)}>{s}</SportPill>
+          <SportPill key={s} active={selected.includes(s)} onClick={() => onToggle(s)}>{SPORT_EMOJI[s]} {s}</SportPill>
         ))}
-        <SportPill active={hasOther} onClick={() => onToggle("Otro")}>Otro</SportPill>
+        <SportPill active={hasOther} onClick={() => onToggle("Otro")}>{SPORT_EMOJI["Otro"]} Otro</SportPill>
       </div>
 
       {hasOther && (
@@ -93,7 +100,7 @@ function MiniPill({ active, children, onClick }: { active: boolean; children: Re
   return (
     <button onClick={onClick} style={{
       padding: "6px 11px", borderRadius: 999, border: `1px solid ${active ? palette.accent : palette.panelBorder}`,
-      background: active ? palette.accent : "transparent", color: active ? "#0A0C10" : palette.inkDim,
+      background: active ? palette.accent : "transparent", color: active ? palette.bg : palette.inkDim,
       fontSize: 11.5, fontWeight: 600, cursor: "pointer",
     }}>
       {children}

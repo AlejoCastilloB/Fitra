@@ -15,7 +15,7 @@ export default function MotivationalFact({ text, onNext }: { text: string; onNex
       <p style={{ fontSize: 15, lineHeight: 1.6, color: palette.ink, marginBottom: 26 }}>{text}</p>
       <button onClick={onNext} style={{
         width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
         fontWeight: 700, fontSize: 14.5,
       }}>
         Seguir

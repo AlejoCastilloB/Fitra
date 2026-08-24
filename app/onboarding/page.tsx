@@ -12,20 +12,26 @@ import NotificationPermissionSlide from "@/components/onboarding/NotificationPer
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 
 const GOALS = [
-  { id: "fuerza", label: "Fuerza" },
-  { id: "perdida_grasa", label: "Pérdida de grasa" },
-  { id: "masa_muscular", label: "Ganancia de masa muscular" },
-  { id: "rendimiento", label: "Rendimiento deportivo" },
-  { id: "salud", label: "Salud general / Fitness en general" },
-  { id: "todo", label: "Un poco de todo" },
+  { id: "fuerza", label: "Fuerza", emoji: "🏋️" },
+  { id: "perdida_grasa", label: "Pérdida de grasa", emoji: "🔥" },
+  { id: "masa_muscular", label: "Ganancia de masa muscular", emoji: "💪" },
+  { id: "rendimiento", label: "Rendimiento deportivo", emoji: "🏆" },
+  { id: "salud", label: "Salud general / Fitness en general", emoji: "❤️" },
+  { id: "todo", label: "Un poco de todo", emoji: "✨" },
 ];
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
+const LEVEL_EMOJI: Record<string, string> = { Principiante: "🌱", Intermedio: "⚡", Avanzado: "🔥" };
 const LEVEL_DESCRIPTIONS: Record<string, string> = {
   Principiante: "Menos de 6 meses entrenando, o recién estás empezando.",
   Intermedio: "Entre 6 meses y 2 años de experiencia entrenando.",
   Avanzado: "Más de 2-3 años entrenando de forma constante.",
 };
 const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
+const EQUIPMENT_EMOJI: Record<string, string> = {
+  Horno: "🔥", Microondas: "⚡", Estufa: "🍳", "Air fryer": "🍟", Licuadora: "🥤",
+  "Plancha/Parrilla": "🥩", "Olla arrocera": "🍚", Sartén: "🫕", Batidora: "🥣",
+};
+const SPORT_GOAL_ID = "rendimiento";
 
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
@@ -35,22 +41,24 @@ const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
 
 type ClientAnswers = {
-  displayName: string; goal: string | null; level: string | null; daysAvailable: number;
+  displayName: string; goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
   injuries: string; medicalNotes: string; sports: string[]; otherSportText: string;
   sportDetails: Record<string, SportDetail>; dietaryRestrictions: string; kitchenEquipment: string[];
   effectiveInvite: string | null;
 };
 
 function buildAiContext({
-  goal, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
+  goal, secondaryGoals, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
 }: {
-  goal: string | null; level: string | null; daysAvailable: number;
+  goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
   sportsDetails: { sport: string; level: string; experience: string; includeInPlan: boolean }[];
   injuries: string; medicalNotes: string; dietaryRestrictions: string; kitchenEquipment: string[];
 }) {
   const goalLabel = GOALS.find((g) => g.id === goal)?.label ?? goal ?? "sin especificar";
+  const secondaryLabels = secondaryGoals.map((id) => GOALS.find((g) => g.id === id)?.label ?? id);
   const lines: string[] = [];
   lines.push(`Objetivo principal: ${goalLabel}.`);
+  if (secondaryLabels.length > 0) lines.push(`Objetivos secundarios: ${secondaryLabels.join(", ")}.`);
   lines.push(`Nivel de experiencia en gimnasio: ${level ?? "sin especificar"}.`);
   lines.push(`Días disponibles para entrenar por semana: ${daysAvailable}.`);
   sportsDetails.forEach(({ sport, level: l, experience, includeInPlan }) => {
@@ -84,6 +92,7 @@ function OnboardingForm() {
 
   const [displayName, setDisplayName] = useState("");
   const [goal, setGoal] = useState<string | null>(null);
+  const [secondaryGoals, setSecondaryGoals] = useState<string[]>([]);
   const [level, setLevel] = useState<string | null>(null);
   const [daysAvailable, setDaysAvailable] = useState(3);
   const [injuries, setInjuries] = useState("");
@@ -101,6 +110,14 @@ function OnboardingForm() {
   const [creating, setCreating] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+
+  function toggleSecondaryGoal(id: string) {
+    setSecondaryGoals((prev) => {
+      if (prev.includes(id)) return prev.filter((g) => g !== id);
+      if (prev.length >= 2) return prev;
+      return [...prev, id];
+    });
+  }
 
   function toggleSport(sport: string) {
     setSports((prev) => {
@@ -123,7 +140,7 @@ function OnboardingForm() {
 
   async function saveClientData(overrides?: ClientAnswers) {
     const d: ClientAnswers = overrides ?? {
-      displayName, goal, level, daysAvailable, injuries, medicalNotes, sports, otherSportText,
+      displayName, goal, secondaryGoals, level, daysAvailable, injuries, medicalNotes, sports, otherSportText,
       sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
     };
     setSaving(true);
@@ -161,7 +178,7 @@ function OnboardingForm() {
     }));
 
     const aiContext = buildAiContext({
-      goal: d.goal, level: d.level, daysAvailable: d.daysAvailable, sportsDetails,
+      goal: d.goal, secondaryGoals: d.secondaryGoals, level: d.level, daysAvailable: d.daysAvailable, sportsDetails,
       injuries: d.injuries, medicalNotes: d.medicalNotes, dietaryRestrictions: d.dietaryRestrictions, kitchenEquipment: d.kitchenEquipment,
     });
 
@@ -169,7 +186,7 @@ function OnboardingForm() {
     await supabase.from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
-      lifestyle: { goal: d.goal, level: d.level, days_available: d.daysAvailable },
+      lifestyle: { goal: d.goal, secondary_goals: d.secondaryGoals, level: d.level, days_available: d.daysAvailable },
       injuries: { notes: d.injuries },
       medical_notes: d.medicalNotes,
       dietary_restrictions: d.dietaryRestrictions,
@@ -249,12 +266,13 @@ function OnboardingForm() {
     }
 
     localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
-      answers: { displayName, goal, level, daysAvailable, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
+      answers: { displayName, goal, secondaryGoals, level, daysAvailable, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
     }));
     setAwaitingConfirmation(true);
     setCreating(false);
   }
 
+  const wantsSports = goal === SPORT_GOAL_ID || secondaryGoals.includes(SPORT_GOAL_ID);
   const progress = (step + 1) / STEP_COUNT;
   const showAccountStep = step === 9;
   const stepKey = showAccountStep ? (awaitingConfirmation ? "confirm" : "account") : `step-${step}`;
@@ -282,9 +300,15 @@ function OnboardingForm() {
               style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 16 }}
             />
             <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>¿Cuál es tu objetivo principal?</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
               {GOALS.map((g) => (
-                <Pill key={g.id} active={goal === g.id} onClick={() => setGoal(g.id)}>{g.label}</Pill>
+                <Pill key={g.id} active={goal === g.id} onClick={() => { setGoal(g.id); setSecondaryGoals((prev) => prev.filter((id) => id !== g.id)); }}>{g.emoji} {g.label}</Pill>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>¿Algún objetivo secundario? (opcional, hasta 2)</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {GOALS.filter((g) => g.id !== goal).map((g) => (
+                <Pill key={g.id} active={secondaryGoals.includes(g.id)} onClick={() => toggleSecondaryGoal(g.id)}>{g.emoji} {g.label}</Pill>
               ))}
             </div>
           </AnamnesisStep>
@@ -294,7 +318,7 @@ function OnboardingForm() {
           <AnamnesisStep title="¿Cuál es tu nivel de experiencia en gimnasio?" onBack={() => setStep(0)} onNext={() => setStep(2)} nextDisabled={!level}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {LEVELS.map((l) => (
-                <Pill key={l} active={level === l} onClick={() => setLevel(l)}>{l}</Pill>
+                <Pill key={l} active={level === l} onClick={() => setLevel(l)}>{LEVEL_EMOJI[l]} {l}</Pill>
               ))}
             </div>
             {level && (
@@ -314,10 +338,10 @@ function OnboardingForm() {
         )}
 
         {step === 3 && (
-          <MotivationalFact text={FACT_1} onNext={() => setStep(4)} />
+          <MotivationalFact text={FACT_1} onNext={() => setStep(wantsSports ? 4 : 5)} />
         )}
 
-        {step === 4 && (
+        {step === 4 && wantsSports && (
           <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 3." onBack={() => setStep(3)} onNext={() => setStep(5)}>
             <SportSelector
               selected={sports}
@@ -365,7 +389,7 @@ function OnboardingForm() {
             <div style={{ fontSize: 12, color: palette.inkDim, margin: "14px 0 8px" }}>Utensilios que tienes disponibles</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {EQUIPMENT_OPTIONS.map((item) => (
-                <Pill key={item} active={kitchenEquipment.includes(item)} onClick={() => toggleEquipment(item)}>{item}</Pill>
+                <Pill key={item} active={kitchenEquipment.includes(item)} onClick={() => toggleEquipment(item)}>{EQUIPMENT_EMOJI[item]} {item}</Pill>
               ))}
             </div>
             <p style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 12, lineHeight: 1.5 }}>
@@ -464,7 +488,7 @@ function OnboardingForm() {
             </p>
             <button onClick={() => router.push("/app")} disabled={saving} style={{
               width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",
-              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: "#0A0C10",
+              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
               fontWeight: 700, fontSize: 14.5, opacity: saving ? 0.7 : 1,
             }}>
               {saving ? "Guardando..." : "Empezar a entrenar"}
