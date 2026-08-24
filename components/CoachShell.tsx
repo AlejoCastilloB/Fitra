@@ -110,8 +110,8 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
       <nav className="coach-mobile-only" style={{
         position: "fixed", left: "50%", bottom: 14, zIndex: 50, transform: "translateX(-50%)",
         gap: 2, padding: 6, borderRadius: 18,
-        background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        background: `${palette.bg}99`, border: `1px solid ${palette.panelBorder}`,
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
         boxShadow: "0 12px 40px -12px rgba(0,0,0,0.5)",
       }}>
         {MAIN_NAV.map(({ href, icon: Icon, label }) => {

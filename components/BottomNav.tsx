@@ -60,7 +60,8 @@ export default function BottomNav() {
       style={{
         position: "fixed", left: 20, bottom: 18, zIndex: 50,
         display: "flex", gap: 4, padding: 8, borderRadius: 20,
-        background: palette.bg, border: `1px solid ${palette.panelBorder}`,
+        background: `${palette.bg}99`, border: `1px solid ${palette.panelBorder}`,
+        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         boxShadow: "0 12px 40px -12px rgba(0,0,0,0.5)",
         transform: `translate3d(0, ${visible ? 0 : 120}px, 0)`,
         WebkitTransform: `translate3d(0, ${visible ? 0 : 120}px, 0)`,
