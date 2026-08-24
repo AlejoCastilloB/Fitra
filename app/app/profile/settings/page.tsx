@@ -11,6 +11,7 @@ import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
+import { clearSwCache } from "@/lib/clearSwCache";
 
 const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }> = {
   clasico: { label: "Clásico", freq: 880, pattern: [0.35] },
@@ -166,6 +167,7 @@ export default function ProfileSettingsPage() {
   }
 
   async function handleLogout() {
+    clearSwCache();
     await supabase.auth.signOut();
     router.push("/login");
   }

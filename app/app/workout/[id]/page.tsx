@@ -98,26 +98,32 @@ export default function WorkoutPage() {
         sets: (r.target_sets ?? []).map((s: any) => ({ ...s, done: false })),
       }));
 
-      const prevEntries = await Promise.all(built.map(async (ex) => {
-        const { data: prevLogs } = await supabase
+      const exerciseIds = built.map((ex) => ex.id);
+      const { data: allPrevLogs } = exerciseIds.length > 0
+        ? await supabase
           .from("set_logs")
-          .select("set_number, weight, reps, time_sec, distance_m, workout_log_id, workout_logs!inner(date, client_id)")
-          .eq("exercise_id", ex.id)
+          .select("exercise_id, set_number, weight, reps, time_sec, distance_m, workout_log_id, workout_logs!inner(date, client_id)")
+          .in("exercise_id", exerciseIds)
           .eq("workout_logs.client_id", uid)
           .order("id", { ascending: false })
-          .limit(30);
+          .limit(exerciseIds.length * 40)
+        : { data: [] as any[] };
 
-        if (!prevLogs || prevLogs.length === 0) return [ex.id, {}] as const;
+      const logsByExercise: Record<string, any[]> = {};
+      (allPrevLogs ?? []).forEach((r: any) => { (logsByExercise[r.exercise_id] ??= []).push(r); });
 
-        const latestLogId = prevLogs.reduce((latest: any, row: any) =>
+      const prevMap: Record<string, Record<number, any>> = {};
+      for (const ex of built) {
+        const logs = logsByExercise[ex.id];
+        if (!logs || logs.length === 0) { prevMap[ex.id] = {}; continue; }
+        const latestLogId = logs.reduce((latest: any, row: any) =>
           !latest || new Date(row.workout_logs.date) > new Date(latest.workout_logs.date) ? row : latest
         , null)?.workout_log_id;
-
         const bySet: Record<number, any> = {};
-        prevLogs.filter((r: any) => r.workout_log_id === latestLogId).forEach((r: any) => { bySet[r.set_number] = r; });
-        return [ex.id, bySet] as const;
-      }));
-      setPreviousMap(Object.fromEntries(prevEntries));
+        logs.filter((r: any) => r.workout_log_id === latestLogId).forEach((r: any) => { bySet[r.set_number] = r; });
+        prevMap[ex.id] = bySet;
+      }
+      setPreviousMap(prevMap);
 
       startSession(id, routine?.name ?? "Entrenamiento", built);
       setLoading(false);

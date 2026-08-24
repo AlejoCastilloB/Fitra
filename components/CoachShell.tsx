@@ -5,6 +5,7 @@ import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
 import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { clearSwCache } from "@/lib/clearSwCache";
 
 const MAIN_NAV = [
   { href: "/coach", icon: Home, label: "Hoy" },
@@ -74,7 +75,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
             <span style={{ fontSize: 12.5, color: palette.inkDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
               {userEmail}
             </span>
-            <form action="/auth/signout" method="post">
+            <form action="/auth/signout" method="post" onSubmit={clearSwCache}>
               <button type="submit" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", display: "flex" }}>
                 <LogOut size={15} />
               </button>
@@ -148,7 +149,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
                 <Icon size={18} color={palette.accent} /> {label}
               </Link>
             ))}
-            <form action="/auth/signout" method="post">
+            <form action="/auth/signout" method="post" onSubmit={clearSwCache}>
               <button type="submit" style={{
                 display: "flex", alignItems: "center", gap: 12, padding: "13px 6px", width: "100%",
                 background: "none", border: "none", color: palette.inkDim, cursor: "pointer", fontSize: 14.5, fontWeight: 500, textAlign: "left",
