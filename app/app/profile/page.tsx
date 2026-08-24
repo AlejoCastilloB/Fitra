@@ -393,6 +393,8 @@ function StatBox({ icon, value, label, onClick }: { icon: React.ReactNode; value
   );
 }
 
+const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+
 function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () => void }) {
   const palette = usePalette();
   const comparison = getWeightComparison(volume);
@@ -409,7 +411,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
       const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
+        await navigator.share({ files: [file], text: TAG_SUGGESTION });
       } else {
         const link = document.createElement("a");
         link.href = dataUrl;

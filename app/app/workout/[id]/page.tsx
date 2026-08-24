@@ -605,6 +605,8 @@ function SetInput({ value, onChange }: { value?: number; onChange: (v: number) =
   );
 }
 
+const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+
 function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, breakdown, onDone }: {
   workoutLogId: string; routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number>; onDone: () => void;
 }) {
@@ -642,7 +644,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
       const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
+        await navigator.share({ files: [file], text: TAG_SUGGESTION });
       } else {
         const link = document.createElement("a");
         link.href = dataUrl;

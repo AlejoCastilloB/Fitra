@@ -1,20 +1,41 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { usePalette } from "@/lib/theme";
 import { Achievement } from "@/lib/achievements";
 import { Share2, Award, X } from "lucide-react";
 import Link from "next/link";
 
+const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+
 export default function AchievementCelebration({
   achievement, onClose,
 }: { achievement: Achievement; onClose: () => void }) {
   const palette = usePalette();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+
   async function share() {
-    const text = `Desbloqueé la insignia "${achievement.title}" en FitTrack ${achievement.emoji}`;
-    if (navigator.share) await navigator.share({ text });
-    else {
-      await navigator.clipboard.writeText(text);
-      alert("Copiado al portapapeles");
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "insignia-fittrack.png", { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: TAG_SUGGESTION });
+      } else {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "insignia-fittrack.png";
+        link.click();
+      }
+    } catch {
+      alert("No pudimos generar la imagen, intenta de nuevo.");
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -37,28 +58,36 @@ export default function AchievementCelebration({
         <X size={18} />
       </button>
 
-      <div className="ft-badge-in" style={{
-        width: 140, height: 140, borderRadius: 32, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60, marginBottom: 24,
-        boxShadow: `0 20px 60px -10px ${palette.accent}88`,
+      <div ref={cardRef} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", padding: "36px 32px",
+        borderRadius: 28, background: palette.bg,
       }}>
-        {achievement.emoji}
+        <div className="ft-badge-in" style={{
+          width: 140, height: 140, borderRadius: 32, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60, marginBottom: 24,
+          boxShadow: `0 20px 60px -10px ${palette.accent}88`,
+        }}>
+          {achievement.emoji}
+        </div>
+
+        <p style={{ fontSize: 12.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+          Insignia desbloqueada
+        </p>
+        <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, textAlign: "center" }}>{achievement.title}</h1>
+        <p style={{ fontSize: 14, color: palette.inkDim, textAlign: "center", marginBottom: 16, maxWidth: 280 }}>
+          {achievement.description}
+        </p>
+        <span style={{ fontSize: 12, fontWeight: 700, color: palette.accent, letterSpacing: "0.04em" }}>FitTrack</span>
       </div>
 
-      <p style={{ fontSize: 12.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-        Insignia desbloqueada
-      </p>
-      <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8, textAlign: "center" }}>{achievement.title}</h1>
-      <p style={{ fontSize: 14, color: palette.inkDim, textAlign: "center", marginBottom: 40, maxWidth: 280 }}>
-        {achievement.description}
-      </p>
+      <div style={{ marginTop: 24 }} />
 
-      <button onClick={share} style={{
+      <button onClick={share} disabled={sharing} style={{
         width: "100%", maxWidth: 320, padding: 14, borderRadius: 14, border: "none", marginBottom: 10,
         background: palette.ink, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: sharing ? 0.7 : 1,
       }}>
-        <Share2 size={16} /> Comparte tu insignia
+        <Share2 size={16} /> {sharing ? "Generando imagen..." : "Comparte tu insignia"}
       </button>
 
       <Link href="/app/achievements" onClick={onClose} style={{
