@@ -119,9 +119,10 @@ export default function HomeFab() {
           onClick={() => (open ? closeMenu() : openMenu())}
           aria-label={open ? "Cerrar menú" : "Abrir menú de acciones"}
           style={{
-            width: 56, height: 56, borderRadius: "50%", background: "#0A0C10", border: `1px solid rgba(255,255,255,0.12)`,
+            width: 56, height: 56, borderRadius: "50%", background: "rgba(10,12,16,0.72)", border: `1px solid rgba(255,255,255,0.16)`,
+            backdropFilter: "blur(16px) saturate(160%)", WebkitBackdropFilter: "blur(16px) saturate(160%)",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-            boxShadow: "0 10px 30px -6px rgba(0,0,0,0.6)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 10px 30px -6px rgba(0,0,0,0.6)",
             transform: open ? "rotate(45deg)" : "none", transition: "transform .25s cubic-bezier(.16,.8,.24,1)",
           }}
         >
