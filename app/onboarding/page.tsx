@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dumbbell, Users, Check } from "lucide-react";
@@ -27,6 +27,7 @@ const LEVEL_DESCRIPTIONS: Record<string, string> = {
 };
 const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
 
+const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const STEP_COUNT = 11;
 const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
@@ -65,11 +66,31 @@ function OnboardingForm() {
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
-  const inviteCode = searchParams.get("invite");
+  const urlInvite = searchParams.get("invite");
 
-  const [role, setRole] = useState<"trainer" | "client" | null>(null);
+  const [effectiveInvite, setEffectiveInvite] = useState<string | null>(urlInvite);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [role, setRole] = useState<"trainer" | "client" | null>(urlInvite ? "client" : null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      let invite = urlInvite;
+      if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
+      if (invite) {
+        setEffectiveInvite(invite);
+        setRole((r) => r ?? "client");
+      }
+
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        router.replace(`/login${invite ? `?invite=${encodeURIComponent(invite)}&mode=signup` : ""}`);
+        return;
+      }
+      setAuthChecked(true);
+    })();
+  }, []);
 
   const [displayName, setDisplayName] = useState("");
   const [goal, setGoal] = useState<string | null>(null);
@@ -108,17 +129,18 @@ function OnboardingForm() {
     const uid = auth.user!.id;
 
     let trainerId: string | null = null;
-    if (inviteCode) {
+    if (effectiveInvite) {
       const { data: invite } = await supabase
         .from("invites")
         .select("id, trainer_id, used_by")
-        .eq("code", inviteCode)
+        .eq("code", effectiveInvite)
         .single();
 
       if (invite && !invite.used_by) {
         trainerId = invite.trainer_id;
         await supabase.from("invites").update({ used_by: uid }).eq("id", invite.id);
       }
+      localStorage.removeItem(PENDING_INVITE_KEY);
     }
 
     const sportsDetails = sports.map((s) => ({
@@ -163,6 +185,8 @@ function OnboardingForm() {
   }
 
   const progress = role === "client" ? (step + 1) / STEP_COUNT : 0;
+
+  if (!authChecked) return null;
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>

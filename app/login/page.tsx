@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dumbbell, Users, ChevronLeft, Mail, Lock, Eye, EyeOff, ArrowRight, MailCheck } from "lucide-react";
 
@@ -16,9 +16,22 @@ const palette = {
   inputBg: "rgba(255,255,255,0.04)",
 };
 
+const PENDING_INVITE_KEY = "fittrack_pending_invite";
+
 export default function LoginPage() {
-  const [screen, setScreen] = useState<"select" | "trainer" | "user">("select");
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const inviteCode = searchParams.get("invite");
+
+  const [screen, setScreen] = useState<"select" | "trainer" | "user">(inviteCode ? "user" : "select");
+  const [mode, setMode] = useState<"login" | "signup">(inviteCode || searchParams.get("mode") === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,6 +41,10 @@ export default function LoginPage() {
   const [signupSuccess, setSignupSuccess] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (inviteCode) localStorage.setItem(PENDING_INVITE_KEY, inviteCode);
+  }, [inviteCode]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -68,10 +85,13 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    const redirectTo = inviteCode
+      ? `${window.location.origin}/auth/callback?invite=${encodeURIComponent(inviteCode)}`
+      : `${window.location.origin}/auth/callback`;
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: redirectTo },
     });
 
     if (signUpError) {
@@ -83,7 +103,7 @@ export default function LoginPage() {
     }
 
     if (data.session) {
-      router.push("/onboarding");
+      router.push(inviteCode ? `/onboarding?invite=${encodeURIComponent(inviteCode)}` : "/onboarding");
       return;
     }
 
