@@ -7,6 +7,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clearSwCache } from "@/lib/clearSwCache";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
+import PrecacheWarmup from "@/components/PrecacheWarmup";
+
+const WARMUP_ROUTES = ["/coach/clients", "/coach/routines", "/coach/exercises", "/coach/message"];
 
 const MAIN_NAV = [
   { href: "/coach", icon: Home, label: "Hoy" },
@@ -34,6 +37,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
       position: "relative", overflow: "hidden", transition: "background .3s ease, color .3s ease",
     }}>
       <SessionKeepAlive />
+      <PrecacheWarmup routes={WARMUP_ROUTES} />
       {/* blobs de luz — esto es lo que hace que el blur se vea */}
       <div style={{
         position: "fixed", top: "-15%", left: "-8%", width: 500, height: 500, borderRadius: "50%",

@@ -11,6 +11,9 @@ import RestAlarm from "@/components/RestAlarm";
 import TimezoneSync from "@/components/TimezoneSync";
 import InviteBanner from "@/components/InviteBanner";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
+import PrecacheWarmup from "@/components/PrecacheWarmup";
+
+const WARMUP_ROUTES = ["/app/progress", "/app/profile", "/app/nutrition", "/app/nutrition/recipes"];
 
 const HIDE_FLOATING_NAV_ROUTES = ["/app/nutrition/recipes"];
 
@@ -42,6 +45,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <RestAlarm />
       <TimezoneSync />
       <SessionKeepAlive />
+      <PrecacheWarmup routes={WARMUP_ROUTES} />
       <InviteBanner />
       {!hideFloatingNav && <HomeFab />}
       {!hideFloatingNav && <BottomNav />}

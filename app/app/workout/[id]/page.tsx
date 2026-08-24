@@ -336,7 +336,7 @@ export default function WorkoutPage() {
       {hasExercises && (
         <div style={{ display: "flex", justifyContent: "space-around", padding: "10px 0", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 14 }}>
           <SessionStat label="Series" value={`${session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done).length, 0)}`} />
-          <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString()} kg`} />
+          <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString("es-CO")} kg`} />
         </div>
       )}
 
@@ -700,7 +700,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
           </button>
         )}
 
-        <div style={{ fontSize: 38, fontWeight: 900, lineHeight: 1 }}>{volume.toLocaleString()}</div>
+        <div style={{ fontSize: 38, fontWeight: 900, lineHeight: 1 }}>{volume.toLocaleString("es-CO")}</div>
         <div style={{ fontSize: 13, color: palette.inkDim, marginBottom: 18 }}>kg de volumen total</div>
 
         <div className="ft-emoji-pop" style={{ fontSize: 40, marginBottom: 8 }}>{comparison.emoji}</div>

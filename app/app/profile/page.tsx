@@ -114,7 +114,7 @@ export default function ProfilePage() {
       setActiveDays(days);
 
       const combined = [
-        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString()} kg · ${Math.round((w.duration_sec ?? 0) / 60)} min` })),
+        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString("es-CO")} kg · ${Math.round((w.duration_sec ?? 0) / 60)} min` })),
         ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
       setHistory(combined);
@@ -439,7 +439,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
           <Award size={22} />
         </div>
         <p style={{ fontSize: 11.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Volumen total movido</p>
-        <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{volume.toLocaleString()}</div>
+        <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{volume.toLocaleString("es-CO")}</div>
         <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
         <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
         <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>

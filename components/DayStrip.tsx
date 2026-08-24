@@ -159,7 +159,7 @@ export default function DayStrip() {
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{selectedDay.workout.name}</div>
               <div style={{ fontSize: 12, color: palette.inkDim }}>
                 {new Date(selectedDay.workout.time).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })} ·{" "}
-                {Math.round(selectedDay.workout.duration_sec / 60)} min · {Math.round(selectedDay.workout.total_volume).toLocaleString()} kg
+                {Math.round(selectedDay.workout.duration_sec / 60)} min · {Math.round(selectedDay.workout.total_volume).toLocaleString("es-CO")} kg
               </div>
             </div>
           )}

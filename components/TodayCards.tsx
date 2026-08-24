@@ -115,7 +115,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
             {mode === "remaining" ? "Calorías restantes" : "Calorías consumidas"}
           </div>
           <div style={{ fontSize: 27, fontWeight: 800 }}>
-            {mode === "remaining" ? kcalRemaining.toLocaleString() : kcalConsumed.toLocaleString()}
+            {mode === "remaining" ? kcalRemaining.toLocaleString("es-CO") : kcalConsumed.toLocaleString("es-CO")}
             <span style={{ fontSize: 13, fontWeight: 600, color: palette.inkDim }}> kcal</span>
           </div>
           <div style={{ fontSize: 10, color: palette.inkDim, marginTop: 2 }}>Toca para cambiar la vista</div>
@@ -144,7 +144,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
           </div>
           {todaysRoutine && (
             <div style={{ fontSize: 10.5, color: palette.inkDim, marginTop: 3 }}>
-              {totalSets} series{topMuscle ? ` · ${muscleLabel(topMuscle)}` : ""} · {Math.round(predictedVolume).toLocaleString()} kg · ~{predictedMinutes} min
+              {totalSets} series{topMuscle ? ` · ${muscleLabel(topMuscle)}` : ""} · {Math.round(predictedVolume).toLocaleString("es-CO")} kg · ~{predictedMinutes} min
             </div>
           )}
         </div>

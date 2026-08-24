@@ -42,7 +42,7 @@ export default function WorkoutLogDetail({
 
       <div style={{ display: "flex", justifyContent: "space-around", padding: "14px 0", borderTop: `1px solid ${palette.panelBorder}`, borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
         <StatItem icon={<Clock size={15} />} value={`${Math.round(durationSec / 60)} min`} label="Duración" />
-        <StatItem icon={<Weight size={15} />} value={`${Math.round(totalVolume).toLocaleString()} kg`} label="Volumen" />
+        <StatItem icon={<Weight size={15} />} value={`${Math.round(totalVolume).toLocaleString("es-CO")} kg`} label="Volumen" />
         <StatItem icon={<Layers size={15} />} value={`${totalSets}`} label="Series efectivas" />
       </div>
 
