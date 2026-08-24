@@ -6,6 +6,7 @@ import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut, Menu, X } from 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clearSwCache } from "@/lib/clearSwCache";
+import SessionKeepAlive from "@/components/SessionKeepAlive";
 
 const MAIN_NAV = [
   { href: "/coach", icon: Home, label: "Hoy" },
@@ -32,6 +33,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
       minHeight: "100vh", background: palette.bg, color: palette.ink, fontFamily: "system-ui, sans-serif",
       position: "relative", overflow: "hidden", transition: "background .3s ease, color .3s ease",
     }}>
+      <SessionKeepAlive />
       {/* blobs de luz — esto es lo que hace que el blur se vea */}
       <div style={{
         position: "fixed", top: "-15%", left: "-8%", width: 500, height: 500, borderRadius: "50%",

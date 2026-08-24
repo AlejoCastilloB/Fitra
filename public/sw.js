@@ -1,5 +1,5 @@
-const CACHE_NAME = "fittrack-v2";
-const STATIC_CACHE_NAME = "fittrack-static-v2";
+const CACHE_NAME = "fittrack-v3";
+const STATIC_CACHE_NAME = "fittrack-static-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/")) {
-    event.respondWith(staleWhileRevalidate(request, event));
+    event.respondWith(networkFirst(request));
   }
 });
 
@@ -53,33 +53,26 @@ async function cacheFirst(request) {
   return response;
 }
 
-// Lectura "eventualmente consistente": sirve la copia en caché al instante
-// si existe, y en paralelo refresca en silencio para la próxima vez.
-// ignoreVary evita que un refresh de token invalide el match (Supabase
-// puede mandar Vary en la respuesta, y la clave nunca debe depender de
-// los headers de auth de la request).
-async function staleWhileRevalidate(request, event) {
+// Red primero, caché solo como respaldo cuando de verdad no hay conexión.
+// Así una escritura seguida de una relectura siempre trae el dato fresco
+// mientras haya señal — la caché solo entra a jugar offline. ignoreVary
+// evita que un refresh de token invalide el match (Supabase puede mandar
+// Vary en la respuesta, y la clave nunca debe depender de los headers de
+// auth de la request).
+async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request, { ignoreVary: true });
-
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => null);
-
-  if (cached) {
-    event.waitUntil(networkPromise);
-    return cached;
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request, { ignoreVary: true });
+    if (cached) return cached;
+    return new Response(JSON.stringify({ error: "sin conexión" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-
-  const fresh = await networkPromise;
-  if (fresh) return fresh;
-  return new Response(JSON.stringify({ error: "sin conexión" }), {
-    status: 503,
-    headers: { "Content-Type": "application/json" },
-  });
 }
 
 self.addEventListener("push", (event) => {

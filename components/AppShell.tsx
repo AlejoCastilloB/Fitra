@@ -10,6 +10,7 @@ import HomeFab from "@/components/HomeFab";
 import RestAlarm from "@/components/RestAlarm";
 import TimezoneSync from "@/components/TimezoneSync";
 import InviteBanner from "@/components/InviteBanner";
+import SessionKeepAlive from "@/components/SessionKeepAlive";
 
 const HIDE_FLOATING_NAV_ROUTES = ["/app/nutrition/recipes"];
 
@@ -40,6 +41,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <AchievementChecker />
       <RestAlarm />
       <TimezoneSync />
+      <SessionKeepAlive />
       <InviteBanner />
       {!hideFloatingNav && <HomeFab />}
       {!hideFloatingNav && <BottomNav />}
