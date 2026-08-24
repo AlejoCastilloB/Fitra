@@ -6,6 +6,11 @@ export const metadata = {
   title: "FitTrack",
   description: "Entrenamiento, nutrición y seguimiento de coach en una sola plataforma.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FitTrack",
+  },
 };
 
 export const viewport = {
@@ -13,7 +18,10 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#F4F5F7",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F5F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

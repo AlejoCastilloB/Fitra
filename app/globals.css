@@ -7,6 +7,12 @@ html, body {
   touch-action: pan-x pan-y;
 }
 
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background: #0A0C10;
+  }
+}
+
 body {
   font-family: system-ui, -apple-system, sans-serif;
 }
