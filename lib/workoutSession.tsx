@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
-export type LiveSet = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number; done: boolean };
+export type LiveSet = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number; rpe?: number; done: boolean };
 export type LiveExercise = {
   id: string; name: string; media_url?: string; measurement_type: string; notes?: string;
   description?: string; equipment?: string; muscle_group?: string; instructions?: string[];

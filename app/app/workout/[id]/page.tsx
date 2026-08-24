@@ -234,7 +234,7 @@ export default function WorkoutPage() {
           return {
             workout_log_id: workoutLog.id, exercise_id: ex.id, set_number: i + 1,
             weight: s.weight ?? null, reps: s.reps ?? null, time_sec: s.time_sec ?? null,
-            distance_m: s.distance_m ?? null, set_type: s.set_type,
+            distance_m: s.distance_m ?? null, set_type: s.set_type, rpe: s.rpe ?? null,
           };
         });
 
@@ -324,21 +324,24 @@ export default function WorkoutPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <button onClick={() => router.push("/app")} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={20} /></button>
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{session?.routineName}</span>
-        <div style={{ display: "flex", gap: 14 }}>
-          <button onClick={() => setShowSettings(true)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><Settings size={18} /></button>
-          <button onClick={() => setConfirmCancel(true)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer" }}><Trash2 size={18} /></button>
+      <div style={{ ...palette.glassPanel, padding: "14px 16px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasExercises ? 10 : 0 }}>
+          <button onClick={() => router.push("/app")} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={20} /></button>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>{session?.routineName}</span>
+          <div style={{ display: "flex", gap: 14 }}>
+            <button onClick={() => setShowSettings(true)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><Settings size={18} /></button>
+            <button onClick={() => setConfirmCancel(true)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer" }}><Trash2 size={18} /></button>
+          </div>
         </div>
-      </div>
 
-      {hasExercises && (
-        <div style={{ display: "flex", justifyContent: "space-around", padding: "10px 0", borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 14 }}>
-          <SessionStat label="Series" value={`${session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done).length, 0)}`} />
-          <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString("es-CO")} kg`} />
-        </div>
-      )}
+        {hasExercises && (
+          <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 10, borderTop: `1px solid ${palette.panelBorder}` }}>
+            <SessionStat label="Series" value={`${session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done).length, 0)}`} />
+            <SessionStat label="Tiempo" value={formatElapsed(now - session!.startedAt)} />
+            <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString("es-CO")} kg`} />
+          </div>
+        )}
+      </div>
 
       {!hasExercises ? (
         <div style={{ padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
@@ -354,10 +357,8 @@ export default function WorkoutPage() {
             const showRestHere = session!.restForExIdx === exIdx && restLeft > 0;
             return (
               <div key={ex.id} id={`ex-${ex.id}`} style={{
-                paddingTop: 16, paddingBottom: 16,
-                borderTop: exIdx > 0 ? `1px solid ${palette.panelBorder}` : "none",
+                ...palette.glassPanel, padding: 16, marginBottom: 14,
                 borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
-                paddingLeft: groupColor ? 10 : 0,
               }}>
                 <button onClick={() => setExpandedId(isOpen ? null : ex.id)} style={{
                   width: "100%", display: "flex", alignItems: "center", gap: 12,
@@ -447,7 +448,8 @@ export default function WorkoutPage() {
                     : "—";
                   const isHighlighted = highlightSet?.exIdx === exIdx && highlightSet?.setIdx === i;
                   return (
-                    <div key={i} style={{
+                    <div key={i}>
+                    <div style={{
                       position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
                       background: i % 2 === 1 ? palette.panel : "transparent",
                       borderRadius: 8,
@@ -489,6 +491,20 @@ export default function WorkoutPage() {
                       }}>
                         <Check size={13} color={s.done ? palette.bg : palette.inkDim} />
                       </button>
+                    </div>
+                    {trackRpe && s.done && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 2px 8px 32px" }}>
+                        <span style={{ fontSize: 9.5, color: palette.inkDim, marginRight: 4 }}>RPE</span>
+                        {Array.from({ length: 10 }, (_, n) => n + 1).map((n) => (
+                          <button key={n} onClick={() => updateSet(exIdx, i, "rpe", n)} style={{
+                            width: 18, height: 18, borderRadius: 5, border: "none", cursor: "pointer",
+                            fontSize: 9, fontWeight: 700, flexShrink: 0,
+                            color: s.rpe === n ? palette.bg : palette.inkDim,
+                            background: s.rpe === n ? palette.accent : palette.inputBg,
+                          }}>{n}</button>
+                        ))}
+                      </div>
+                    )}
                     </div>
                   );
                 })}
@@ -572,6 +588,13 @@ export default function WorkoutPage() {
       )}
     </div>
   );
+}
+
+function formatElapsed(ms: number) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function SessionStat({ label, value }: { label: string; value: string }) {
