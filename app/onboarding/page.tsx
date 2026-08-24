@@ -10,15 +10,8 @@ import MotivationalFact from "@/components/onboarding/MotivationalFact";
 import SportSelector, { SportDetail } from "@/components/onboarding/SportSelector";
 import NotificationPermissionSlide from "@/components/onboarding/NotificationPermissionSlide";
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
+import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
 
-const GOALS = [
-  { id: "fuerza", label: "Fuerza", emoji: "🏋️" },
-  { id: "perdida_grasa", label: "Pérdida de grasa", emoji: "🔥" },
-  { id: "masa_muscular", label: "Ganancia de masa muscular", emoji: "💪" },
-  { id: "rendimiento", label: "Rendimiento deportivo", emoji: "🏆" },
-  { id: "salud", label: "Salud general / Fitness en general", emoji: "❤️" },
-  { id: "todo", label: "Un poco de todo", emoji: "✨" },
-];
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 const LEVEL_EMOJI: Record<string, string> = { Principiante: "🌱", Intermedio: "⚡", Avanzado: "🔥" };
 const LEVEL_DESCRIPTIONS: Record<string, string> = {
@@ -31,7 +24,6 @@ const EQUIPMENT_EMOJI: Record<string, string> = {
   Horno: "🔥", Microondas: "⚡", Estufa: "🍳", "Air fryer": "🍟", Licuadora: "🥤",
   "Plancha/Parrilla": "🥩", "Olla arrocera": "🍚", Sartén: "🫕", Batidora: "🥣",
 };
-const SPORT_GOAL_ID = "rendimiento";
 
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
@@ -54,10 +46,9 @@ function buildAiContext({
   sportsDetails: { sport: string; level: string; experience: string; includeInPlan: boolean }[];
   injuries: string; medicalNotes: string; dietaryRestrictions: string; kitchenEquipment: string[];
 }) {
-  const goalLabel = GOALS.find((g) => g.id === goal)?.label ?? goal ?? "sin especificar";
-  const secondaryLabels = secondaryGoals.map((id) => GOALS.find((g) => g.id === id)?.label ?? id);
+  const secondaryLabels = secondaryGoals.map((id) => goalLabel(id));
   const lines: string[] = [];
-  lines.push(`Objetivo principal: ${goalLabel}.`);
+  lines.push(`Objetivo principal: ${goalLabel(goal)}.`);
   if (secondaryLabels.length > 0) lines.push(`Objetivos secundarios: ${secondaryLabels.join(", ")}.`);
   lines.push(`Nivel de experiencia en gimnasio: ${level ?? "sin especificar"}.`);
   lines.push(`Días disponibles para entrenar por semana: ${daysAvailable}.`);

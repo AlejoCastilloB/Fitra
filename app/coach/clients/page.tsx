@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Users, UserPlus, Copy, Check, Mail, Link2, X } from "lucide-react";
+import { Users, UserPlus, Copy, Check, Mail, Link2, X, ChevronRight } from "lucide-react";
 import Modal from "@/components/Modal";
+import Link from "next/link";
 
 type ClientRow = { user_id: string; status: string; display_name: string | null; email: string | null };
 type InviteRow = { id: string; code: string | null; client_email: string | null; used_by: string | null; created_at: string };
@@ -75,7 +76,10 @@ export default function ClientsPage() {
           <EmptyState palette={palette} text="Todavía no tienes clientes asignados. Invita al primero desde el botón de arriba." />
         ) : (
           clients.map((c) => (
-            <div key={c.user_id} style={{ ...palette.cleanGroup, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <Link key={c.user_id} href={`/coach/clients/${c.user_id}`} style={{
+              ...palette.cleanGroup, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center",
+              marginBottom: 10, textDecoration: "none", color: "inherit",
+            }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: "50%", background: `${palette.accent}22`,
@@ -88,8 +92,11 @@ export default function ClientsPage() {
                   {c.display_name && c.email && <div style={{ fontSize: 11.5, color: palette.inkDim }}>{c.email}</div>}
                 </div>
               </div>
-              <span style={{ fontSize: 12, color: palette.inkDim, flexShrink: 0 }}>{c.status}</span>
-            </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: palette.inkDim }}>{c.status}</span>
+                <ChevronRight size={15} color={palette.inkDim} />
+              </div>
+            </Link>
           ))
         )}
       </Section>
