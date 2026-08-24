@@ -637,7 +637,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
     setSharing(true);
     try {
       const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });
 
@@ -674,8 +674,10 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
 
       <div ref={cardRef} className="ft-story-card" style={{
         borderRadius: 26, padding: "36px 24px 28px", textAlign: "center", marginBottom: 20,
-        background: `radial-gradient(circle at 50% 0%, ${palette.accentDeep}44, ${palette.bg} 65%)`,
-        border: `1px solid ${palette.panelBorder}`, position: "relative", overflow: "hidden",
+        background: `${palette.bg}66`,
+        border: "1px solid rgba(255,255,255,0.14)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -10px rgba(0,0,0,0.35)",
+        position: "relative", overflow: "hidden",
       }}>
         <div style={{
           width: 60, height: 60, borderRadius: "50%", background: `${palette.accent}22`,
@@ -732,7 +734,7 @@ function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, br
           </div>
         )}
 
-        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · Fitra</div>
+        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
       </div>
 
       <div style={{ marginBottom: 22 }}>

@@ -404,7 +404,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
     setSharing(true);
     try {
       const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: palette.bg });
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });
 
@@ -427,8 +427,10 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
     <Modal title="" onClose={onClose} maxWidth={340}>
       <div ref={cardRef} style={{
         borderRadius: 20, padding: "28px 20px", textAlign: "center",
-        background: `radial-gradient(circle at 50% 0%, ${palette.accentDeep}44, ${palette.bg} 65%)`,
-        border: `1px solid ${palette.panelBorder}`, marginBottom: 16,
+        background: `${palette.bg}66`,
+        border: "1px solid rgba(255,255,255,0.14)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -10px rgba(0,0,0,0.35)",
+        marginBottom: 16,
       }}>
         <div style={{
           width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
@@ -441,7 +443,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
         <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
         <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
         <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>
-        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack · Fitra</div>
+        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
       </div>
 
       <button onClick={share} disabled={sharing} style={{
