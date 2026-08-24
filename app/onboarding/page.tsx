@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Dumbbell, Users, Check } from "lucide-react";
+import { Dumbbell, Users, Check, Mail, Lock, Eye, EyeOff, MailCheck } from "lucide-react";
 import { palette } from "@/components/onboarding/onboardingPalette";
 import AnamnesisStep from "@/components/onboarding/AnamnesisStep";
 import MotivationalFact from "@/components/onboarding/MotivationalFact";
@@ -28,9 +28,17 @@ const LEVEL_DESCRIPTIONS: Record<string, string> = {
 const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
 
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
-const STEP_COUNT = 11;
+const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
+const STEP_COUNT = 12;
 const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
+
+type ClientAnswers = {
+  displayName: string; goal: string | null; level: string | null; daysAvailable: number;
+  injuries: string; medicalNotes: string; sports: string[]; otherSportText: string;
+  sportDetails: Record<string, SportDetail>; dietaryRestrictions: string; kitchenEquipment: string[];
+  effectiveInvite: string | null;
+};
 
 function buildAiContext({
   goal, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
@@ -74,24 +82,6 @@ function OnboardingForm() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      let invite = urlInvite;
-      if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
-      if (invite) {
-        setEffectiveInvite(invite);
-        setRole((r) => r ?? "client");
-      }
-
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        router.replace(`/login${invite ? `?invite=${encodeURIComponent(invite)}&mode=signup` : ""}`);
-        return;
-      }
-      setAuthChecked(true);
-    })();
-  }, []);
-
   const [displayName, setDisplayName] = useState("");
   const [goal, setGoal] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
@@ -103,6 +93,14 @@ function OnboardingForm() {
   const [sportDetails, setSportDetails] = useState<Record<string, SportDetail>>({});
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   function toggleSport(sport: string) {
     setSports((prev) => {
@@ -123,17 +121,21 @@ function OnboardingForm() {
     setKitchenEquipment((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
   }
 
-  async function saveClientData() {
+  async function saveClientData(overrides?: ClientAnswers) {
+    const d: ClientAnswers = overrides ?? {
+      displayName, goal, level, daysAvailable, injuries, medicalNotes, sports, otherSportText,
+      sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
+    };
     setSaving(true);
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
 
     let trainerId: string | null = null;
-    if (effectiveInvite) {
+    if (d.effectiveInvite) {
       const { data: invite } = await supabase
         .from("invites")
         .select("id, trainer_id, used_by")
-        .eq("code", effectiveInvite)
+        .eq("code", d.effectiveInvite)
         .single();
 
       if (invite && !invite.used_by) {
@@ -143,22 +145,25 @@ function OnboardingForm() {
       localStorage.removeItem(PENDING_INVITE_KEY);
     }
 
-    const sportsDetails = sports.map((s) => ({
-      sport: s === "Otro" ? (otherSportText.trim() || "Otro") : s,
-      ...(sportDetails[s] || { level: "", experience: "", includeInPlan: true }),
+    const sportsDetails = d.sports.map((s) => ({
+      sport: s === "Otro" ? (d.otherSportText.trim() || "Otro") : s,
+      ...(d.sportDetails[s] || { level: "", experience: "", includeInPlan: true }),
     }));
 
-    const aiContext = buildAiContext({ goal, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment });
+    const aiContext = buildAiContext({
+      goal: d.goal, level: d.level, daysAvailable: d.daysAvailable, sportsDetails,
+      injuries: d.injuries, medicalNotes: d.medicalNotes, dietaryRestrictions: d.dietaryRestrictions, kitchenEquipment: d.kitchenEquipment,
+    });
 
-    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: displayName.trim(), theme_pref: "light" });
+    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
     await supabase.from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
-      lifestyle: { goal, level, days_available: daysAvailable },
-      injuries: { notes: injuries },
-      medical_notes: medicalNotes,
-      dietary_restrictions: dietaryRestrictions,
-      kitchen_equipment: kitchenEquipment,
+      lifestyle: { goal: d.goal, level: d.level, days_available: d.daysAvailable },
+      injuries: { notes: d.injuries },
+      medical_notes: d.medicalNotes,
+      dietary_restrictions: d.dietaryRestrictions,
+      kitchen_equipment: d.kitchenEquipment,
       ai_context: aiContext,
     });
 
@@ -184,7 +189,83 @@ function OnboardingForm() {
     router.push("/coach");
   }
 
+  useEffect(() => {
+    (async () => {
+      let invite = urlInvite;
+      if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
+      if (invite) {
+        setEffectiveInvite(invite);
+        setRole((r) => r ?? "client");
+      }
+
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user) {
+        const { data: existingUserRow } = await supabase.from("users").select("role").eq("id", auth.user.id).single();
+        if (existingUserRow) {
+          router.replace(existingUserRow.role === "trainer" ? "/coach" : "/app");
+          return;
+        }
+
+        const pendingRaw = localStorage.getItem(PENDING_ONBOARDING_KEY);
+        if (pendingRaw) {
+          try {
+            const pending = JSON.parse(pendingRaw);
+            if (pending.role === "trainer") {
+              await finishTrainer();
+            } else {
+              await saveClientData(pending.answers as ClientAnswers);
+              router.push("/app");
+            }
+            localStorage.removeItem(PENDING_ONBOARDING_KEY);
+            return;
+          } catch {}
+        }
+      }
+
+      setAuthChecked(true);
+    })();
+  }, []);
+
+  async function handleCreateAccount() {
+    setSignupError(null);
+    if (password.length < 6) { setSignupError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (password !== confirmPassword) { setSignupError("Las contraseñas no coinciden."); return; }
+
+    setCreating(true);
+    const redirectTo = effectiveInvite
+      ? `${window.location.origin}/auth/callback?invite=${encodeURIComponent(effectiveInvite)}`
+      : `${window.location.origin}/auth/callback`;
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email, password, options: { emailRedirectTo: redirectTo },
+    });
+
+    if (signUpError) {
+      setSignupError(
+        signUpError.message.toLowerCase().includes("already registered") || signUpError.message.toLowerCase().includes("already been registered")
+          ? "Ese correo ya tiene una cuenta. Inicia sesión en vez de crear una nueva."
+          : "No pudimos crear la cuenta, intenta de nuevo."
+      );
+      setCreating(false);
+      return;
+    }
+
+    if (data.session) {
+      if (role === "trainer") await finishTrainer();
+      else { await saveClientData(); setStep(10); }
+      setCreating(false);
+      return;
+    }
+
+    localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
+      role,
+      answers: { displayName, goal, level, daysAvailable, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
+    }));
+    setAwaitingConfirmation(true);
+    setCreating(false);
+  }
+
   const progress = role === "client" ? (step + 1) / STEP_COUNT : 0;
+  const showAccountStep = role === "trainer" || (role === "client" && step === 9);
 
   if (!authChecked) return null;
 
@@ -206,7 +287,7 @@ function OnboardingForm() {
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>¿Cómo entras a FitTrack?</h2>
             <p style={{ color: palette.inkDim, fontSize: 14, margin: "0 0 22px" }}>Esto solo se define una vez.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <RoleBtn icon={<Users size={20} />} title="Soy entrenador" onClick={finishTrainer} />
+              <RoleBtn icon={<Users size={20} />} title="Soy entrenador" onClick={() => setRole("trainer")} />
               <RoleBtn icon={<Dumbbell size={20} />} title="Soy usuario" onClick={() => setRole("client")} />
             </div>
           </>
@@ -317,11 +398,77 @@ function OnboardingForm() {
           <NotificationPermissionSlide onNext={() => setStep(9)} />
         )}
 
-        {role === "client" && step === 9 && (
-          <AddToHomeScreenSlide onNext={async () => { await saveClientData(); setStep(10); }} />
+        {showAccountStep && !awaitingConfirmation && (
+          <AnamnesisStep
+            title="Crea tu cuenta"
+            subtitle="Último paso — con esto guardamos todo lo que nos contaste."
+            onBack={role === "client" ? () => setStep(8) : () => setRole(null)}
+            onNext={handleCreateAccount}
+            nextDisabled={creating || !email.trim() || !password}
+            nextLabel={creating ? "Creando cuenta..." : "Crear cuenta"}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, color: palette.inkDim }}>
+                Correo
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }}><Mail size={16} /></span>
+                  <input
+                    type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com"
+                    style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14.5 }}
+                  />
+                </div>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, color: palette.inkDim, position: "relative" }}>
+                Contraseña
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }}><Lock size={16} /></span>
+                  <input
+                    type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+                    style={{ width: "100%", padding: "11px 38px 11px 38px", borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14.5 }}
+                  />
+                  <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: palette.inkDim }}>
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, color: palette.inkDim }}>
+                Confirmar contraseña
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }}><Lock size={16} /></span>
+                  <input
+                    type={showPw ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••"
+                    style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14.5 }}
+                  />
+                </div>
+              </label>
+              {signupError && <p style={{ color: "#f87171", fontSize: 12.5 }}>{signupError}</p>}
+              <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.5 }}>
+                Te vamos a mandar un correo de confirmación, pero no hace falta que lo confirmes para empezar a usar FitTrack ya mismo.
+              </p>
+            </div>
+          </AnamnesisStep>
+        )}
+
+        {showAccountStep && awaitingConfirmation && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: palette.accent,
+            }}>
+              <MailCheck size={24} />
+            </div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>Revisa tu correo</h2>
+            <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.5 }}>
+              Te enviamos un link a <strong style={{ color: palette.ink }}>{email}</strong>. Apenas lo abras, quedas dentro de FitTrack con todo lo que nos contaste ya guardado.
+            </p>
+          </div>
         )}
 
         {role === "client" && step === 10 && (
+          <AddToHomeScreenSlide onNext={() => setStep(11)} />
+        )}
+
+        {role === "client" && step === 11 && (
           <div style={{ textAlign: "center" }}>
             <div style={{
               width: 56, height: 56, borderRadius: "50%", background: `${palette.accent}22`,

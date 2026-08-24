@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Dumbbell, Users, ChevronLeft, Mail, Lock, Eye, EyeOff, ArrowRight, MailCheck } from "lucide-react";
+import { Dumbbell, Users, ChevronLeft, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 const palette = {
   bg: "#0A0C10",
@@ -16,35 +17,15 @@ const palette = {
   inputBg: "rgba(255,255,255,0.04)",
 };
 
-const PENDING_INVITE_KEY = "fittrack_pending_invite";
-
 export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
-  );
-}
-
-function LoginForm() {
-  const searchParams = useSearchParams();
-  const inviteCode = searchParams.get("invite");
-
-  const [screen, setScreen] = useState<"select" | "trainer" | "user">(inviteCode ? "user" : "select");
-  const [mode, setMode] = useState<"login" | "signup">(inviteCode || searchParams.get("mode") === "signup" ? "signup" : "login");
+  const [screen, setScreen] = useState<"select" | "trainer" | "user">("select");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [signupSuccess, setSignupSuccess] = useState(false);
   const router = useRouter();
   const supabase = createClient();
-
-  useEffect(() => {
-    if (inviteCode) localStorage.setItem(PENDING_INVITE_KEY, inviteCode);
-  }, [inviteCode]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -71,46 +52,6 @@ function LoginForm() {
     router.push(userRow?.role === "trainer" ? "/coach" : "/app");
   }
 
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
-    setLoading(true);
-    const redirectTo = inviteCode
-      ? `${window.location.origin}/auth/callback?invite=${encodeURIComponent(inviteCode)}`
-      : `${window.location.origin}/auth/callback`;
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: redirectTo },
-    });
-
-    if (signUpError) {
-      setError(signUpError.message.toLowerCase().includes("already registered") || signUpError.message.toLowerCase().includes("already been registered")
-        ? "Ese correo ya tiene una cuenta. Inicia sesión en vez de crear una nueva."
-        : "No pudimos crear la cuenta, intenta de nuevo.");
-      setLoading(false);
-      return;
-    }
-
-    if (data.session) {
-      router.push(inviteCode ? `/onboarding?invite=${encodeURIComponent(inviteCode)}` : "/onboarding");
-      return;
-    }
-
-    setSignupSuccess(true);
-    setLoading(false);
-  }
-
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>
       <div style={{
@@ -126,25 +67,13 @@ function LoginForm() {
               <RoleCard icon={<Users size={20} />} title="Soy entrenador" sub="Gestiona clientes y rutinas" onClick={() => setScreen("trainer")} />
               <RoleCard icon={<Dumbbell size={20} />} title="Soy usuario" sub="Entrena y sigue tu plan" onClick={() => setScreen("user")} />
             </div>
+            <p style={{ textAlign: "center", fontSize: 12.5, color: palette.inkDim, marginTop: 22 }}>
+              ¿No tienes cuenta? <Link href="/onboarding" style={{ color: palette.accent, fontWeight: 600, textDecoration: "none" }}>Crear una</Link>
+            </p>
           </>
         )}
 
-        {screen !== "select" && signupSuccess && (
-          <div style={{ textAlign: "center" }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
-              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: palette.accent,
-            }}>
-              <MailCheck size={24} />
-            </div>
-            <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>Revisa tu correo</h2>
-            <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.5 }}>
-              Te enviamos un link a <strong style={{ color: palette.ink }}>{email}</strong> para confirmar tu cuenta. Una vez lo confirmes, ya puedes iniciar sesión.
-            </p>
-          </div>
-        )}
-
-        {screen !== "select" && !signupSuccess && (
+        {screen !== "select" && (
           <>
             <button onClick={() => setScreen("select")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: palette.inkDim, fontSize: 13, cursor: "pointer", padding: "4px 6px", marginBottom: 18, marginLeft: -6 }}>
               <ChevronLeft size={15} /> Volver
@@ -153,11 +82,9 @@ function LoginForm() {
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: palette.accent, background: `${palette.accent}1a`, padding: "3px 9px", borderRadius: 999 }}>
               {screen === "trainer" ? "Entrenador" : "Usuario"}
             </span>
-            <h2 style={{ fontSize: 23, fontWeight: 700, margin: "8px 0 4px" }}>
-              {mode === "login" ? "Bienvenido de vuelta" : "Creemos tu cuenta"}
-            </h2>
+            <h2 style={{ fontSize: 23, fontWeight: 700, margin: "8px 0 4px" }}>Bienvenido de vuelta</h2>
 
-            <form onSubmit={mode === "login" ? handleLogin : handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
               <Field
                 icon={<Mail size={16} />}
                 type="email"
@@ -180,17 +107,6 @@ function LoginForm() {
                 </button>
               </div>
 
-              {mode === "signup" && (
-                <Field
-                  icon={<Lock size={16} />}
-                  type={showPw ? "text" : "password"}
-                  placeholder="••••••••"
-                  label="Confirmar contraseña"
-                  value={confirmPassword}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                />
-              )}
-
               {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
 
               <button type="submit" disabled={loading} style={{
@@ -199,18 +115,15 @@ function LoginForm() {
                 color: "#0A0C10", fontWeight: 700, fontSize: 14.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 opacity: loading ? 0.7 : 1,
               }}>
-                {mode === "login"
-                  ? (loading ? "Entrando..." : <>Entrar <ArrowRight size={16} /></>)
-                  : (loading ? "Creando cuenta..." : <>Crear cuenta <ArrowRight size={16} /></>)}
+                {loading ? "Entrando..." : <>Entrar <ArrowRight size={16} /></>}
               </button>
 
-              <button
-                type="button"
-                onClick={() => { setMode((m) => (m === "login" ? "signup" : "login")); setError(null); }}
-                style={{ background: "none", border: "none", color: palette.accent, fontSize: 12.5, cursor: "pointer", marginTop: 2, textAlign: "center" }}
+              <Link
+                href="/onboarding"
+                style={{ background: "none", border: "none", color: palette.accent, fontSize: 12.5, cursor: "pointer", marginTop: 2, textAlign: "center", textDecoration: "none" }}
               >
-                {mode === "login" ? "¿No tienes cuenta? Crear una" : "¿Ya tienes cuenta? Inicia sesión"}
-              </button>
+                ¿No tienes cuenta? Crear una
+              </Link>
             </form>
           </>
         )}
