@@ -26,6 +26,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { key: "water_first", emoji: "💧", title: "Hidratado", description: "Registra agua por primera vez" },
   { key: "photo_first", emoji: "📸", title: "Progreso visual", description: "Sube tu primera foto de progreso" },
   { key: "routine_created", emoji: "📝", title: "Arquitecto", description: "Crea tu primera rutina propia" },
+  { key: "email_confirmado", emoji: "📬", title: "Correo verificado", description: "Confirmaste tu correo" },
 ];
 
 export function computeUnlockedKeys(stats: {
@@ -37,6 +38,7 @@ export function computeUnlockedKeys(stats: {
   hasWater: boolean;
   hasPhoto: boolean;
   hasOwnRoutine: boolean;
+  emailConfirmed: boolean;
 }): string[] {
   const unlocked: string[] = [];
   if (stats.totalWorkouts >= 1) unlocked.push("first_workout");
@@ -59,5 +61,6 @@ export function computeUnlockedKeys(stats: {
   if (stats.hasWater) unlocked.push("water_first");
   if (stats.hasPhoto) unlocked.push("photo_first");
   if (stats.hasOwnRoutine) unlocked.push("routine_created");
+  if (stats.emailConfirmed) unlocked.push("email_confirmado");
   return unlocked;
 }

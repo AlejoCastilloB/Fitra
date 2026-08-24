@@ -41,6 +41,7 @@ export async function POST() {
     hasWater: (waterCount ?? 0) > 0,
     hasPhoto: (photoCount ?? 0) > 0,
     hasOwnRoutine: (routineCount ?? 0) > 0,
+    emailConfirmed: !!user.email_confirmed_at,
   });
 
   const alreadyUnlocked = new Set((existing ?? []).map((e: any) => e.achievement_key));
