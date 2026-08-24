@@ -8,8 +8,8 @@ import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
 import Link from "next/link";
+import { DAILY_GOALS } from "@/lib/nutritionGoals";
 
-const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
 const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
 const WATER_GOAL = 2500;
 const WATER_STEP = 250;

@@ -3,12 +3,25 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { usePalette } from "@/lib/theme";
+import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { DAILY_GOALS } from "@/lib/nutritionGoals";
 import { Dumbbell } from "lucide-react";
 
-const DAILY_KCAL_GOAL = 2200;
+const DAILY_KCAL_GOAL = DAILY_GOALS.kcal;
+
+function MacroChip({ letter, value, color, palette }: { letter: string; value: number; color: string; palette: Palette }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{
+        width: 18, height: 18, borderRadius: 6, background: `${color}2a`, color,
+        fontSize: 9.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>{letter}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: palette.ink }}>{value}<span style={{ fontSize: 9, fontWeight: 600, color: palette.inkDim }}>g</span></span>
+    </div>
+  );
+}
 
 function DumbbellRing({ done }: { done: boolean }) {
   const palette = usePalette();
@@ -39,6 +52,9 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   const supabase = createClient();
   const uid = useCurrentUser();
   const [kcalConsumed, setKcalConsumed] = useState(0);
+  const [proteinConsumed, setProteinConsumed] = useState(0);
+  const [carbsConsumed, setCarbsConsumed] = useState(0);
+  const [fatConsumed, setFatConsumed] = useState(0);
   const [mode, setMode] = useState<"remaining" | "consumed">("remaining");
   const [done, setDone] = useState(false);
   const [totalSets, setTotalSets] = useState(0);
@@ -51,8 +67,11 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
 
-      const { data: logs } = await supabase.from("nutrition_logs").select("kcal").eq("client_id", uid).gte("date", `${today}T00:00:00`);
+      const { data: logs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", `${today}T00:00:00`);
       setKcalConsumed((logs ?? []).reduce((s, l) => s + (l.kcal ?? 0), 0));
+      setProteinConsumed((logs ?? []).reduce((s, l) => s + (l.protein ?? 0), 0));
+      setCarbsConsumed((logs ?? []).reduce((s, l) => s + (l.carbs ?? 0), 0));
+      setFatConsumed((logs ?? []).reduce((s, l) => s + (l.fat ?? 0), 0));
 
       if (todaysRoutine) {
         const { data: workoutToday } = await supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", `${today}T00:00:00`).limit(1);
@@ -79,6 +98,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   }, [todaysRoutine?.id, uid]);
 
   const kcalRemaining = Math.max(0, DAILY_KCAL_GOAL - kcalConsumed);
+  const macroValue = (consumed: number, goal: number) => (mode === "remaining" ? Math.max(0, Math.round(goal - consumed)) : Math.round(consumed));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
@@ -87,17 +107,25 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         style={{
           textAlign: "left", padding: 18, borderRadius: 18, border: `1px solid ${palette.panelBorder}`,
           background: palette.panel, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-          cursor: "pointer", width: "100%",
+          cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}
       >
-        <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>
-          {mode === "remaining" ? "Calorías restantes" : "Calorías consumidas"}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 4 }}>
+            {mode === "remaining" ? "Calorías restantes" : "Calorías consumidas"}
+          </div>
+          <div style={{ fontSize: 27, fontWeight: 800 }}>
+            {mode === "remaining" ? kcalRemaining.toLocaleString() : kcalConsumed.toLocaleString()}
+            <span style={{ fontSize: 13, fontWeight: 600, color: palette.inkDim }}> kcal</span>
+          </div>
+          <div style={{ fontSize: 10, color: palette.inkDim, marginTop: 2 }}>Toca para cambiar la vista</div>
         </div>
-        <div style={{ fontSize: 27, fontWeight: 800 }}>
-          {mode === "remaining" ? kcalRemaining.toLocaleString() : kcalConsumed.toLocaleString()}
-          <span style={{ fontSize: 13, fontWeight: 600, color: palette.inkDim }}> kcal</span>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+          <MacroChip letter="P" value={macroValue(proteinConsumed, DAILY_GOALS.protein)} color="#5EBBA0" palette={palette} />
+          <MacroChip letter="C" value={macroValue(carbsConsumed, DAILY_GOALS.carbs)} color="#D19A4A" palette={palette} />
+          <MacroChip letter="G" value={macroValue(fatConsumed, DAILY_GOALS.fat)} color="#C56767" palette={palette} />
         </div>
-        <div style={{ fontSize: 10, color: palette.inkDim, marginTop: 2 }}>Toca para cambiar la vista</div>
       </button>
 
       <Link
