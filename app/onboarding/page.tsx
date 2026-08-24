@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Dumbbell, Users, Check, Mail, Lock, Eye, EyeOff, MailCheck } from "lucide-react";
+import { Check, Mail, Lock, Eye, EyeOff, MailCheck } from "lucide-react";
 import { palette } from "@/components/onboarding/onboardingPalette";
 import AnamnesisStep from "@/components/onboarding/AnamnesisStep";
 import MotivationalFact from "@/components/onboarding/MotivationalFact";
@@ -29,6 +29,7 @@ const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuad
 
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
+const DEFAULT_TRAINER_EMAIL = "topero2008@gmail.com";
 const STEP_COUNT = 12;
 const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
@@ -78,7 +79,6 @@ function OnboardingForm() {
 
   const [effectiveInvite, setEffectiveInvite] = useState<string | null>(urlInvite);
   const [authChecked, setAuthChecked] = useState(false);
-  const [role, setRole] = useState<"trainer" | "client" | null>(urlInvite ? "client" : null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -145,6 +145,16 @@ function OnboardingForm() {
       localStorage.removeItem(PENDING_INVITE_KEY);
     }
 
+    if (!trainerId) {
+      const { data: defaultTrainer } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", DEFAULT_TRAINER_EMAIL)
+        .eq("role", "trainer")
+        .single();
+      trainerId = defaultTrainer?.id ?? null;
+    }
+
     const sportsDetails = d.sports.map((s) => ({
       sport: s === "Otro" ? (d.otherSportText.trim() || "Otro") : s,
       ...(d.sportDetails[s] || { level: "", experience: "", includeInPlan: true }),
@@ -178,25 +188,11 @@ function OnboardingForm() {
     setSaving(false);
   }
 
-  async function finishTrainer() {
-    setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth.user!.id;
-
-    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "trainer", theme_pref: "light" });
-    await supabase.from("trainers").insert({ user_id: uid });
-
-    router.push("/coach");
-  }
-
   useEffect(() => {
     (async () => {
       let invite = urlInvite;
       if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
-      if (invite) {
-        setEffectiveInvite(invite);
-        setRole((r) => r ?? "client");
-      }
+      if (invite) setEffectiveInvite(invite);
 
       const { data: auth } = await supabase.auth.getUser();
       if (auth.user) {
@@ -210,13 +206,9 @@ function OnboardingForm() {
         if (pendingRaw) {
           try {
             const pending = JSON.parse(pendingRaw);
-            if (pending.role === "trainer") {
-              await finishTrainer();
-            } else {
-              await saveClientData(pending.answers as ClientAnswers);
-              router.push("/app");
-            }
+            await saveClientData(pending.answers as ClientAnswers);
             localStorage.removeItem(PENDING_ONBOARDING_KEY);
+            router.push("/app");
             return;
           } catch {}
         }
@@ -250,23 +242,22 @@ function OnboardingForm() {
     }
 
     if (data.session) {
-      if (role === "trainer") await finishTrainer();
-      else { await saveClientData(); setStep(10); }
+      await saveClientData();
+      setStep(10);
       setCreating(false);
       return;
     }
 
     localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
-      role,
       answers: { displayName, goal, level, daysAvailable, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
     }));
     setAwaitingConfirmation(true);
     setCreating(false);
   }
 
-  const progress = role === "client" ? (step + 1) / STEP_COUNT : 0;
-  const showAccountStep = role === "trainer" || (role === "client" && step === 9);
-  const stepKey = role === null ? "role" : showAccountStep ? (awaitingConfirmation ? "confirm" : "account") : `${role}-${step}`;
+  const progress = (step + 1) / STEP_COUNT;
+  const showAccountStep = step === 9;
+  const stepKey = showAccountStep ? (awaitingConfirmation ? "confirm" : "account") : `step-${step}`;
 
   if (!authChecked) return null;
 
@@ -277,25 +268,12 @@ function OnboardingForm() {
         backdropFilter: "blur(32px) saturate(180%)", WebkitBackdropFilter: "blur(32px) saturate(180%)", borderRadius: 20, padding: "32px 28px",
         boxShadow: palette.glassShadow,
       }}>
-        {role === "client" && (
-          <div style={{ height: 4, borderRadius: 999, background: palette.inputBg, marginBottom: 24, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${progress * 100}%`, background: palette.accent, transition: "width .3s" }} />
-          </div>
-        )}
+        <div style={{ height: 4, borderRadius: 999, background: palette.inputBg, marginBottom: 24, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress * 100}%`, background: palette.accent, transition: "width .3s" }} />
+        </div>
 
         <div key={stepKey} className="ft-step-in">
-        {role === null && (
-          <>
-            <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>¿Cómo entras a FitTrack?</h2>
-            <p style={{ color: palette.inkDim, fontSize: 14, margin: "0 0 22px" }}>Esto solo se define una vez.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <RoleBtn icon={<Users size={20} />} title="Soy entrenador" onClick={() => setRole("trainer")} />
-              <RoleBtn icon={<Dumbbell size={20} />} title="Soy usuario" onClick={() => setRole("client")} />
-            </div>
-          </>
-        )}
-
-        {role === "client" && step === 0 && (
+        {step === 0 && (
           <AnamnesisStep title="Cuéntanos sobre ti" onNext={() => setStep(1)} nextDisabled={!displayName.trim() || !goal}>
             <input
               value={displayName}
@@ -312,7 +290,7 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 1 && (
+        {step === 1 && (
           <AnamnesisStep title="¿Cuál es tu nivel de experiencia en gimnasio?" onBack={() => setStep(0)} onNext={() => setStep(2)} nextDisabled={!level}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {LEVELS.map((l) => (
@@ -325,7 +303,7 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 2 && (
+        {step === 2 && (
           <AnamnesisStep title="¿Cuántos días a la semana puedes entrenar?" onBack={() => setStep(1)} onNext={() => setStep(3)}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[1, 2, 3, 4, 5, 6].map((n) => (
@@ -335,11 +313,11 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 3 && (
+        {step === 3 && (
           <MotivationalFact text={FACT_1} onNext={() => setStep(4)} />
         )}
 
-        {role === "client" && step === 4 && (
+        {step === 4 && (
           <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 3." onBack={() => setStep(3)} onNext={() => setStep(5)}>
             <SportSelector
               selected={sports}
@@ -352,11 +330,11 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 5 && (
+        {step === 5 && (
           <MotivationalFact text={FACT_2} onNext={() => setStep(6)} />
         )}
 
-        {role === "client" && step === 6 && (
+        {step === 6 && (
           <AnamnesisStep title="¿Alguna lesión o afección médica que debamos conocer?" onBack={() => setStep(5)} onNext={() => setStep(7)}>
             <textarea
               value={injuries}
@@ -376,7 +354,7 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 7 && (
+        {step === 7 && (
           <AnamnesisStep title="Restricciones alimentarias y cocina" onBack={() => setStep(6)} onNext={() => setStep(8)}>
             <textarea
               value={dietaryRestrictions}
@@ -396,7 +374,7 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {role === "client" && step === 8 && (
+        {step === 8 && (
           <NotificationPermissionSlide onNext={() => setStep(9)} />
         )}
 
@@ -404,7 +382,7 @@ function OnboardingForm() {
           <AnamnesisStep
             title="Crea tu cuenta"
             subtitle="Último paso — con esto guardamos todo lo que nos contaste."
-            onBack={role === "client" ? () => setStep(8) : () => setRole(null)}
+            onBack={() => setStep(8)}
             onNext={handleCreateAccount}
             nextDisabled={creating || !email.trim() || !password}
             nextLabel={creating ? "Creando cuenta..." : "Crear cuenta"}
@@ -466,11 +444,11 @@ function OnboardingForm() {
           </div>
         )}
 
-        {role === "client" && step === 10 && (
+        {step === 10 && (
           <AddToHomeScreenSlide onNext={() => setStep(11)} />
         )}
 
-        {role === "client" && step === 11 && (
+        {step === 11 && (
           <div style={{ textAlign: "center" }}>
             <div style={{
               width: 56, height: 56, borderRadius: "50%", background: `${palette.accent}22`,
@@ -503,15 +481,6 @@ const taStyle: React.CSSProperties = {
   width: "100%", minHeight: 70, padding: 12, borderRadius: 11, border: `1px solid ${palette.panelBorder}`,
   background: palette.inputBg, color: palette.ink, fontSize: 14, fontFamily: "inherit", resize: "vertical",
 };
-
-function RoleBtn({ icon, title, onClick }: { icon: React.ReactNode; title: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, borderRadius: 14, cursor: "pointer", background: palette.inputBg, border: `1px solid ${palette.panelBorder}`, color: palette.ink, width: "100%" }}>
-      <div style={{ width: 42, height: 42, borderRadius: 11, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent }}>{icon}</div>
-      <span style={{ fontWeight: 600, fontSize: 15 }}>{title}</span>
-    </button>
-  );
-}
 
 function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
