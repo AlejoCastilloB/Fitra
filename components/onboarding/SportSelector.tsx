@@ -5,7 +5,7 @@ import { palette } from "./onboardingPalette";
 
 export const SPORTS_LIST = [
   "Fútbol", "Baloncesto", "Running/Atletismo", "Ciclismo", "Natación", "Tenis", "Voleibol",
-  "Boxeo/Artes marciales", "Crossfit", "Patinaje", "Escalada", "Béisbol", "Rugby", "Golf", "Yoga/Pilates",
+  "Boxeo/Artes marciales", "Crossfit", "Hyrox", "Patinaje", "Escalada", "Béisbol", "Rugby", "Golf", "Yoga/Pilates",
 ];
 
 export const SPORT_LEVELS = ["Principiante/Amateur", "Intermedio", "Avanzado/Semiprofesional", "Profesional/Élite"];
