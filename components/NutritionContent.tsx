@@ -52,6 +52,8 @@ export default function NutritionContent() {
   const [showManual, setShowManual] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [goals, setGoals] = useState(DAILY_GOALS);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
 
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
@@ -138,16 +140,33 @@ export default function NutritionContent() {
     } catch { setError("No pudimos acceder al micrófono."); }
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setError("");
+    setCoachTip("");
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    setPendingFile(file);
+    setPendingPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function cancelPending() {
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    setPendingFile(null);
+    setPendingPreviewUrl(null);
+    setNote(""); setAudioBlob(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function analyzePending() {
+    if (!pendingFile) return;
     setAnalyzing(true);
     setError("");
     setCoachTip("");
 
     try {
-      const imageBase64 = await fileToBase64(file, true);
-      const photoUrl = await uploadPhoto(file);
+      const imageBase64 = await fileToBase64(pendingFile, true);
+      const photoUrl = await uploadPhoto(pendingFile);
       const body: any = { imageBase64, mimeType: "image/jpeg", photoUrl };
       if (note) body.note = note;
       if (audioBlob) { body.audioBase64 = await fileToBase64(audioBlob, false); body.audioMimeType = "audio/webm"; }
@@ -160,11 +179,12 @@ export default function NutritionContent() {
         setRemaining(data.remaining);
         setExpandedId(data.log.id);
         setCoachTip(data.coachTip || "");
-        setNote(""); setAudioBlob(null);
+        cancelPending();
         await loadAll();
+        return;
       }
     } catch { setError("Fallo de red, inténtalo de nuevo"); }
-    finally { setAnalyzing(false); if (fileRef.current) fileRef.current.value = ""; }
+    finally { setAnalyzing(false); }
   }
 
   async function updateFoodName(logId: string, newName: string) {
@@ -281,39 +301,69 @@ export default function NutritionContent() {
         </div>
       </div>
 
-      <div className="ft-pop" style={{ marginBottom: 16, animationDelay: "0.1s" }}>
-        <p style={{ fontSize: 11.5, color: palette.accent, fontWeight: 700, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
-          <Sparkles size={11} /> Contexto extra (opcional)
-        </p>
-        <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 10, lineHeight: 1.4 }}>
-          Darle más detalles a Fitra ayuda a que el cálculo sea más preciso.
-        </p>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: 2 tazas de arroz, con aceite de oliva..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
-        <button onClick={toggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}>
-          {recording ? <><Square size={13} /> Detener grabación</> : <><Mic size={13} /> Grabar nota de voz</>}
-        </button>
-        {audioBlob && !recording && <p style={{ fontSize: 11.5, color: palette.accent, marginTop: 8 }}>✓ Nota de voz lista</p>}
-      </div>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} style={{ display: "none" }} />
 
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: "none" }} />
+      {pendingFile ? (
+        <div className="ft-pop" style={{ ...palette.glassPanel, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+            {pendingPreviewUrl && (
+              <img src={pendingPreviewUrl} alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>Antes de calcular...</div>
+              <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.4 }}>
+                Cuéntale a Fitra qué es o cómo se preparó — el cálculo sale más preciso con contexto.
+              </p>
+            </div>
+            <button onClick={cancelPending} aria-label="Quitar foto" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", flexShrink: 0, display: "flex" }}>
+              <X size={16} />
+            </button>
+          </div>
 
-      <button onClick={() => fileRef.current?.click()} disabled={analyzing} style={{
-        width: "100%", padding: 16, borderRadius: 14, border: "none", marginBottom: 8,
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
-        fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        opacity: analyzing ? 0.7 : 1,
-      }}>
-        {analyzing ? <><Loader2 size={17} /> Fitra está analizando...</> : <><Camera size={17} /> Foto de tu comida</>}
-      </button>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: 2 tazas de arroz, con aceite de oliva..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
+          <button onClick={toggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
+            {recording ? <><Square size={13} /> Detener grabación</> : <><Mic size={13} /> Grabar nota de voz</>}
+          </button>
+          {audioBlob && !recording ? (
+            <p style={{ fontSize: 11.5, color: palette.accent, marginBottom: 14 }}>✓ Nota de voz lista</p>
+          ) : (
+            <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.4, marginBottom: 14 }}>
+              💡 También puedes grabar un audio explicando qué tiene el plato o cómo lo preparaste.
+            </p>
+          )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <button onClick={() => setShowManual(true)} style={secondaryBtn(palette)}><Plus size={14} /> Manual</button>
-        <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
-      </div>
-      <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
-      <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
-        <Sparkles size={14} color={palette.accent} /> Preguntarle a Fitra por recetas
-      </Link>
+          <button onClick={analyzePending} disabled={analyzing} style={{
+            width: "100%", padding: 15, borderRadius: 13, border: "none", marginBottom: 8,
+            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+            fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            opacity: analyzing ? 0.7 : 1,
+          }}>
+            {analyzing ? <><Loader2 size={16} /> Fitra está analizando...</> : <><Sparkles size={16} /> Calcular calorías</>}
+          </button>
+          <button onClick={cancelPending} disabled={analyzing} style={{ width: "100%", padding: 10, borderRadius: 12, border: "none", background: "none", color: palette.inkDim, fontSize: 12.5, cursor: "pointer" }}>
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <>
+          <button onClick={() => fileRef.current?.click()} style={{
+            width: "100%", padding: 16, borderRadius: 14, border: "none", marginBottom: 8,
+            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+            fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}>
+            <Camera size={17} /> Foto de tu comida
+          </button>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button onClick={() => setShowManual(true)} style={secondaryBtn(palette)}><Plus size={14} /> Manual</button>
+            <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
+          </div>
+          <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
+          <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
+            <Sparkles size={14} color={palette.accent} /> Preguntarle a Fitra por recetas
+          </Link>
+        </>
+      )}
 
       {remaining !== null && (
         <p style={{ textAlign: "center", fontSize: 11.5, color: palette.inkDim, marginBottom: 16 }}>
