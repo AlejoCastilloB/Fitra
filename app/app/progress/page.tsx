@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import ProgressTabs from "@/components/ProgressTabs";
 
 export default function ProgressPage() {
-  return <ProgressTabs />;
+  return (
+    <Suspense fallback={null}>
+      <ProgressTabs />
+    </Suspense>
+  );
 }

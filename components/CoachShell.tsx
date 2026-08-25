@@ -103,7 +103,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
             </button>
           </div>
 
-          <main className="coach-main" style={{ flex: 1 }}>{children}</main>
+          <main className="coach-main" style={{ flex: 1 }}><div key={pathname} className="ft-fade-in-up">{children}</div></main>
         </div>
       </div>
 

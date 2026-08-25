@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePalette, type Palette } from "@/lib/theme";
 import RoutinesContent from "@/components/RoutinesContent";
 import NutritionContent from "@/components/NutritionContent";
 
 export default function ProgressTabs() {
   const palette = usePalette();
-  const [tab, setTab] = useState<"training" | "nutrition">("training");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "nutrition" ? "nutrition" : "training";
+  const [tab, setTab] = useState<"training" | "nutrition">(initialTab);
 
   return (
     <div>

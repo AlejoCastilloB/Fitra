@@ -37,7 +37,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       }} />
 
       <main style={{ position: "relative", zIndex: 1, padding: hideFloatingNav ? "24px 20px" : "24px 20px 110px", maxWidth: 480, margin: "0 auto" }}>
-        {children}
+        <div key={pathname} className="ft-fade-in-up">{children}</div>
       </main>
 
       <ActiveWorkoutPill />

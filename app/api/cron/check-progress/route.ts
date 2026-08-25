@@ -22,16 +22,35 @@ export async function GET(req: Request) {
   );
 
   const now = new Date();
-  const { data: users } = await admin
+
+  async function sendTo(userId: string, payload: { title: string; body: string; url: string }) {
+    const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", userId);
+    if (!subs || subs.length === 0) return 0;
+    let count = 0;
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(payload)
+        );
+        count++;
+      } catch (err: any) {
+        if (err?.statusCode === 404 || err?.statusCode === 410) {
+          await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        }
+      }
+    }
+    return count;
+  }
+
+  let sent = 0;
+
+  const { data: progressUsers } = await admin
     .from("users")
     .select("id, progress_reminder_days, last_progress_reminder_sent_at")
     .not("progress_reminder_days", "is", null);
 
-  if (!users || users.length === 0) return NextResponse.json({ ok: true, sent: 0 });
-
-  let sent = 0;
-
-  for (const u of users) {
+  for (const u of progressUsers ?? []) {
     const days = u.progress_reminder_days as number;
     if (!days || days <= 0) continue;
 
@@ -39,28 +58,33 @@ export async function GET(req: Request) {
     const dueAt = last ? new Date(last.getTime() + days * 86400000) : now;
     if (now < dueAt) continue;
 
-    const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", u.id);
-    if (!subs || subs.length === 0) continue;
-
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({
-            title: "Hora de registrar tu progreso",
-            body: "Suma una foto, tus medidas o tu peso para seguir viendo tu evolución.",
-            url: "/app/profile",
-          })
-        );
-        sent++;
-      } catch (err: any) {
-        if (err?.statusCode === 404 || err?.statusCode === 410) {
-          await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        }
-      }
-    }
-
+    sent += await sendTo(u.id, {
+      title: "Hora de registrar tu progreso",
+      body: "Suma una foto, tus medidas o tu peso para seguir viendo tu evolución.",
+      url: "/app/profile",
+    });
     await admin.from("users").update({ last_progress_reminder_sent_at: now.toISOString() }).eq("id", u.id);
+  }
+
+  const { data: physicalUsers } = await admin
+    .from("users")
+    .select("id, physical_reminder_days, last_physical_reminder_sent_at")
+    .not("physical_reminder_days", "is", null);
+
+  for (const u of physicalUsers ?? []) {
+    const days = u.physical_reminder_days as number;
+    if (!days || days <= 0) continue;
+
+    const last = u.last_physical_reminder_sent_at ? new Date(u.last_physical_reminder_sent_at) : null;
+    const dueAt = last ? new Date(last.getTime() + days * 86400000) : now;
+    if (now < dueAt) continue;
+
+    sent += await sendTo(u.id, {
+      title: "Actualiza tus datos físicos",
+      body: "Revisa tu peso, altura y edad para que tus metas de calorías sigan siendo precisas.",
+      url: "/app/profile/settings",
+    });
+    await admin.from("users").update({ last_physical_reminder_sent_at: now.toISOString() }).eq("id", u.id);
   }
 
   return NextResponse.json({ ok: true, sent });

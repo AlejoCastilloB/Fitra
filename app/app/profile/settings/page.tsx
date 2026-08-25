@@ -10,7 +10,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
-import { MEASUREMENT_ZONES, REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
+import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
 import { clearSwCache } from "@/lib/clearSwCache";
 import { computeNutritionGoals, COMMITMENT_OPTIONS, type Sex, type CommitmentLevel } from "@/lib/computeNutritionGoals";
 
@@ -62,6 +62,7 @@ export default function ProfileSettingsPage() {
   const [age, setAge] = useState<number | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
   const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
+  const [physicalReminderDays, setPhysicalReminderDays] = useState<number | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [daysAvailable, setDaysAvailable] = useState(3);
 
@@ -82,7 +83,7 @@ export default function ProfileSettingsPage() {
       setEmail(auth.user!.email ?? "");
 
       const [{ data: userRow }, { data: clientRow }] = await Promise.all([
-        supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days").eq("id", id).single(),
+        supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days, physical_reminder_days").eq("id", id).single(),
         supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, weight_kg, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
       ]);
 
@@ -92,6 +93,7 @@ export default function ProfileSettingsPage() {
         setUnitSystem((userRow.unit_system as UnitSystem) ?? "metric");
         setMeasurementZones(userRow.measurement_zones || []);
         setProgressReminderDays(userRow.progress_reminder_days ?? null);
+        setPhysicalReminderDays(userRow.physical_reminder_days ?? null);
       }
 
       if (clientRow) {
@@ -158,12 +160,13 @@ export default function ProfileSettingsPage() {
     setShowWeightEdit(false);
   }
 
-  async function savePhysicalProfile(next: { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel }) {
+  async function savePhysicalProfile(next: { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; reminderDays: number | null }) {
     setWeightKg(next.weightKg);
     setHeightCm(next.heightCm);
     setAge(next.age);
     setSex(next.sex);
     setCommitment(next.commitment);
+    setPhysicalReminderDays(next.reminderDays);
 
     const nutritionGoals = (next.weightKg && next.heightCm && next.age && next.sex)
       ? computeNutritionGoals({
@@ -172,13 +175,16 @@ export default function ProfileSettingsPage() {
         })
       : null;
 
-    await supabase.from("clients").update({
-      weight_kg: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
-      ...(nutritionGoals && {
-        daily_kcal_goal: nutritionGoals.kcal, daily_protein_goal: nutritionGoals.protein,
-        daily_carbs_goal: nutritionGoals.carbs, daily_fat_goal: nutritionGoals.fat,
-      }),
-    }).eq("user_id", uid);
+    await Promise.all([
+      supabase.from("clients").update({
+        weight_kg: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
+        ...(nutritionGoals && {
+          daily_kcal_goal: nutritionGoals.kcal, daily_protein_goal: nutritionGoals.protein,
+          daily_carbs_goal: nutritionGoals.carbs, daily_fat_goal: nutritionGoals.fat,
+        }),
+      }).eq("user_id", uid),
+      supabase.from("users").update({ physical_reminder_days: next.reminderDays }).eq("id", uid),
+    ]);
     setShowPhysicalEdit(false);
   }
 
@@ -312,7 +318,7 @@ export default function ProfileSettingsPage() {
       {showPhysicalEdit && (
         <Modal title="Perfil físico" onClose={() => setShowPhysicalEdit(false)} maxWidth={340}>
           <PhysicalProfileEditor
-            initial={{ weightKg, heightCm, age, sex, commitment }}
+            initial={{ weightKg, heightCm, age, sex, commitment, reminderDays: physicalReminderDays }}
             showCommitment={goal !== null && goal !== "salud"}
             onSave={savePhysicalProfile}
           />
@@ -430,7 +436,7 @@ function WeightEditor({ initial, onSave }: { initial: string; onSave: (v: string
   );
 }
 
-type PhysicalProfile = { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel };
+type PhysicalProfile = { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; reminderDays: number | null };
 
 function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: PhysicalProfile; showCommitment: boolean; onSave: (v: PhysicalProfile) => void }) {
   const palette = usePalette();
@@ -439,6 +445,7 @@ function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: P
   const [age, setAge] = useState(initial.age);
   const [sex, setSex] = useState(initial.sex);
   const [commitment, setCommitment] = useState(initial.commitment);
+  const [reminderDays, setReminderDays] = useState(initial.reminderDays);
 
   function numberInput(value: number | null, onChange: (v: number | null) => void, label: string) {
     return (
@@ -492,8 +499,20 @@ function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: P
         </>
       )}
 
+      <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Recordarme actualizar estos datos</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+        {PHYSICAL_REMINDER_OPTIONS.map((r) => (
+          <button key={String(r.value)} onClick={() => setReminderDays(r.value)} style={{
+            padding: "7px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer", fontWeight: 600,
+            border: `1px solid ${reminderDays === r.value ? palette.accent : palette.panelBorder}`,
+            background: reminderDays === r.value ? `${palette.accent}22` : palette.inputBg,
+            color: reminderDays === r.value ? palette.accent : palette.inkDim,
+          }}>{r.label}</button>
+        ))}
+      </div>
+
       <button
-        onClick={() => onSave({ weightKg, heightCm, age, sex, commitment })}
+        onClick={() => onSave({ weightKg, heightCm, age, sex, commitment, reminderDays })}
         disabled={!weightKg || !heightCm || !age || !sex}
         style={{
           width: "100%", padding: 12, borderRadius: 11, border: "none",
