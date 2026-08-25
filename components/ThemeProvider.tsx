@@ -34,6 +34,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   const palette = theme === "dark" ? darkPalette : lightPalette;
 
+  useEffect(() => {
+    document.body.style.background = palette.bg;
+  }, [palette.bg]);
+
   return (
     <ThemeContext.Provider value={{ theme, palette, setTheme, hydrateTheme }}>
       {children}

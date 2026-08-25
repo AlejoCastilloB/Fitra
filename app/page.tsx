@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Dumbbell, Camera, ChefHat, MessagesSquare, Bell, TrendingUp, Check, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import AppTour from "@/components/landing/AppTour";
@@ -32,6 +32,10 @@ const STEPS = [
 
 export default function Home() {
   const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    document.body.style.background = palette.bg;
+  }, []);
 
   return (
     <main style={{

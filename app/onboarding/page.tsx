@@ -197,6 +197,10 @@ function OnboardingForm() {
   }
 
   useEffect(() => {
+    document.body.style.background = palette.bg;
+  }, []);
+
+  useEffect(() => {
     (async () => {
       let invite = urlInvite;
       if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
