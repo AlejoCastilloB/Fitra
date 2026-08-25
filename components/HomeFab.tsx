@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
+import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
 const ANIM_MS = 260;
 
@@ -43,6 +44,7 @@ export default function HomeFab() {
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   function openMenu() {
+    markHintSeen("fab_menu");
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setClosing(false);
     setMounted(true);
@@ -76,6 +78,8 @@ export default function HomeFab() {
 
   return (
     <>
+      {!mounted && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
+
       {mounted && (
         <div
           onClick={closeMenu}

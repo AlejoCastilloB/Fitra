@@ -9,6 +9,7 @@ import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
 import Link from "next/link";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
+import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
 const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
 const WATER_GOAL = 2500;
@@ -77,6 +78,7 @@ export default function NutritionContent() {
   useEffect(() => { loadAll(); }, []);
 
   async function addWater(delta: number) {
+    markHintSeen("water_track");
     const next = Math.max(0, water + delta);
     setWater(next);
     const { data: auth } = await supabase.auth.getUser();
@@ -263,6 +265,7 @@ export default function NutritionContent() {
       </div>
 
       <div className="ft-pop" style={{ ...palette.glassPanel, padding: 16, marginBottom: 14, animationDelay: "0.05s" }}>
+        <FirstTimeHint id="water_track" text="Toca + o − para registrar cuánta agua tomas en el día — te ayuda a mantener buenos hábitos de hidratación." />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Droplet size={16} color="#7DC4E8" />
@@ -307,7 +310,8 @@ export default function NutritionContent() {
         <button onClick={() => setShowManual(true)} style={secondaryBtn(palette)}><Plus size={14} /> Manual</button>
         <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
       </div>
-      <Link href="/app/nutrition/recipes" style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
+      <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
+      <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
         <Sparkles size={14} color={palette.accent} /> Preguntarle a Fitra por recetas
       </Link>
 
