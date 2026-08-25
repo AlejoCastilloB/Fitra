@@ -103,11 +103,7 @@ function OnboardingForm() {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   function toggleSecondaryGoal(id: string) {
-    setSecondaryGoals((prev) => {
-      if (prev.includes(id)) return prev.filter((g) => g !== id);
-      if (prev.length >= 2) return prev;
-      return [...prev, id];
-    });
+    setSecondaryGoals((prev) => (prev.includes(id) ? [] : [id]));
   }
 
   function toggleSport(sport: string) {
@@ -300,7 +296,7 @@ function OnboardingForm() {
                 <Pill key={g.id} active={goal === g.id} onClick={() => { setGoal(g.id); setSecondaryGoals((prev) => prev.filter((id) => id !== g.id)); }}>{g.emoji} {g.label}</Pill>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>¿Algún objetivo secundario? (opcional, hasta 2)</div>
+            <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>¿Algún objetivo secundario? (opcional)</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {GOALS.filter((g) => g.id !== goal).map((g) => (
                 <Pill key={g.id} active={secondaryGoals.includes(g.id)} onClick={() => toggleSecondaryGoal(g.id)}>{g.emoji} {g.label}</Pill>
