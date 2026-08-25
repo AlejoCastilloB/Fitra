@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2 } from "lucide-react";
+import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
@@ -26,9 +27,12 @@ function computeHealthScore(fiber: number, sugar: number, sodium: number, protei
 export default function NutritionContent() {
   const palette = usePalette();
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const closeDayRecorderRef = useRef<MediaRecorder | null>(null);
+  const closeDayChunksRef = useRef<Blob[]>([]);
 
   const [logs, setLogs] = useState<any[]>([]);
   const [savedMeals, setSavedMeals] = useState<any[]>([]);
@@ -47,6 +51,12 @@ export default function NutritionContent() {
   const [goals, setGoals] = useState(DAILY_GOALS);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [showCloseDay, setShowCloseDay] = useState(false);
+  const [closeDayText, setCloseDayText] = useState("");
+  const [closeDayRecording, setCloseDayRecording] = useState(false);
+  const [closeDayAudioBlob, setCloseDayAudioBlob] = useState<Blob | null>(null);
+  const [closeDaySubmitting, setCloseDaySubmitting] = useState(false);
+  const [closeDayError, setCloseDayError] = useState("");
 
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
@@ -71,6 +81,10 @@ export default function NutritionContent() {
   }
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    if (searchParams.get("closeDay") === "1") setShowCloseDay(true);
+  }, [searchParams]);
 
   async function addWater(delta: number) {
     markHintSeen("water_track");
@@ -133,6 +147,47 @@ export default function NutritionContent() {
       mediaRecorderRef.current = recorder;
       setRecording(true);
     } catch { setError("No pudimos acceder al micrófono."); }
+  }
+
+  async function toggleCloseDayRecording() {
+    if (closeDayRecording) { closeDayRecorderRef.current?.stop(); setCloseDayRecording(false); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      closeDayChunksRef.current = [];
+      recorder.ondataavailable = (e) => closeDayChunksRef.current.push(e.data);
+      recorder.onstop = () => { setCloseDayAudioBlob(new Blob(closeDayChunksRef.current, { type: "audio/webm" })); stream.getTracks().forEach((t) => t.stop()); };
+      recorder.start();
+      closeDayRecorderRef.current = recorder;
+      setCloseDayRecording(true);
+    } catch { setCloseDayError("No pudimos acceder al micrófono."); }
+  }
+
+  function closeCloseDayModal() {
+    setShowCloseDay(false);
+    setCloseDayText(""); setCloseDayAudioBlob(null); setCloseDayError("");
+  }
+
+  async function submitCloseDay() {
+    if (!closeDayText.trim() && !closeDayAudioBlob) return;
+    setCloseDaySubmitting(true);
+    setCloseDayError("");
+    try {
+      const body: any = {};
+      if (closeDayText.trim()) body.text = closeDayText.trim();
+      if (closeDayAudioBlob) { body.audioBase64 = await fileToBase64(closeDayAudioBlob, false); body.audioMimeType = "audio/webm"; }
+
+      const res = await fetch("/api/ai/log-day-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+
+      if (!res.ok) setCloseDayError(data.message || data.error || "Error al procesar tu resumen");
+      else {
+        setCoachTip(data.coachTip || "");
+        closeCloseDayModal();
+        await loadAll();
+      }
+    } catch { setCloseDayError("Fallo de red, inténtalo de nuevo"); }
+    finally { setCloseDaySubmitting(false); }
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -354,8 +409,9 @@ export default function NutritionContent() {
             <Camera size={17} /> Foto de tu comida
           </button>
 
-          <div style={{ marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Comidas guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
+            <button onClick={() => setShowCloseDay(true)} style={secondaryBtn(palette)}><Moon size={14} /> Cerrar mi día</button>
           </div>
           <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
           <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
@@ -458,7 +514,52 @@ export default function NutritionContent() {
       )}
 
       {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
+
+      {showCloseDay && (
+        <CloseDayModal
+          text={closeDayText} onTextChange={setCloseDayText}
+          recording={closeDayRecording} onToggleRecording={toggleCloseDayRecording}
+          hasAudio={!!closeDayAudioBlob} submitting={closeDaySubmitting} error={closeDayError}
+          onSubmit={submitCloseDay} onClose={closeCloseDayModal}
+        />
+      )}
     </div>
+  );
+}
+
+function CloseDayModal({
+  text, onTextChange, recording, onToggleRecording, hasAudio, submitting, error, onSubmit, onClose,
+}: {
+  text: string; onTextChange: (v: string) => void; recording: boolean; onToggleRecording: () => void;
+  hasAudio: boolean; submitting: boolean; error: string; onSubmit: () => void; onClose: () => void;
+}) {
+  const palette = usePalette();
+  return (
+    <Modal title="Cerrar tu día" onClose={onClose} maxWidth={400}>
+      <p style={{ fontSize: 12, color: palette.inkDim, lineHeight: 1.5, marginBottom: 14 }}>
+        Cuéntale a Fitra todo lo que comiste hoy en un solo mensaje — por texto o nota de voz — y arma el registro completo por ti.
+      </p>
+      <textarea
+        value={text} onChange={(e) => onTextChange(e.target.value)}
+        placeholder="Ej: en el desayuno comí huevos con arepa, a media mañana una manzana, y en el almuerzo arroz con pollo y ensalada..."
+        style={{ width: "100%", minHeight: 90, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10, fontFamily: "inherit", resize: "vertical" }}
+      />
+      <button onClick={onToggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
+        {recording ? <><Square size={13} /> Detener grabación</> : <><Mic size={13} /> Grabar nota de voz</>}
+      </button>
+      {hasAudio && !recording && <p style={{ fontSize: 11.5, color: palette.accent, marginBottom: 14 }}>✓ Nota de voz lista</p>}
+
+      {error && <p style={{ color: "#f87171", fontSize: 12.5, marginBottom: 10 }}>{error}</p>}
+
+      <button onClick={onSubmit} disabled={submitting || (!text.trim() && !hasAudio)} style={{
+        width: "100%", padding: 13, borderRadius: 12, border: "none",
+        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+        fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        opacity: submitting || (!text.trim() && !hasAudio) ? 0.6 : 1,
+      }}>
+        {submitting ? <><Loader2 size={16} /> Fitra está registrando...</> : <><Sparkles size={16} /> Registrar mi día</>}
+      </button>
+    </Modal>
   );
 }
 

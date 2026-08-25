@@ -87,5 +87,32 @@ export async function GET(req: Request) {
     await admin.from("users").update({ last_physical_reminder_sent_at: now.toISOString() }).eq("id", u.id);
   }
 
+  // Colombia no usa horario de verano, así que un offset fijo de -5h basta para calcular
+  // la hora local sin depender de zonas horarias por usuario (que hoy no se guardan).
+  const BOGOTA_OFFSET_MS = 5 * 3600000;
+  const bNow = new Date(now.getTime() - BOGOTA_OFFSET_MS);
+  const bTodayStr = bNow.toISOString().slice(0, 10);
+
+  const { data: nutritionUsers } = await admin
+    .from("users")
+    .select("id, nutrition_reminder_time, last_nutrition_reminder_sent_at")
+    .not("nutrition_reminder_time", "is", null);
+
+  for (const u of nutritionUsers ?? []) {
+    const time = u.nutrition_reminder_time as string;
+    if (!time) continue;
+    if (u.last_nutrition_reminder_sent_at === bTodayStr) continue;
+
+    const targetBogota = new Date(`${bTodayStr}T${time}:00.000Z`);
+    if (bNow < targetBogota) continue;
+
+    sent += await sendTo(u.id, {
+      title: "Cierra tu día en FitTrack",
+      body: "Cuéntale a Fitra todo lo que comiste hoy — por texto o nota de voz — y arma tu registro completo.",
+      url: "/app/nutrition?closeDay=1",
+    });
+    await admin.from("users").update({ last_nutrition_reminder_sent_at: bTodayStr }).eq("id", u.id);
+  }
+
   return NextResponse.json({ ok: true, sent });
 }

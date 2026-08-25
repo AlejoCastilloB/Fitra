@@ -26,6 +26,22 @@ export const PHYSICAL_REMINDER_OPTIONS: { value: number | null; label: string }[
   { value: 180, label: "Cada 6 meses" },
 ];
 
+export const ROUTINE_DURATION_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: "Sin límite" },
+  { value: 14, label: "2 semanas" },
+  { value: 30, label: "1 mes" },
+  { value: 60, label: "2 meses" },
+  { value: 90, label: "3 meses" },
+];
+
+export const NUTRITION_CLOSE_DAY_OPTIONS: { value: string | null; label: string }[] = [
+  { value: null, label: "Nunca" },
+  { value: "20:00", label: "8:00 pm" },
+  { value: "21:00", label: "9:00 pm" },
+  { value: "22:00", label: "10:00 pm" },
+  { value: "23:00", label: "11:00 pm" },
+];
+
 export function cmToDisplay(valueCm: number, unit: UnitSystem): number {
   return unit === "imperial" ? Math.round((valueCm / 2.54) * 10) / 10 : Math.round(valueCm * 10) / 10;
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Search, Plus, X } from "lucide-react";
+import { Search, Plus, X, Image as ImageIcon } from "lucide-react";
 
 const MEASUREMENT_LABELS: Record<string, string> = {
   reps_weight: "Reps y peso",
@@ -117,18 +117,23 @@ export default function ExercisesPage() {
                 {ex.trainer_id && (
                   <span style={{ fontSize: 9.5, color: palette.accent, fontWeight: 700, textTransform: "uppercase" }}>Propio</span>
                 )}
+                {ex.counts_toward_exercise_id && (
+                  <div style={{ fontSize: 10, color: palette.inkDim, marginTop: 2 }}>
+                    Suma volumen a {exercises.find((e) => e.id === ex.counts_toward_exercise_id)?.name ?? "otro ejercicio"}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {showForm && <ExerciseForm onClose={() => setShowForm(false)} onCreated={load} />}
+      {showForm && <ExerciseForm existingExercises={exercises} onClose={() => setShowForm(false)} onCreated={load} />}
     </div>
   );
 }
 
-function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExercises: any[]; onClose: () => void; onCreated: () => void }) {
   const palette = usePalette();
   const supabase = createClient();
   const [name, setName] = useState("");
@@ -137,21 +142,47 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [measurementType, setMeasurementType] = useState("reps_weight");
   const [description, setDescription] = useState("");
   const [annotations, setAnnotations] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [countsToward, setCountsToward] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState("");
   const [saving, setSaving] = useState(false);
+
+  function handleMediaChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user!.id;
+
+    let mediaUrl: string | null = null;
+    if (mediaFile) {
+      const ext = mediaFile.name.split(".").pop() || "jpg";
+      const path = `exercise-media/${uid}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("food-photos").upload(path, mediaFile, { contentType: mediaFile.type });
+      if (!uploadError) {
+        const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
+        mediaUrl = pub.publicUrl;
+      }
+    }
 
     await supabase.from("exercises").insert({
-      trainer_id: auth.user!.id,
+      trainer_id: uid,
       name,
       muscle_group: muscleGroup,
       equipment,
       measurement_type: measurementType,
       description,
       annotations,
+      media_url: mediaUrl,
+      video_url: videoUrl.trim() || null,
+      counts_toward_exercise_id: countsToward || null,
     });
 
     setSaving(false);
@@ -175,6 +206,22 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <FormField label="Imagen o GIF del ejercicio (opcional)">
+            <label style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: mediaPreview ? "auto" : 90,
+              borderRadius: 10, border: `1px dashed ${palette.panelBorder}`, background: palette.inputBg, cursor: "pointer", overflow: "hidden",
+            }}>
+              {mediaPreview ? (
+                <img src={mediaPreview} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }} />
+              ) : (
+                <span style={{ display: "flex", alignItems: "center", gap: 6, color: palette.inkDim, fontSize: 12.5 }}>
+                  <ImageIcon size={16} /> Subir imagen o GIF
+                </span>
+              )}
+              <input type="file" accept="image/*" onChange={handleMediaChange} style={{ display: "none" }} />
+            </label>
+          </FormField>
+
           <FormField label="Nombre">
             <input required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle(palette)} />
           </FormField>
@@ -202,6 +249,17 @@ function ExerciseForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
           <FormField label="Anotaciones para el entrenamiento (opcional)">
             <textarea value={annotations} onChange={(e) => setAnnotations(e.target.value)} placeholder="Ej: mantener espalda recta, tempo 2-1-2" style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical" }} />
+          </FormField>
+
+          <FormField label="Video de YouTube (opcional)">
+            <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." style={inputStyle(palette)} />
+          </FormField>
+
+          <FormField label="Sumar su volumen a otro ejercicio (opcional)">
+            <select value={countsToward} onChange={(e) => setCountsToward(e.target.value)} style={inputStyle(palette)}>
+              <option value="">No, contar por separado</option>
+              {existingExercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+            </select>
           </FormField>
 
           <button type="submit" disabled={saving} style={{

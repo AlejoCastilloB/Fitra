@@ -28,7 +28,7 @@ export default function TrainingStatsPage() {
       const [{ data: setRows }, { count: workoutCount }] = await Promise.all([
         supabase
           .from("set_logs")
-          .select("weight, reps, set_type, exercise_id, workout_logs!inner(client_id), exercises(name, muscle_group)")
+          .select("weight, reps, set_type, exercise_id, workout_logs!inner(client_id), exercises(name, muscle_group, parent:exercises!counts_toward_exercise_id(name))")
           .eq("workout_logs.client_id", uid),
         supabase.from("workout_logs").select("id", { count: "exact", head: true }).eq("client_id", uid),
       ]);
@@ -50,7 +50,7 @@ export default function TrainingStatsPage() {
         byMuscle[muscle].sets += 1;
         if (s.exercise_id) byMuscle[muscle].exercises.add(s.exercise_id);
 
-        const exName = s.exercises?.name || "Ejercicio";
+        const exName = s.exercises?.parent?.name || s.exercises?.name || "Ejercicio";
         if (!byExercise[exName]) byExercise[exName] = { name: exName, volume: 0, sets: 0 };
         byExercise[exName].volume += vol;
         byExercise[exName].sets += 1;

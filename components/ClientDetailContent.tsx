@@ -10,10 +10,10 @@ import CopyButton from "@/components/CopyButton";
 type SportRow = { sport: string; level: string | null; experience: string | null; include_in_plan: boolean };
 
 export default function ClientDetailContent({
-  displayName, email, status, lifestyle, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
+  displayName, email, status, createdAt, lifestyle, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
   aiContext, trainerNotes, clientId, sports,
 }: {
-  displayName: string | null; email: string | null; status: string;
+  displayName: string | null; email: string | null; status: string; createdAt: string | null;
   lifestyle: { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number };
   injuries: { notes?: string };
   medicalNotes: string | null; dietaryRestrictions: string | null; kitchenEquipment: string[];
@@ -21,6 +21,7 @@ export default function ClientDetailContent({
 }) {
   const palette = usePalette();
   const secondaryGoals = lifestyle.secondary_goals ?? [];
+  const memberSince = createdAt ? new Date(createdAt).toLocaleDateString("es-CO", { month: "long", year: "numeric" }) : null;
 
   return (
     <div style={{ maxWidth: 640 }}>
@@ -38,6 +39,7 @@ export default function ClientDetailContent({
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{displayName || email}</div>
           <div style={{ fontSize: 13, color: palette.inkDim }}>{email} · {status}</div>
+          {memberSince && <div style={{ fontSize: 12, color: palette.inkDim, marginTop: 2 }}>Cliente desde {memberSince}</div>}
         </div>
       </div>
 
