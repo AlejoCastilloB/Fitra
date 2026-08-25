@@ -7,7 +7,6 @@ import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
-import { computeStreakUpdate } from "@/lib/streak";
 import { supersetColor } from "@/lib/supersetColors";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -267,11 +266,6 @@ export default function WorkoutPage() {
 
       const { error: updateError } = await supabase.from("workout_logs").update({ total_volume: totalVolume }).eq("id", workoutLog.id);
       if (updateError) throw updateError;
-
-      const { data: streakRow } = await supabase.from("streaks").select("*").eq("client_id", uid).single();
-      const streakUpdate = computeStreakUpdate(streakRow?.last_workout_date ?? null, streakRow?.current_weeks ?? 0);
-      if (streakRow) await supabase.from("streaks").update(streakUpdate).eq("client_id", uid);
-      else await supabase.from("streaks").insert({ client_id: uid, ...streakUpdate });
 
       setFinished({ workoutLogId: workoutLog.id, routineName: session.routineName, volume: totalVolume, durationSec, prs: prsHit, breakdown });
       clearSession();

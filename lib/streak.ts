@@ -7,29 +7,34 @@ function weekStart(d: Date) {
   return ws;
 }
 
-// racha guardada solo se recalcula al terminar un entreno — si pasó más de una semana calendario
-// sin entrenar, ya se rompió aunque el valor guardado en la fila `streaks` todavía no lo refleje.
-export function getDisplayStreak(currentWeeks: number, lastWorkoutDate: string | null, now: Date = new Date()): number {
-  if (!lastWorkoutDate) return 0;
-  const diffWeeks = Math.round((weekStart(now).getTime() - weekStart(new Date(lastWorkoutDate)).getTime()) / (7 * 86400000));
-  return diffWeeks >= 2 ? 0 : currentWeeks;
-}
+// La racha se calcula directo desde las fechas reales de entrenamiento en vez de
+// mantener un contador incremental aparte (streaks.current_weeks) — ese contador
+// solo se actualizaba al terminar un entreno y podía quedar desalineado con la
+// actividad real (por ejemplo, si algo lo incrementaba sin que hubiera semanas
+// realmente consecutivas). Esta versión siempre refleja la actividad real: cuenta
+// semanas consecutivas con al menos un entreno, hacia atrás desde la semana actual
+// (o la anterior, si esta semana todavía no hay entreno pero la pasada sí sigue
+// viva la racha) — y se rompe apenas hay una semana real sin nada en medio.
+export function computeStreakFromDates(dates: (string | null | undefined)[], now: Date = new Date()): number {
+  const weeksWithWorkout = new Set(
+    dates.filter((d): d is string => !!d).map((d) => weekStart(new Date(d)).getTime())
+  );
+  if (weeksWithWorkout.size === 0) return 0;
 
-export function computeStreakUpdate(lastWorkoutDate: string | null, currentWeeks: number, now: Date = new Date()) {
-  const thisWeekStart = weekStart(now);
+  const thisWeek = weekStart(now);
+  const lastWeek = new Date(thisWeek);
+  lastWeek.setDate(lastWeek.getDate() - 7);
 
-  if (!lastWorkoutDate) {
-    return { current_weeks: 1, last_workout_date: now.toISOString() };
+  let cursor: Date;
+  if (weeksWithWorkout.has(thisWeek.getTime())) cursor = thisWeek;
+  else if (weeksWithWorkout.has(lastWeek.getTime())) cursor = lastWeek;
+  else return 0;
+
+  let weeks = 0;
+  while (weeksWithWorkout.has(cursor.getTime())) {
+    weeks++;
+    cursor = new Date(cursor);
+    cursor.setDate(cursor.getDate() - 7);
   }
-
-  const lastWeekStart = weekStart(new Date(lastWorkoutDate));
-  const diffWeeks = Math.round((thisWeekStart.getTime() - lastWeekStart.getTime()) / (7 * 86400000));
-
-  if (diffWeeks === 0) {
-    return { current_weeks: currentWeeks, last_workout_date: now.toISOString() };
-  }
-  if (diffWeeks === 1) {
-    return { current_weeks: currentWeeks + 1, last_workout_date: now.toISOString() };
-  }
-  return { current_weeks: 1, last_workout_date: now.toISOString() };
+  return weeks;
 }

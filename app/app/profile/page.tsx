@@ -4,24 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { getDisplayStreak } from "@/lib/streak";
+import { computeStreakFromDates } from "@/lib/streak";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import Link from "next/link";
-import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler } from "lucide-react";
+import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler, ChevronRight } from "lucide-react";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, type UnitSystem } from "@/lib/units";
-
-function computeBadges(streak: number, totalWorkouts: number, totalPRs: number) {
-  const badges: { emoji: string; label: string }[] = [];
-  if (streak >= 1) badges.push({ emoji: "🔥", label: "Racha activa" });
-  if (streak >= 4) badges.push({ emoji: "📅", label: "Un mes constante" });
-  if (totalWorkouts >= 1) badges.push({ emoji: "🏆", label: "Primer entreno" });
-  if (totalWorkouts >= 10) badges.push({ emoji: "💪", label: "10 entrenos" });
-  if (totalWorkouts >= 50) badges.push({ emoji: "⚡", label: "50 entrenos" });
-  if (totalPRs >= 1) badges.push({ emoji: "🥇", label: "Primer PR" });
-  if (totalPRs >= 5) badges.push({ emoji: "👑", label: "5 récords" });
-  return badges;
-}
+import { ACHIEVEMENTS } from "@/lib/achievements";
 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -45,6 +34,7 @@ export default function ProfilePage() {
   const [history, setHistory] = useState<any[]>([]);
   const [selectedHistory, setSelectedHistory] = useState<any | null>(null);
   const [stats, setStats] = useState({ totalWorkouts: 0, totalVolume: 0, totalPRs: 0 });
+  const [unlockedCount, setUnlockedCount] = useState(0);
   const [activeDays, setActiveDays] = useState<boolean[]>(Array(7).fill(false));
   const [topPRs, setTopPRs] = useState<any[]>([]);
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
@@ -67,23 +57,24 @@ export default function ProfilePage() {
         { data: userRow },
         { data: clientRow },
         { data: measurementRows },
-        { data: streakRow },
         { data: photoRows },
         { data: workoutRows, count: workoutCount },
         { data: allVolumeRows },
         { data: nutritionRows },
         { data: prRows, count: prCount },
+        { count: achievementCount },
       ] = await Promise.all([
         supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single(),
         supabase.from("clients").select("current_weight").eq("user_id", id).single(),
         supabase.from("body_measurements").select("measurement_key, value_cm").eq("user_id", id).order("date", { ascending: false }),
-        supabase.from("streaks").select("current_weeks, last_workout_date").eq("client_id", id).single(),
         supabase.from("progress_photos").select("*").eq("client_id", id).order("date", { ascending: false }),
         supabase.from("workout_logs").select("id, date, duration_sec, total_volume, routines(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(20),
         supabase.from("workout_logs").select("total_volume, date").eq("client_id", id),
         supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20),
         supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5),
+        supabase.from("user_achievements").select("achievement_key", { count: "exact", head: true }).eq("client_id", id),
       ]);
+      setUnlockedCount(achievementCount ?? 0);
 
       if (userRow) {
         setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || "");
@@ -96,7 +87,7 @@ export default function ProfilePage() {
       (measurementRows ?? []).forEach((m: any) => { if (!(m.measurement_key in latest)) latest[m.measurement_key] = m.value_cm; });
       setLatestMeasurements(latest);
 
-      setStreak(getDisplayStreak(streakRow?.current_weeks ?? 0, streakRow?.last_workout_date ?? null));
+      setStreak(computeStreakFromDates((allVolumeRows ?? []).map((w: any) => w.date)));
 
       setPhotos(photoRows ?? []);
       if (photoRows && photoRows.length >= 2) {
@@ -148,8 +139,6 @@ export default function ProfilePage() {
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  const badges = computeBadges(streak, stats.totalWorkouts, stats.totalPRs);
-
   return (
     <div>
       <style>{`
@@ -186,18 +175,19 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {badges.length > 0 && (
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
-            {badges.map((b, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, minWidth: 56 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: palette.inputBg, border: `1px solid ${palette.panelBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>
-                  {b.emoji}
-                </div>
-                <span style={{ fontSize: 8.5, color: palette.inkDim, textAlign: "center", lineHeight: 1.2 }}>{b.label}</span>
-              </div>
-            ))}
+        <Link href="/app/achievements" style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12,
+          background: palette.inputBg, border: `1px solid ${palette.panelBorder}`, textDecoration: "none", color: palette.ink,
+        }}>
+          <div style={{ width: 30, height: 30, borderRadius: 9, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
+            <Award size={15} />
           </div>
-        )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700 }}>Logros</div>
+            <div style={{ fontSize: 10.5, color: palette.inkDim }}>{unlockedCount} de {ACHIEVEMENTS.length} insignias desbloqueadas</div>
+          </div>
+          <ChevronRight size={16} color={palette.inkDim} style={{ flexShrink: 0 }} />
+        </Link>
       </div>
 
       <div className="ft-profile-in" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16, animationDelay: "0.05s" }}>

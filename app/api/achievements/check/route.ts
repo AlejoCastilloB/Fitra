@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ACHIEVEMENTS, computeUnlockedKeys } from "@/lib/achievements";
+import { computeStreakFromDates } from "@/lib/streak";
 
 export async function POST() {
   const supabase = await createClient();
@@ -10,7 +11,6 @@ export async function POST() {
 
   const [
     { count: totalWorkouts },
-    { data: streakRow },
     { count: totalPRs },
     { data: volumeRows },
     { count: totalFoodLogs },
@@ -20,9 +20,8 @@ export async function POST() {
     { data: existing },
   ] = await Promise.all([
     supabase.from("workout_logs").select("id", { count: "exact", head: true }).eq("client_id", uid),
-    supabase.from("streaks").select("current_weeks").eq("client_id", uid).single(),
     supabase.from("personal_records").select("id", { count: "exact", head: true }).eq("client_id", uid),
-    supabase.from("workout_logs").select("total_volume").eq("client_id", uid),
+    supabase.from("workout_logs").select("total_volume, date").eq("client_id", uid),
     supabase.from("nutrition_logs").select("id", { count: "exact", head: true }).eq("client_id", uid),
     supabase.from("water_logs").select("client_id", { count: "exact", head: true }).eq("client_id", uid),
     supabase.from("progress_photos").select("id", { count: "exact", head: true }).eq("client_id", uid),
@@ -34,7 +33,7 @@ export async function POST() {
 
   const unlockedKeys = computeUnlockedKeys({
     totalWorkouts: totalWorkouts ?? 0,
-    currentStreak: streakRow?.current_weeks ?? 0,
+    currentStreak: computeStreakFromDates((volumeRows ?? []).map((r: any) => r.date)),
     totalPRs: totalPRs ?? 0,
     totalVolume,
     totalFoodLogs: totalFoodLogs ?? 0,
