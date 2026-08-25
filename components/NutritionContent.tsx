@@ -94,13 +94,15 @@ export default function NutritionContent() {
       reader.onload = () => {
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const maxDim = 900;
+          // Suficiente resolución para que Fitra pueda contar unidades (albóndigas, rodajas, etc.)
+          // en vez de solo reconocer el tipo de platillo — la precisión de la porción depende de esto.
+          const maxDim = 1280;
           const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
           canvas.width = img.width * scale;
           canvas.height = img.height * scale;
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+          resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
         };
         img.onerror = reject;
         img.src = reader.result as string;
