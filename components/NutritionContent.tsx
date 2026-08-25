@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X } from "lucide-react";
+import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2 } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
@@ -14,13 +14,6 @@ import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
 const WATER_GOAL = 2500;
 const WATER_STEP = 250;
-
-function modalInput(palette: Palette): React.CSSProperties {
-  return {
-    width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
-    background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
-  };
-}
 
 function computeHealthScore(fiber: number, sugar: number, sodium: number, protein: number, proteinGoal: number) {
   const fiberScore = Math.min(100, (fiber / HEALTH_TARGETS.fiber) * 100);
@@ -41,6 +34,7 @@ export default function NutritionContent() {
   const [savedMeals, setSavedMeals] = useState<any[]>([]);
   const [water, setWater] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -49,7 +43,6 @@ export default function NutritionContent() {
   const [note, setNote] = useState("");
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [showManual, setShowManual] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [goals, setGoals] = useState(DAILY_GOALS);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -189,6 +182,11 @@ export default function NutritionContent() {
 
   async function updateFoodName(logId: string, newName: string) {
     await supabase.from("nutrition_logs").update({ food_name: newName }).eq("id", logId);
+    await loadAll();
+  }
+
+  async function deleteLog(logId: string) {
+    await supabase.from("nutrition_logs").delete().eq("id", logId);
     await loadAll();
   }
 
@@ -354,9 +352,8 @@ export default function NutritionContent() {
             <Camera size={17} /> Foto de tu comida
           </button>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <button onClick={() => setShowManual(true)} style={secondaryBtn(palette)}><Plus size={14} /> Manual</button>
-            <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
+          <div style={{ marginBottom: 8 }}>
+            <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Comidas guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
           </div>
           <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
           <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
@@ -433,6 +430,23 @@ export default function NutritionContent() {
                         <p style={{ fontSize: 12.5, color: palette.ink, lineHeight: 1.4 }}>{l.note}</p>
                       </div>
                     )}
+
+                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${palette.panelBorder}` }}>
+                      {confirmDeleteId === l.id ? (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: 9, borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 12, cursor: "pointer" }}>
+                            Cancelar
+                          </button>
+                          <button onClick={() => deleteLog(l.id)} style={{ flex: 1, padding: 9, borderRadius: 9, border: "none", background: "#f87171", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                            Sí, eliminar
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(l.id)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                          <Trash2 size={13} /> Eliminar registro
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -441,7 +455,6 @@ export default function NutritionContent() {
         </div>
       )}
 
-      {showManual && <ManualMealModal onClose={() => setShowManual(false)} onSaved={loadAll} />}
       {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
     </div>
   );
@@ -469,44 +482,6 @@ function secondaryBtn(palette: Palette): React.CSSProperties {
     borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
     fontSize: 12.5, fontWeight: 600, cursor: "pointer",
   };
-}
-
-function ManualMealModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const palette = usePalette();
-  const supabase = createClient();
-  const [name, setName] = useState("");
-  const [kcal, setKcal] = useState(""); const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState(""); const [fat, setFat] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
-    await supabase.from("nutrition_logs").insert({
-      client_id: auth.user!.id, food_name: name || "Comida manual",
-      kcal: +kcal || 0, protein: +protein || 0, carbs: +carbs || 0, fat: +fat || 0, source: "manual",
-    });
-    setSaving(false);
-    onSaved();
-    onClose();
-  }
-
-  return (
-    <Modal title="Comida manual" onClose={onClose}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={modalInput(palette)} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <input value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" type="number" style={modalInput(palette)} />
-          <input value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="Proteína (g)" type="number" style={modalInput(palette)} />
-          <input value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="Carbos (g)" type="number" style={modalInput(palette)} />
-          <input value={fat} onChange={(e) => setFat(e.target.value)} placeholder="Grasa (g)" type="number" style={modalInput(palette)} />
-        </div>
-        <button onClick={save} disabled={saving || !name} style={{ marginTop: 6, padding: 13, borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving || !name ? 0.6 : 1 }}>
-          {saving ? "Guardando..." : "Registrar"}
-        </button>
-      </div>
-    </Modal>
-  );
 }
 
 function SavedMealsModal({ meals, onClose, onPick }: { meals: any[]; onClose: () => void; onPick: (m: any) => void }) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { getDisplayStreak } from "@/lib/streak";
@@ -26,6 +27,7 @@ const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
 export default function ProfilePage() {
   const palette = usePalette();
+  const router = useRouter();
   const supabase = createClient();
   const avatarRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,6 +49,7 @@ export default function ProfilePage() {
   const [topPRs, setTopPRs] = useState<any[]>([]);
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
   const [showVolumeDetail, setShowVolumeDetail] = useState(false);
+  const [showAllRecords, setShowAllRecords] = useState(false);
   const [unitSystem, setUnitSystemState] = useState<UnitSystem>("metric");
   const [measurementZones, setMeasurementZones] = useState<string[]>([]);
   const [currentWeight, setCurrentWeight] = useState("");
@@ -198,9 +201,9 @@ export default function ProfilePage() {
       </div>
 
       <div className="ft-profile-in" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16, animationDelay: "0.05s" }}>
-        <StatBox icon={<Dumbbell size={14} />} value={stats.totalWorkouts} label="Entrenos" />
+        <StatBox icon={<Dumbbell size={14} />} value={stats.totalWorkouts} label="Entrenos" onClick={() => router.push("/app/training-stats")} />
         <StatBox icon={<Award size={14} />} value={`${Math.round(stats.totalVolume / 1000)}t`} label="Volumen total" onClick={() => setShowVolumeDetail(true)} />
-        <StatBox icon={<Trophy size={14} />} value={stats.totalPRs} label="Récords" />
+        <StatBox icon={<Trophy size={14} />} value={stats.totalPRs} label="Récords" onClick={() => setShowAllRecords(true)} />
       </div>
 
       <div className="ft-profile-in" style={{ ...palette.glassPanel, padding: 16, marginBottom: 16, animationDelay: "0.1s" }}>
@@ -344,6 +347,14 @@ export default function ProfilePage() {
 
       {showVolumeDetail && <VolumeDetailModal volume={stats.totalVolume} onClose={() => setShowVolumeDetail(false)} />}
 
+      {showAllRecords && (
+        <AllRecordsModal
+          uid={uid}
+          onClose={() => setShowAllRecords(false)}
+          onSelect={(pr) => { setShowAllRecords(false); setSelectedPR(pr); }}
+        />
+      )}
+
       {showMeasurementsModal && (
         <MeasurementsModal
           uid={uid}
@@ -456,6 +467,49 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
       }}>
         <Share2 size={15} /> {sharing ? "Generando imagen..." : "Compartir como imagen"}
       </button>
+    </Modal>
+  );
+}
+
+function AllRecordsModal({ uid, onClose, onSelect }: { uid: string; onClose: () => void; onSelect: (pr: any) => void }) {
+  const palette = usePalette();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("personal_records")
+        .select("id, value, date, workout_log_id, exercises(name)")
+        .eq("client_id", uid)
+        .order("value", { ascending: false });
+      setRecords(data ?? []);
+      setLoading(false);
+    })();
+  }, [uid]);
+
+  return (
+    <Modal title="Todos tus récords" onClose={onClose} maxWidth={380}>
+      {loading ? (
+        <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", padding: 20 }}>Cargando...</p>
+      ) : records.length === 0 ? (
+        <p style={{ color: palette.inkDim, fontSize: 13, textAlign: "center", padding: 20 }}>Todavía no tienes récords registrados.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "60vh", overflowY: "auto" }}>
+          {records.map((pr) => (
+            <button key={pr.id} onClick={() => onSelect(pr)} style={{ ...palette.glassPanel, padding: 12, display: "flex", alignItems: "center", gap: 10, border: "none", width: "100%", textAlign: "left", cursor: "pointer", color: palette.ink }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
+                <Trophy size={14} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pr.exercises?.name}</div>
+                <div style={{ fontSize: 10.5, color: palette.inkDim }}>{pr.value} kg · {new Date(pr.date).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }
