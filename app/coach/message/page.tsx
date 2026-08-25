@@ -20,9 +20,10 @@ export default function CoachMessagesPage() {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       setMyId(auth.user!.id);
-      const { data: cli } = await supabase.from("clients").select("user_id, users(email)").eq("trainer_id", auth.user!.id);
-      setClients(cli ?? []);
-      if (cli && cli.length > 0) setSelected(cli[0].user_id);
+      const cliRes = await fetch("/api/coach/client-names").then((r) => r.json());
+      const cli = cliRes.clients ?? [];
+      setClients(cli);
+      if (cli.length > 0) setSelected(cli[0].user_id);
     })();
   }, []);
 
@@ -65,7 +66,7 @@ export default function CoachMessagesPage() {
               background: selected === c.user_id ? `${palette.accent}22` : "transparent", border: "none",
               color: palette.ink, fontSize: 13, cursor: "pointer",
             }}>
-              {c.users?.email}
+              {c.display_name || c.email}
             </button>
           ))}
         </div>
@@ -84,7 +85,7 @@ export default function CoachMessagesPage() {
               color: selected === c.user_id ? palette.accent : palette.ink, fontSize: 12.5, fontWeight: 600,
               cursor: "pointer", whiteSpace: "nowrap",
             }}>
-              {c.users?.email}
+              {c.display_name || c.email}
             </button>
           ))}
         </div>

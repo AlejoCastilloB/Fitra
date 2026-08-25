@@ -20,6 +20,7 @@ export default function ExercisesPage() {
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<any | null>(null);
 
   async function load() {
     setLoading(true);
@@ -27,7 +28,7 @@ export default function ExercisesPage() {
       .from("exercises")
       .select("*")
       .order("name")
-      .limit(500);
+      .limit(5000);
     setExercises(data ?? []);
     setLoading(false);
   }
@@ -103,7 +104,7 @@ export default function ExercisesPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
           {filtered.map((ex, i) => (
-            <div key={ex.id} className="ft-fade-in-up" style={{ ...palette.glassPanel, overflow: "hidden", animationDelay: `${Math.min(i, 10) * 0.025}s` }}>
+            <button key={ex.id} onClick={() => setEditingExercise(ex)} className="ft-fade-in-up" style={{ ...palette.glassPanel, overflow: "hidden", animationDelay: `${Math.min(i, 10) * 0.025}s`, textAlign: "left", cursor: "pointer", border: "none", padding: 0, display: "block", width: "100%" }}>
               {ex.media_url ? (
                 <img src={ex.media_url} alt={ex.name} style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }} />
               ) : (
@@ -123,30 +124,40 @@ export default function ExercisesPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
 
-      {showForm && <ExerciseForm existingExercises={exercises} onClose={() => setShowForm(false)} onCreated={load} />}
+      {showForm && <ExerciseForm existingExercises={exercises} onClose={() => setShowForm(false)} onSaved={load} />}
+      {editingExercise && (
+        <ExerciseForm
+          existingExercises={exercises.filter((e) => e.id !== editingExercise.id)}
+          exercise={editingExercise}
+          onClose={() => setEditingExercise(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }
 
-function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExercises: any[]; onClose: () => void; onCreated: () => void }) {
+function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { existingExercises: any[]; exercise?: any; onClose: () => void; onSaved: () => void }) {
   const palette = usePalette();
   const supabase = createClient();
-  const [name, setName] = useState("");
-  const [muscleGroup, setMuscleGroup] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [measurementType, setMeasurementType] = useState("reps_weight");
-  const [description, setDescription] = useState("");
-  const [annotations, setAnnotations] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [countsToward, setCountsToward] = useState("");
+  const isEditing = !!exercise;
+  const [name, setName] = useState(exercise?.name ?? "");
+  const [muscleGroup, setMuscleGroup] = useState(exercise?.muscle_group ?? "");
+  const [equipment, setEquipment] = useState(exercise?.equipment ?? "");
+  const [measurementType, setMeasurementType] = useState(exercise?.measurement_type ?? "reps_weight");
+  const [description, setDescription] = useState(exercise?.description ?? "");
+  const [annotations, setAnnotations] = useState(exercise?.annotations ?? "");
+  const [videoUrl, setVideoUrl] = useState(exercise?.video_url ?? "");
+  const [countsToward, setCountsToward] = useState(exercise?.counts_toward_exercise_id ?? "");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState("");
+  const [mediaPreview, setMediaPreview] = useState(exercise?.media_url ?? "");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   function handleMediaChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -158,10 +169,11 @@ function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExerc
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setError("");
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
 
-    let mediaUrl: string | null = null;
+    let mediaUrl: string | null = exercise?.media_url ?? null;
     if (mediaFile) {
       const ext = mediaFile.name.split(".").pop() || "jpg";
       const path = `exercise-media/${uid}/${Date.now()}.${ext}`;
@@ -172,21 +184,21 @@ function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExerc
       }
     }
 
-    await supabase.from("exercises").insert({
-      trainer_id: uid,
-      name,
-      muscle_group: muscleGroup,
-      equipment,
-      measurement_type: measurementType,
-      description,
-      annotations,
-      media_url: mediaUrl,
-      video_url: videoUrl.trim() || null,
-      counts_toward_exercise_id: countsToward || null,
+    const payload = {
+      name, muscleGroup, equipment, measurementType, description, annotations,
+      mediaUrl, videoUrl: videoUrl.trim() || null, countsTowardExerciseId: countsToward || null,
+    };
+
+    const res = await fetch(isEditing ? `/api/coach/exercises/${exercise.id}` : "/api/coach/exercises", {
+      method: isEditing ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
+    const data = await res.json();
 
     setSaving(false);
-    onCreated();
+    if (!res.ok) { setError(data.error || "No pudimos guardar el ejercicio"); return; }
+    onSaved();
     onClose();
   }
 
@@ -199,7 +211,7 @@ function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExerc
         ...palette.glassPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700 }}>Nuevo ejercicio</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700 }}>{isEditing ? "Editar ejercicio" : "Nuevo ejercicio"}</h2>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
             <X size={18} />
           </button>
@@ -267,8 +279,9 @@ function ExerciseForm({ existingExercises, onClose, onCreated }: { existingExerc
             background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
             fontWeight: 700, fontSize: 14, opacity: saving ? 0.7 : 1,
           }}>
-            {saving ? "Guardando..." : "Crear ejercicio"}
+            {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear ejercicio"}
           </button>
+          {error && <p style={{ color: "#f87171", fontSize: 12.5, textAlign: "center" }}>{error}</p>}
         </div>
       </form>
     </div>

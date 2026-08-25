@@ -25,12 +25,12 @@ export default function ClientsPage() {
     const id = auth.user!.id;
     setUid(id);
 
-    const [{ data: clientRows }, { data: inviteRows }] = await Promise.all([
-      supabase.from("clients").select("user_id, status, users(display_name, email)").eq("trainer_id", id),
+    const [clientsRes, { data: inviteRows }] = await Promise.all([
+      fetch("/api/coach/client-names").then((r) => r.json()),
       supabase.from("invites").select("id, code, client_email, used_by, created_at").eq("trainer_id", id).is("used_by", null).order("created_at", { ascending: false }),
     ]);
 
-    setClients((clientRows ?? []).map((c: any) => ({ user_id: c.user_id, status: c.status, display_name: c.users?.display_name ?? null, email: c.users?.email ?? null })));
+    setClients((clientsRes.clients ?? []).map((c: any) => ({ user_id: c.user_id, status: c.status, display_name: c.display_name, email: c.email })));
     setInvites(inviteRows ?? []);
     setLoading(false);
   }

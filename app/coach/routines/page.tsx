@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Plus, Dumbbell, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Dumbbell, Pencil, Trash2, RefreshCw, Folder } from "lucide-react";
 import { ROUTINE_DURATION_OPTIONS } from "@/lib/units";
 
 export default function RoutinesPage() {
@@ -20,13 +20,13 @@ export default function RoutinesPage() {
 
     const { data: r } = await supabase
       .from("routines")
-      .select("id, name, client_id, assigned_at, duration_days, auto_renew")
+      .select("id, name, client_id, assigned_at, duration_days, auto_renew, folder")
       .eq("trainer_id", auth.user!.id)
       .order("created_at", { ascending: false });
     setRoutines(r ?? []);
 
-    const { data: c } = await supabase.from("clients").select("user_id, users(email)").eq("trainer_id", auth.user!.id);
-    setClients(c ?? []);
+    const clientsRes = await fetch("/api/coach/client-names").then((res) => res.json());
+    setClients(clientsRes.clients ?? []);
 
     setLoading(false);
   }
@@ -48,6 +48,11 @@ export default function RoutinesPage() {
 
   async function toggleAutoRenew(routineId: string, autoRenew: boolean) {
     await supabase.from("routines").update({ auto_renew: autoRenew }).eq("id", routineId);
+    load();
+  }
+
+  async function updateFolder(routineId: string, folder: string) {
+    await supabase.from("routines").update({ folder: folder.trim() || null }).eq("id", routineId);
     load();
   }
 
@@ -78,8 +83,51 @@ export default function RoutinesPage() {
       ) : routines.length === 0 ? (
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {routines.map((r, i) => {
+        <RoutineFolders
+          routines={routines}
+          clients={clients}
+          reassign={reassign}
+          updateDuration={updateDuration}
+          toggleAutoRenew={toggleAutoRenew}
+          updateFolder={updateFolder}
+          deleteRoutine={deleteRoutine}
+          palette={palette}
+        />
+      )}
+    </div>
+  );
+}
+
+function RoutineFolders({ routines, clients, reassign, updateDuration, toggleAutoRenew, updateFolder, deleteRoutine, palette }: {
+  routines: any[]; clients: any[];
+  reassign: (id: string, clientId: string) => void;
+  updateDuration: (id: string, days: number | null) => void;
+  toggleAutoRenew: (id: string, on: boolean) => void;
+  updateFolder: (id: string, folder: string) => void;
+  deleteRoutine: (id: string) => void;
+  palette: Palette;
+}) {
+  const folderNames = Array.from(new Set(routines.map((r) => r.folder).filter(Boolean))).sort();
+  const groups: Record<string, any[]> = {};
+  routines.forEach((r) => {
+    const key = r.folder || "Sin carpeta";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+  const orderedKeys = [...folderNames, ...(groups["Sin carpeta"] ? ["Sin carpeta"] : [])];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      <datalist id="routine-folder-options">
+        {folderNames.map((f) => <option key={f} value={f} />)}
+      </datalist>
+      {orderedKeys.map((key) => (
+        <div key={key}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, color: palette.inkDim, fontSize: 12.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <Folder size={13} /> {key} <span style={{ fontWeight: 400, textTransform: "none" }}>({groups[key].length})</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {groups[key].map((r, i) => {
             const daysLeft = r.assigned_at && r.duration_days
               ? r.duration_days - Math.floor((Date.now() - new Date(r.assigned_at).getTime()) / 86400000)
               : null;
@@ -110,8 +158,16 @@ export default function RoutinesPage() {
                   style={{ padding: "7px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5 }}
                 >
                   <option value="">Sin asignar</option>
-                  {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
+                  {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.display_name || c.email}</option>)}
                 </select>
+
+                <input
+                  list="routine-folder-options"
+                  defaultValue={r.folder || ""}
+                  placeholder="Carpeta..."
+                  onBlur={(e) => { if (e.target.value !== (r.folder || "")) updateFolder(r.id, e.target.value); }}
+                  style={{ width: 110, padding: "7px 10px", borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5 }}
+                />
 
                 <Link href={`/coach/routines/${r.id}/edit`} style={{ display: "flex", background: "none", border: "none", color: palette.accent, cursor: "pointer" }}>
                   <Pencil size={16} />
@@ -145,9 +201,10 @@ export default function RoutinesPage() {
               )}
             </div>
             );
-          })}
+            })}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

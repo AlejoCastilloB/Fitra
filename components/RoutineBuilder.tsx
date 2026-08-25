@@ -75,8 +75,8 @@ export default function RoutineBuilder({
       const { data: auth } = await supabase.auth.getUser();
 
       if (role === "trainer") {
-        const { data: cli } = await supabase.from("clients").select("user_id, users(email)").eq("trainer_id", auth.user!.id);
-        setClients(cli ?? []);
+        const cliRes = await fetch("/api/coach/client-names").then((r) => r.json());
+        setClients(cliRes.clients ?? []);
       }
 
       const { data: mus } = await supabase.from("exercises").select("muscle_group").not("muscle_group", "is", null);
@@ -325,7 +325,7 @@ export default function RoutineBuilder({
               Asignar a
               <select value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle(palette)}>
                 <option value="">Plantilla (sin asignar)</option>
-                {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.users?.email}</option>)}
+                {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.display_name || c.email}</option>)}
               </select>
             </label>
           )}

@@ -29,14 +29,14 @@ export default function SettingsPage() {
     const id = auth.user!.id;
     setUid(id);
 
-    const [{ data: trainerRow }, { data: clientRows }, { data: reminderRows }] = await Promise.all([
+    const [{ data: trainerRow }, clientsRes, { data: reminderRows }] = await Promise.all([
       supabase.from("trainers").select("whatsapp_number").eq("user_id", id).single(),
-      supabase.from("clients").select("user_id, users(display_name, email)").eq("trainer_id", id),
+      fetch("/api/coach/client-names").then((r) => r.json()),
       supabase.from("trainer_reminders").select("id, note, remind_at, done, client_id").eq("trainer_id", id).order("remind_at", { ascending: true }),
     ]);
 
     setWhatsappNumber(trainerRow?.whatsapp_number || "");
-    setClients((clientRows ?? []).map((c: any) => ({ user_id: c.user_id, name: c.users?.display_name || c.users?.email || "Cliente" })));
+    setClients((clientsRes.clients ?? []).map((c: any) => ({ user_id: c.user_id, name: c.display_name || c.email || "Cliente" })));
     setReminders(reminderRows ?? []);
   }
 

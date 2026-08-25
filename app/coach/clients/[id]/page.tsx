@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import ClientDetailContent from "@/components/ClientDetailContent";
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
@@ -7,7 +8,11 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: client } = await supabase
+  // Service role para el join a "users" — su RLS no deja leer el nombre/correo
+  // de otra persona, pero el .eq("trainer_id", user.id) de abajo ya garantiza
+  // que solo se pueda traer un cliente que de verdad es tuyo.
+  const admin = createAdminClient();
+  const { data: client } = await admin
     .from("clients")
     .select("user_id, status, created_at, lifestyle, injuries, medical_notes, dietary_restrictions, kitchen_equipment, ai_context, trainer_notes, trainer_id, users(display_name, email)")
     .eq("user_id", params.id)
