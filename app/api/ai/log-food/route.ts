@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
+import { DAILY_GOALS as DEFAULT_DAILY_GOALS } from "@/lib/nutritionGoals";
 
 const DAILY_LIMIT = 20;
 
@@ -16,7 +17,10 @@ export async function POST(request: Request) {
     const { imageBase64, mimeType, note, audioBase64, audioMimeType, photoUrl } = await request.json();
 
   const today = new Date().toISOString().slice(0, 10);
-  const DAILY_GOALS = { kcal: 2200, protein: 150, carbs: 220, fat: 70 };
+  const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", user.id).single();
+  const DAILY_GOALS = clientRow?.daily_kcal_goal
+    ? { kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal }
+    : DEFAULT_DAILY_GOALS;
   const { data: todayLogs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", user.id).gte("date", `${today}T00:00:00`);
   const consumed = (todayLogs ?? []).reduce((a, l) => ({
     kcal: a.kcal + (l.kcal ?? 0), protein: a.protein + (l.protein ?? 0), carbs: a.carbs + (l.carbs ?? 0), fat: a.fat + (l.fat ?? 0),

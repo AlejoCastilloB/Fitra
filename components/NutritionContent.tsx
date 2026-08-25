@@ -21,11 +21,11 @@ function modalInput(palette: Palette): React.CSSProperties {
   };
 }
 
-function computeHealthScore(fiber: number, sugar: number, sodium: number, protein: number) {
+function computeHealthScore(fiber: number, sugar: number, sodium: number, protein: number, proteinGoal: number) {
   const fiberScore = Math.min(100, (fiber / HEALTH_TARGETS.fiber) * 100);
   const sugarScore = sugar <= HEALTH_TARGETS.sugarLimit ? 100 : Math.max(0, 100 - (sugar - HEALTH_TARGETS.sugarLimit) * 2);
   const sodiumScore = sodium <= HEALTH_TARGETS.sodiumLimit ? 100 : Math.max(0, 100 - (sodium - HEALTH_TARGETS.sodiumLimit) / 20);
-  const proteinScore = Math.min(100, (protein / DAILY_GOALS.protein) * 100);
+  const proteinScore = Math.min(100, (protein / proteinGoal) * 100);
   return Math.round((fiberScore + sugarScore + sodiumScore + proteinScore) / 4);
 }
 
@@ -50,6 +50,7 @@ export default function NutritionContent() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [goals, setGoals] = useState(DAILY_GOALS);
 
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
@@ -64,6 +65,11 @@ export default function NutritionContent() {
 
     const { data: waterData } = await supabase.from("water_logs").select("ml").eq("client_id", uid).eq("date", today).single();
     setWater(waterData?.ml ?? 0);
+
+    const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single();
+    if (clientRow?.daily_kcal_goal) {
+      setGoals({ kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal });
+    }
 
     setLoading(false);
   }
@@ -197,7 +203,7 @@ export default function NutritionContent() {
     fiber: acc.fiber + (l.fiber ?? 0), sugar: acc.sugar + (l.sugar ?? 0), sodium: acc.sodium + (l.sodium ?? 0),
   }), { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 });
 
-  const healthScore = logs.length > 0 ? computeHealthScore(totals.fiber, totals.sugar, totals.sodium, totals.protein) : null;
+  const healthScore = logs.length > 0 ? computeHealthScore(totals.fiber, totals.sugar, totals.sodium, totals.protein, goals.protein) : null;
 
   return (
     <div>
@@ -221,12 +227,12 @@ export default function NutritionContent() {
             padding: 22, position: "relative", overflow: "hidden",
           }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-              <MacroRing value={totals.kcal} max={DAILY_GOALS.kcal} size={130} stroke={11} colorFrom="#EDEFF3" colorTo="#8A93A0" label="Calorías" sublabel={`de ${DAILY_GOALS.kcal}`} />
+              <MacroRing value={totals.kcal} max={goals.kcal} size={130} stroke={11} colorFrom="#EDEFF3" colorTo="#8A93A0" label="Calorías" sublabel={`de ${goals.kcal}`} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-around" }}>
-              <MacroRing value={totals.protein} max={DAILY_GOALS.protein} size={70} stroke={6} colorFrom="#A8EEDC" colorTo="#5EBBA0" label="Proteína" />
-              <MacroRing value={totals.carbs} max={DAILY_GOALS.carbs} size={70} stroke={6} colorFrom="#F5D89A" colorTo="#D19A4A" label="Carbos" />
-              <MacroRing value={totals.fat} max={DAILY_GOALS.fat} size={70} stroke={6} colorFrom="#F3AFAF" colorTo="#C56767" label="Grasa" />
+              <MacroRing value={totals.protein} max={goals.protein} size={70} stroke={6} colorFrom="#A8EEDC" colorTo="#5EBBA0" label="Proteína" />
+              <MacroRing value={totals.carbs} max={goals.carbs} size={70} stroke={6} colorFrom="#F5D89A" colorTo="#D19A4A" label="Carbos" />
+              <MacroRing value={totals.fat} max={goals.fat} size={70} stroke={6} colorFrom="#F3AFAF" colorTo="#C56767" label="Grasa" />
             </div>
           </div>
 

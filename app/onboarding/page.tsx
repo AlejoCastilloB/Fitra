@@ -11,6 +11,7 @@ import SportSelector, { SportDetail } from "@/components/onboarding/SportSelecto
 import NotificationPermissionSlide from "@/components/onboarding/NotificationPermissionSlide";
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
+import { computeNutritionGoals, Sex, CommitmentLevel } from "@/lib/computeNutritionGoals";
 
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 const LEVEL_EMOJI: Record<string, string> = { Principiante: "🌱", Intermedio: "⚡", Avanzado: "🔥" };
@@ -28,21 +29,28 @@ const EQUIPMENT_EMOJI: Record<string, string> = {
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
 const DEFAULT_TRAINER_EMAIL = "topero2008@gmail.com";
-const STEP_COUNT = 12;
+const STEP_COUNT = 14;
+const COMMITMENT_OPTIONS: { id: CommitmentLevel; label: string; text: string }[] = [
+  { id: "suave", label: "Suave", text: "Cambios pequeños y sostenibles — prioriza sentirte bien y mantener el hábito." },
+  { id: "moderado", label: "Moderado", text: "Un balance entre resultados y adherencia — el punto recomendado para la mayoría." },
+  { id: "agresivo", label: "Agresivo", text: "Resultados más rápidos, exige más disciplina — solo si te sientes listo para eso." },
+];
 const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
 
 type ClientAnswers = {
   displayName: string; goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
+  weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel;
   injuries: string; medicalNotes: string; sports: string[]; otherSportText: string;
   sportDetails: Record<string, SportDetail>; dietaryRestrictions: string; kitchenEquipment: string[];
   effectiveInvite: string | null;
 };
 
 function buildAiContext({
-  goal, secondaryGoals, level, daysAvailable, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
+  goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, commitment, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
 }: {
   goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
+  weightKg: number | null; heightCm: number | null; age: number | null; commitment: CommitmentLevel;
   sportsDetails: { sport: string; level: string; experience: string; includeInPlan: boolean }[];
   injuries: string; medicalNotes: string; dietaryRestrictions: string; kitchenEquipment: string[];
 }) {
@@ -52,6 +60,8 @@ function buildAiContext({
   if (secondaryLabels.length > 0) lines.push(`Objetivos secundarios: ${secondaryLabels.join(", ")}.`);
   lines.push(`Nivel de experiencia en gimnasio: ${level ?? "sin especificar"}.`);
   lines.push(`Días disponibles para entrenar por semana: ${daysAvailable}.`);
+  if (weightKg && heightCm && age) lines.push(`Peso: ${weightKg}kg, altura: ${heightCm}cm, edad: ${age} años.`);
+  lines.push(`Nivel de compromiso con el cambio: ${commitment}.`);
   sportsDetails.forEach(({ sport, level: l, experience, includeInPlan }) => {
     lines.push(`Practica ${sport} (nivel ${l || "no especificado"}, ${experience || "tiempo no especificado"}) — ${includeInPlan ? "quiere incluirlo en su plan de FitTrack" : "prefiere dejarlo en consideración aparte con su coach"}.`);
   });
@@ -86,6 +96,11 @@ function OnboardingForm() {
   const [secondaryGoals, setSecondaryGoals] = useState<string[]>([]);
   const [level, setLevel] = useState<string | null>(null);
   const [daysAvailable, setDaysAvailable] = useState(3);
+  const [weightKg, setWeightKg] = useState<number | null>(null);
+  const [heightCm, setHeightCm] = useState<number | null>(null);
+  const [age, setAge] = useState<number | null>(null);
+  const [sex, setSex] = useState<Sex | null>(null);
+  const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
   const [injuries, setInjuries] = useState("");
   const [medicalNotes, setMedicalNotes] = useState("");
   const [sports, setSports] = useState<string[]>([]);
@@ -125,10 +140,10 @@ function OnboardingForm() {
     setKitchenEquipment((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
   }
 
-  async function saveClientData(overrides?: ClientAnswers) {
+  async function saveClientData(overrides?: ClientAnswers): Promise<boolean> {
     const d: ClientAnswers = overrides ?? {
-      displayName, goal, secondaryGoals, level, daysAvailable, injuries, medicalNotes, sports, otherSportText,
-      sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
+      displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment,
+      injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
     };
     setSaving(true);
     const { data: auth } = await supabase.auth.getUser();
@@ -165,12 +180,22 @@ function OnboardingForm() {
     }));
 
     const aiContext = buildAiContext({
-      goal: d.goal, secondaryGoals: d.secondaryGoals, level: d.level, daysAvailable: d.daysAvailable, sportsDetails,
+      goal: d.goal, secondaryGoals: d.secondaryGoals, level: d.level, daysAvailable: d.daysAvailable,
+      weightKg: d.weightKg, heightCm: d.heightCm, age: d.age, commitment: d.commitment, sportsDetails,
       injuries: d.injuries, medicalNotes: d.medicalNotes, dietaryRestrictions: d.dietaryRestrictions, kitchenEquipment: d.kitchenEquipment,
     });
 
-    await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
-    await supabase.from("clients").insert({
+    const nutritionGoals = (d.weightKg && d.heightCm && d.age && d.sex)
+      ? computeNutritionGoals({
+          weightKg: d.weightKg, heightCm: d.heightCm, age: d.age, sex: d.sex,
+          daysAvailable: d.daysAvailable, goal: d.goal, commitment: d.commitment,
+        })
+      : null;
+
+    const { error: usersError } = await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
+    if (usersError) { setSaving(false); return false; }
+
+    const { error: clientsError } = await supabase.from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
       lifestyle: { goal: d.goal, secondary_goals: d.secondaryGoals, level: d.level, days_available: d.daysAvailable },
@@ -179,7 +204,16 @@ function OnboardingForm() {
       dietary_restrictions: d.dietaryRestrictions,
       kitchen_equipment: d.kitchenEquipment,
       ai_context: aiContext,
+      weight_kg: d.weightKg,
+      height_cm: d.heightCm,
+      age: d.age,
+      sex: d.sex,
+      daily_kcal_goal: nutritionGoals?.kcal ?? null,
+      daily_protein_goal: nutritionGoals?.protein ?? null,
+      daily_carbs_goal: nutritionGoals?.carbs ?? null,
+      daily_fat_goal: nutritionGoals?.fat ?? null,
     });
+    if (clientsError) { setSaving(false); return false; }
 
     if (sportsDetails.length > 0) {
       await supabase.from("client_sports").insert(
@@ -190,6 +224,7 @@ function OnboardingForm() {
     }
 
     setSaving(false);
+    return true;
   }
 
   useEffect(() => {
@@ -214,10 +249,12 @@ function OnboardingForm() {
         if (pendingRaw) {
           try {
             const pending = JSON.parse(pendingRaw);
-            await saveClientData(pending.answers as ClientAnswers);
-            localStorage.removeItem(PENDING_ONBOARDING_KEY);
-            router.push("/app");
-            return;
+            const ok = await saveClientData(pending.answers as ClientAnswers);
+            if (ok) {
+              localStorage.removeItem(PENDING_ONBOARDING_KEY);
+              router.push("/app");
+              return;
+            }
           } catch {}
         }
       }
@@ -250,22 +287,28 @@ function OnboardingForm() {
     }
 
     if (data.session) {
-      await saveClientData();
-      setStep(10);
+      const ok = await saveClientData();
+      if (!ok) {
+        setSignupError("Creamos tu cuenta pero no pudimos guardar tu perfil. Intenta de nuevo en un momento.");
+        setCreating(false);
+        return;
+      }
+      setStep(12);
       setCreating(false);
       return;
     }
 
     localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
-      answers: { displayName, goal, secondaryGoals, level, daysAvailable, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
+      answers: { displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
     }));
     setAwaitingConfirmation(true);
     setCreating(false);
   }
 
   const wantsSports = goal === SPORT_GOAL_ID || secondaryGoals.includes(SPORT_GOAL_ID);
+  const wantsCommitment = goal !== null && goal !== "salud";
   const progress = (step + 1) / STEP_COUNT;
-  const showAccountStep = step === 9;
+  const showAccountStep = step === 11;
   const stepKey = showAccountStep ? (awaitingConfirmation ? "confirm" : "account") : `step-${step}`;
 
   if (!authChecked) return null;
@@ -319,7 +362,51 @@ function OnboardingForm() {
         )}
 
         {step === 2 && (
-          <AnamnesisStep title="¿Cuántos días a la semana puedes entrenar?" onBack={() => setStep(1)} onNext={() => setStep(3)}>
+          <AnamnesisStep
+            title="Cuéntanos un poco más de ti"
+            subtitle="Con esto armamos un plan de calorías y macros hecho a tu medida, no un número genérico."
+            onBack={() => setStep(1)}
+            onNext={() => setStep(wantsCommitment ? 3 : 4)}
+            nextDisabled={!weightKg || !heightCm || !age || !sex}
+          >
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              <NumberField label="Peso (kg)" value={weightKg} onChange={setWeightKg} />
+              <NumberField label="Altura (cm)" value={heightCm} onChange={setHeightCm} />
+              <NumberField label="Edad" value={age} onChange={setAge} />
+            </div>
+            <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Sexo biológico</div>
+            <p style={{ fontSize: 11, color: palette.inkDim, marginBottom: 10, lineHeight: 1.4 }}>Lo necesitamos solo para calcular tu gasto calórico con precisión.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Pill active={sex === "male"} onClick={() => setSex("male")}>Hombre</Pill>
+              <Pill active={sex === "female"} onClick={() => setSex("female")}>Mujer</Pill>
+            </div>
+          </AnamnesisStep>
+        )}
+
+        {step === 3 && wantsCommitment && (
+          <AnamnesisStep title="¿Qué tan comprometido quieres ser con el cambio?" onBack={() => setStep(2)} onNext={() => setStep(4)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {COMMITMENT_OPTIONS.map((c) => (
+                <button key={c.id} onClick={() => setCommitment(c.id)} style={{
+                  textAlign: "left", padding: "12px 14px", borderRadius: 12, cursor: "pointer",
+                  border: `1px solid ${commitment === c.id ? palette.accent : palette.panelBorder}`,
+                  background: commitment === c.id ? `${palette.accent}18` : palette.inputBg,
+                }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                    {commitment === c.id && <Check size={13} color={palette.accent} />} {c.label}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.4 }}>{c.text}</div>
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: palette.inkDim, marginTop: 12, lineHeight: 1.4 }}>
+              Fitra siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
+            </p>
+          </AnamnesisStep>
+        )}
+
+        {step === 4 && (
+          <AnamnesisStep title="¿Cuántos días a la semana puedes entrenar?" onBack={() => setStep(wantsCommitment ? 3 : 2)} onNext={() => setStep(5)}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <Pill key={n} active={daysAvailable === n} onClick={() => setDaysAvailable(n)}>{n}</Pill>
@@ -328,12 +415,12 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {step === 3 && (
-          <MotivationalFact text={FACT_1} onNext={() => setStep(wantsSports ? 4 : 5)} />
+        {step === 5 && (
+          <MotivationalFact text={FACT_1} onNext={() => setStep(wantsSports ? 6 : 7)} />
         )}
 
-        {step === 4 && wantsSports && (
-          <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 3." onBack={() => setStep(3)} onNext={() => setStep(5)}>
+        {step === 6 && wantsSports && (
+          <AnamnesisStep title="¿Practicas o te interesa algún deporte específico?" subtitle="Elige hasta 3." onBack={() => setStep(5)} onNext={() => setStep(7)}>
             <SportSelector
               selected={sports}
               onToggle={toggleSport}
@@ -345,12 +432,12 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {step === 5 && (
-          <MotivationalFact text={FACT_2} onNext={() => setStep(6)} />
+        {step === 7 && (
+          <MotivationalFact text={FACT_2} onNext={() => setStep(8)} />
         )}
 
-        {step === 6 && (
-          <AnamnesisStep title="¿Alguna lesión o afección médica que debamos conocer?" onBack={() => setStep(5)} onNext={() => setStep(7)}>
+        {step === 8 && (
+          <AnamnesisStep title="¿Alguna lesión o afección médica que debamos conocer?" onBack={() => setStep(7)} onNext={() => setStep(9)}>
             <textarea
               value={injuries}
               onChange={(e) => setInjuries(e.target.value)}
@@ -369,8 +456,8 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {step === 7 && (
-          <AnamnesisStep title="Restricciones alimentarias y cocina" onBack={() => setStep(6)} onNext={() => setStep(8)}>
+        {step === 9 && (
+          <AnamnesisStep title="Restricciones alimentarias y cocina" onBack={() => setStep(8)} onNext={() => setStep(10)}>
             <textarea
               value={dietaryRestrictions}
               onChange={(e) => setDietaryRestrictions(e.target.value)}
@@ -389,15 +476,15 @@ function OnboardingForm() {
           </AnamnesisStep>
         )}
 
-        {step === 8 && (
-          <NotificationPermissionSlide onNext={() => setStep(9)} />
+        {step === 10 && (
+          <NotificationPermissionSlide onNext={() => setStep(11)} />
         )}
 
         {showAccountStep && !awaitingConfirmation && (
           <AnamnesisStep
             title="Crea tu cuenta"
             subtitle="Último paso — con esto guardamos todo lo que nos contaste."
-            onBack={() => setStep(8)}
+            onBack={() => setStep(10)}
             onNext={handleCreateAccount}
             nextDisabled={creating || !email.trim() || !password}
             nextLabel={creating ? "Creando cuenta..." : "Crear cuenta"}
@@ -459,11 +546,11 @@ function OnboardingForm() {
           </div>
         )}
 
-        {step === 10 && (
-          <AddToHomeScreenSlide onNext={() => setStep(11)} />
+        {step === 12 && (
+          <AddToHomeScreenSlide onNext={() => setStep(13)} />
         )}
 
-        {step === 11 && (
+        {step === 13 && (
           <div style={{ textAlign: "center" }}>
             <div style={{
               width: 56, height: 56, borderRadius: "50%", background: `${palette.accent}22`,
@@ -496,6 +583,20 @@ const taStyle: React.CSSProperties = {
   width: "100%", minHeight: 70, padding: 12, borderRadius: 11, border: `1px solid ${palette.panelBorder}`,
   background: palette.inputBg, color: palette.ink, fontSize: 14, fontFamily: "inherit", resize: "vertical",
 };
+
+function NumberField({ label, value, onChange }: { label: string; value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: palette.inkDim }}>
+      {label}
+      <input
+        type="number" inputMode="decimal" min={0} value={value ?? ""}
+        onChange={(e) => onChange(e.target.value ? Math.max(0, +e.target.value) : null)}
+        onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
+        style={{ width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, textAlign: "center" }}
+      />
+    </label>
+  );
+}
 
 function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (

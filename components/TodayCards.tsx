@@ -9,8 +9,6 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
 import { Dumbbell } from "lucide-react";
 
-const DAILY_KCAL_GOAL = DAILY_GOALS.kcal;
-
 function MacroChip({ letter, value, color, palette }: { letter: string; value: number; color: string; palette: Palette }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -61,6 +59,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   const [predictedVolume, setPredictedVolume] = useState(0);
   const [predictedMinutes, setPredictedMinutes] = useState(0);
   const [topMuscle, setTopMuscle] = useState<string | null>(null);
+  const [goals, setGoals] = useState(DAILY_GOALS);
 
   useEffect(() => {
     if (!uid) return;
@@ -72,6 +71,11 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
       setProteinConsumed((logs ?? []).reduce((s, l) => s + (l.protein ?? 0), 0));
       setCarbsConsumed((logs ?? []).reduce((s, l) => s + (l.carbs ?? 0), 0));
       setFatConsumed((logs ?? []).reduce((s, l) => s + (l.fat ?? 0), 0));
+
+      const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single();
+      if (clientRow?.daily_kcal_goal) {
+        setGoals({ kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal });
+      }
 
       if (todaysRoutine) {
         const { data: workoutToday } = await supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", `${today}T00:00:00`).limit(1);
@@ -97,7 +101,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
     })();
   }, [todaysRoutine?.id, uid]);
 
-  const kcalRemaining = Math.max(0, DAILY_KCAL_GOAL - kcalConsumed);
+  const kcalRemaining = Math.max(0, goals.kcal - kcalConsumed);
   const macroValue = (consumed: number, goal: number) => (mode === "remaining" ? Math.max(0, Math.round(goal - consumed)) : Math.round(consumed));
 
   return (
@@ -122,9 +126,9 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-          <MacroChip letter="P" value={macroValue(proteinConsumed, DAILY_GOALS.protein)} color="#5EBBA0" palette={palette} />
-          <MacroChip letter="C" value={macroValue(carbsConsumed, DAILY_GOALS.carbs)} color="#D19A4A" palette={palette} />
-          <MacroChip letter="G" value={macroValue(fatConsumed, DAILY_GOALS.fat)} color="#C56767" palette={palette} />
+          <MacroChip letter="P" value={macroValue(proteinConsumed, goals.protein)} color="#5EBBA0" palette={palette} />
+          <MacroChip letter="C" value={macroValue(carbsConsumed, goals.carbs)} color="#D19A4A" palette={palette} />
+          <MacroChip letter="G" value={macroValue(fatConsumed, goals.fat)} color="#C56767" palette={palette} />
         </div>
       </button>
 
