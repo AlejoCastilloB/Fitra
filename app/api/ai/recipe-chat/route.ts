@@ -77,12 +77,22 @@ Responde siempre en español neutro colombiano/latinoamericano. Nunca uses voseo
 
   let recipe = null;
   let reply = rawText;
+  // El bloque ```recipe se saca del texto visible sí o sí, incluso si el JSON
+  // de adentro sale mal formado — si no, el usuario ve el bloque crudo en el chat.
   const match = rawText.match(/```recipe\s*([\s\S]*?)```/);
   if (match) {
+    reply = rawText.replace(match[0], "").trim();
     try {
-      recipe = JSON.parse(match[1].trim());
-      reply = rawText.replace(match[0], "").trim();
+      const parsed = JSON.parse(match[1].trim());
+      const isValidRecipe =
+        parsed && typeof parsed === "object" && !Array.isArray(parsed) &&
+        typeof parsed.title === "string" &&
+        typeof parsed.kcal === "number" && typeof parsed.protein === "number" &&
+        typeof parsed.carbs === "number" && typeof parsed.fat === "number" &&
+        Array.isArray(parsed.ingredients) && Array.isArray(parsed.steps);
+      if (isValidRecipe) recipe = parsed;
     } catch {}
+    if (!reply) reply = recipe ? "Aquí tienes una receta 👇" : "No pude armar la receta bien, ¿lo intentamos de nuevo?";
   }
 
   const usedNow = await incrementAiUsage(supabase, user.id, "chat", today);
