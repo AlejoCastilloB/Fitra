@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 import { DAILY_GOALS as DEFAULT_DAILY_GOALS } from "@/lib/nutritionGoals";
+import { getPersonalizationContext, personalizationPromptBlock } from "@/lib/aiPersonalization";
 
 const DAILY_LIMIT = 20;
 
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis de Fitra hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
   }
 
+  const personalization = personalizationPromptBlock(await getPersonalizationContext(supabase, user.id));
+
   const parts: any[] = [
     {
         text: `Eres Fitra, el asistente nutricional de FitTrack. Tu tono es siempre positivo, cercano y motivador — nunca juzgas al usuario.
@@ -41,7 +44,8 @@ Antes de calcular nada, MIDE la porción que de verdad aparece en la foto — es
 - Usa el tamaño del plato, los cubiertos o la mano de la persona (si aparecen) como referencia de escala.
 - Dos fotos del mismo tipo de platillo pueden tener cantidades muy distintas — nunca reutilices una porción "estándar" de memoria, calcula específicamente sobre lo que ves en ESTA imagen, y si el plato se ve claramente más lleno o más vacío que un plato normal, que el cálculo lo refleje.
 
-Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number, "coach_tip": string}. "portion" debe listar las cantidades contadas de cada componente (ej: "4 albóndigas medianas, media taza de arroz, 3 rodajas de batata con mantequilla, 1 huevo duro"), no una descripción genérica — los números de kcal/macros deben ser consistentes con esa lista, no con una porción típica. "coach_tip" es un mensaje corto (máximo 2 líneas), cálido y motivador, considerando que al usuario le quedan hoy aproximadamente ${Math.round(DAILY_GOALS.kcal - consumed.kcal)} kcal, ${Math.round(DAILY_GOALS.protein - consumed.protein)}g de proteína, ${Math.round(DAILY_GOALS.carbs - consumed.carbs)}g de carbohidratos y ${Math.round(DAILY_GOALS.fat - consumed.fat)}g de grasa por consumir — sugiere algo simple para su próxima comida si tiene sentido. Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación. Usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`,
+Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number, "coach_tip": string}. "portion" debe listar las cantidades contadas de cada componente (ej: "4 albóndigas medianas, media taza de arroz, 3 rodajas de batata con mantequilla, 1 huevo duro"), no una descripción genérica — los números de kcal/macros deben ser consistentes con esa lista, no con una porción típica. "coach_tip" es un mensaje corto (máximo 2 líneas), cálido y motivador, considerando que al usuario le quedan hoy aproximadamente ${Math.round(DAILY_GOALS.kcal - consumed.kcal)} kcal, ${Math.round(DAILY_GOALS.protein - consumed.protein)}g de proteína, ${Math.round(DAILY_GOALS.carbs - consumed.carbs)}g de carbohidratos y ${Math.round(DAILY_GOALS.fat - consumed.fat)}g de grasa por consumir — sugiere algo simple para su próxima comida si tiene sentido, ojalá acorde a lo que sabes de sus gustos. Si el usuario dio contexto extra en texto o audio, úsalo para ajustar tu estimación. Usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.
+${personalization ? `\nLo que sabes de este usuario en particular:\n${personalization}\n` : ""}`,
     },
   ];
 

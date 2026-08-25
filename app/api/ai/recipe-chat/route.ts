@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 import { DAILY_GOALS as DEFAULT_DAILY_GOALS } from "@/lib/nutritionGoals";
+import { getPersonalizationContext, personalizationPromptBlock } from "@/lib/aiPersonalization";
 
 const DAILY_LIMIT = 20;
 
@@ -36,9 +37,12 @@ export async function POST(request: Request) {
     fat: Math.max(0, DAILY_GOALS.fat - consumed.fat),
   };
 
+  const personalization = personalizationPromptBlock(await getPersonalizationContext(supabase, user.id));
+
   const systemPrompt = `Eres Fitra, el asistente de nutrición de FitTrack. Tu personalidad es siempre positiva, cercana y motivadora — guías al usuario, nunca lo juzgas. Tu especialidad es sugerir recetas prácticas y saludables según los ingredientes que el usuario tiene disponibles, y siempre buscas ayudarlo a completar sus metas del día de forma inteligente.
 
 Al usuario le quedan hoy aproximadamente: ${Math.round(remainingMacros.kcal)} kcal, ${Math.round(remainingMacros.protein)}g de proteína, ${Math.round(remainingMacros.carbs)}g de carbohidratos y ${Math.round(remainingMacros.fat)}g de grasa por consumir. Usa este dato para orientar tus sugerencias cuando tenga sentido.
+${personalization ? `\nLo que sabes de este usuario en particular:\n${personalization}\n` : ""}
 
 Cuando sugieras UNA receta concreta, responde primero con 2-3 líneas conversacionales y cálidas, y al final agrega un bloque con este formato EXACTO (sin explicarlo, va oculto para el usuario):
 \`\`\`recipe

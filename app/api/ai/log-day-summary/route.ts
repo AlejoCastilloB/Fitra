@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
+import { getPersonalizationContext, personalizationPromptBlock } from "@/lib/aiPersonalization";
 
 const DAILY_LIMIT = 20;
 
@@ -25,13 +26,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis de Fitra hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
   }
 
+  const personalization = personalizationPromptBlock(await getPersonalizationContext(supabase, user.id));
+
   const parts: any[] = [
     {
       text: `Eres Fitra, el asistente nutricional de FitTrack. El usuario está cerrando su día y te está contando, en un solo mensaje (texto o nota de voz), TODO lo que comió hoy — de forma informal, quizás desordenada, mencionando varias comidas juntas (ej: "en el desayuno comí huevos con arepa, a media mañana una manzana, y en el almuerzo arroz con pollo y ensalada").
 
 Tu tarea es separar ese relato en una entrada individual por cada comida o alimento distinto que mencione, y para cada una estimar kcal y macros con la información dada — no pidas más detalles, trabaja con lo que tengas usando tu mejor estimación de porciones típicas cuando no las especifique.
 
-Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"meals": [{"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}], "coach_tip": string}. Si el usuario menciona una sola comida, el array debe tener un solo elemento. "coach_tip" es un mensaje corto (máximo 2 líneas), cálido y motivador sobre el día completo. Usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.`,
+Devuelve SOLO un JSON válido (sin markdown, sin texto extra) con este formato exacto: {"meals": [{"food_name": string, "portion": string, "kcal": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "sugar": number, "sodium": number}], "coach_tip": string}. Si el usuario menciona una sola comida, el array debe tener un solo elemento. "coach_tip" es un mensaje corto (máximo 2 líneas), cálido y motivador sobre el día completo. Usa español neutro colombiano/latinoamericano, sin voseo ni modismos argentinos.
+${personalization ? `\nLo que sabes de este usuario en particular:\n${personalization}\n` : ""}`,
     },
   ];
 
