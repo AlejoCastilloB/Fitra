@@ -53,7 +53,6 @@ export default function ProfileSettingsPage() {
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
-  const [currentWeight, setCurrentWeight] = useState("");
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
   const [measurementZones, setMeasurementZones] = useState<string[]>([]);
   const [progressReminderDays, setProgressReminderDays] = useState<number | null>(null);
@@ -68,7 +67,6 @@ export default function ProfileSettingsPage() {
 
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const [showNameEdit, setShowNameEdit] = useState(false);
-  const [showWeightEdit, setShowWeightEdit] = useState(false);
   const [showPhysicalEdit, setShowPhysicalEdit] = useState(false);
   const [showDietEdit, setShowDietEdit] = useState(false);
   const [showProgressEdit, setShowProgressEdit] = useState(false);
@@ -84,7 +82,7 @@ export default function ProfileSettingsPage() {
 
       const [{ data: userRow }, { data: clientRow }] = await Promise.all([
         supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days, physical_reminder_days").eq("id", id).single(),
-        supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, weight_kg, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
+        supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
       ]);
 
       if (userRow) {
@@ -99,8 +97,7 @@ export default function ProfileSettingsPage() {
       if (clientRow) {
         setDietaryRestrictions(clientRow.dietary_restrictions || "");
         setKitchenEquipment(clientRow.kitchen_equipment || []);
-        setCurrentWeight(clientRow.current_weight ? String(clientRow.current_weight) : "");
-        setWeightKg(clientRow.weight_kg ?? null);
+        setWeightKg(clientRow.current_weight ?? null);
         setHeightCm(clientRow.height_cm ?? null);
         setAge(clientRow.age ?? null);
         setSex((clientRow.sex as Sex) ?? null);
@@ -154,12 +151,6 @@ export default function ProfileSettingsPage() {
     setShowNameEdit(false);
   }
 
-  async function saveWeight(w: string) {
-    setCurrentWeight(w);
-    await supabase.from("clients").update({ current_weight: +w || null }).eq("user_id", uid);
-    setShowWeightEdit(false);
-  }
-
   async function savePhysicalProfile(next: { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; reminderDays: number | null }) {
     setWeightKg(next.weightKg);
     setHeightCm(next.heightCm);
@@ -177,7 +168,7 @@ export default function ProfileSettingsPage() {
 
     await Promise.all([
       supabase.from("clients").update({
-        weight_kg: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
+        current_weight: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
         ...(nutritionGoals && {
           daily_kcal_goal: nutritionGoals.kcal, daily_protein_goal: nutritionGoals.protein,
           daily_carbs_goal: nutritionGoals.carbs, daily_fat_goal: nutritionGoals.fat,
@@ -255,8 +246,12 @@ export default function ProfileSettingsPage() {
       </SettingsGroup>
 
       <SettingsGroup title="Nutrición">
-        <ListRow label="Restricciones alimentarias" sublabel={dietaryRestrictions || "Ninguna configurada"} showChevron onClick={() => setShowDietEdit(true)} />
-        <ListRow label="Utensilios de cocina" sublabel={kitchenEquipment.length > 0 ? kitchenEquipment.join(", ") : "Ninguno configurado"} showChevron onClick={() => setShowDietEdit(true)} />
+        <ListRow
+          label="Preferencias de nutrición"
+          sublabel={`${dietaryRestrictions || "Sin restricciones"} · ${kitchenEquipment.length > 0 ? `${kitchenEquipment.length} utensilios` : "sin utensilios"}`}
+          showChevron
+          onClick={() => setShowDietEdit(true)}
+        />
       </SettingsGroup>
 
       <SettingsGroup title="Registro de progreso">
@@ -271,7 +266,6 @@ export default function ProfileSettingsPage() {
       <SettingsGroup title="Cuenta">
         <ListRow label="Nombre" sublabel={displayName || "Sin definir"} showChevron onClick={() => setShowNameEdit(true)} />
         <ListRow label="Correo" sublabel={email} />
-        <ListRow label="Peso actual" sublabel={currentWeight ? `${currentWeight} kg` : "Sin registrar"} showChevron onClick={() => setShowWeightEdit(true)} />
         <ListRow
           label="Perfil físico"
           sublabel={weightKg && heightCm && age ? `${weightKg} kg · ${heightCm} cm · ${age} años` : "Sin registrar — usado para tus metas de calorías"}
@@ -306,12 +300,6 @@ export default function ProfileSettingsPage() {
       {showNameEdit && (
         <Modal title="Tu nombre" onClose={() => setShowNameEdit(false)} maxWidth={320}>
           <NameEditor initial={displayName} onSave={saveDisplayName} />
-        </Modal>
-      )}
-
-      {showWeightEdit && (
-        <Modal title="Peso actual" onClose={() => setShowWeightEdit(false)} maxWidth={300}>
-          <WeightEditor initial={currentWeight} onSave={saveWeight} />
         </Modal>
       )}
 
@@ -420,17 +408,6 @@ function NameEditor({ initial, onSave }: { initial: string; onSave: (v: string) 
   return (
     <div>
       <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Tu nombre" style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 14 }} />
-      <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
-    </div>
-  );
-}
-
-function WeightEditor({ initial, onSave }: { initial: string; onSave: (v: string) => void }) {
-  const palette = usePalette();
-  const [val, setVal] = useState(initial);
-  return (
-    <div>
-      <input type="number" value={val} onChange={(e) => setVal(e.target.value)} placeholder="kg" style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 14 }} />
       <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
     </div>
   );

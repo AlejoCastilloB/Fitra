@@ -187,7 +187,7 @@ function OnboardingForm() {
         })
       : null;
 
-    const { error: usersError } = await supabase.from("users").insert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
+    const { error: usersError } = await supabase.from("users").upsert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
     if (usersError) { setSaving(false); return false; }
 
     const { error: clientsError } = await supabase.from("clients").insert({
@@ -199,7 +199,7 @@ function OnboardingForm() {
       dietary_restrictions: d.dietaryRestrictions,
       kitchen_equipment: d.kitchenEquipment,
       ai_context: aiContext,
-      weight_kg: d.weightKg,
+      current_weight: d.weightKg,
       height_cm: d.heightCm,
       age: d.age,
       sex: d.sex,
