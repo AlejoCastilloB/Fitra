@@ -5,13 +5,16 @@ export type PersonalizationContext = {
   kitchenEquipment: string[];
   frequentFoods: string[];
   favoriteMeals: string[];
+  foodProfile: string | null;
+  foodLikes: string[];
+  foodDislikes: string[];
 };
 
 export async function getPersonalizationContext(supabase: SupabaseClient, userId: string): Promise<PersonalizationContext> {
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
 
   const [{ data: clientRow }, { data: recentLogs }, { data: savedMeals }] = await Promise.all([
-    supabase.from("clients").select("dietary_restrictions, kitchen_equipment").eq("user_id", userId).single(),
+    supabase.from("clients").select("dietary_restrictions, kitchen_equipment, food_profile, food_likes, food_dislikes").eq("user_id", userId).single(),
     supabase.from("nutrition_logs").select("food_name").eq("client_id", userId).gte("date", since).limit(200),
     supabase.from("saved_meals").select("name").eq("client_id", userId).limit(20),
   ]);
@@ -34,6 +37,9 @@ export async function getPersonalizationContext(supabase: SupabaseClient, userId
     kitchenEquipment: clientRow?.kitchen_equipment || [],
     frequentFoods,
     favoriteMeals,
+    foodProfile: clientRow?.food_profile || null,
+    foodLikes: clientRow?.food_likes || [],
+    foodDislikes: clientRow?.food_dislikes || [],
   };
 }
 
@@ -41,6 +47,15 @@ export async function getPersonalizationContext(supabase: SupabaseClient, userId
 // gustos y restricciones reales del usuario en vez de ser genéricas.
 export function personalizationPromptBlock(ctx: PersonalizationContext): string {
   const lines: string[] = [];
+  if (ctx.foodProfile) {
+    lines.push(`Perfil alimentario del usuario (de su anamnesis inicial): ${ctx.foodProfile}`);
+  }
+  if (ctx.foodLikes.length > 0) {
+    lines.push(`Le gusta comer: ${ctx.foodLikes.join(", ")}.`);
+  }
+  if (ctx.foodDislikes.length > 0) {
+    lines.push(`No le gusta o evita: ${ctx.foodDislikes.join(", ")} — nunca lo sugieras.`);
+  }
   if (ctx.dietaryRestrictions) {
     lines.push(`Restricciones alimentarias del usuario (respétalas siempre, nunca sugieras algo que las incumpla): ${ctx.dietaryRestrictions}.`);
   }

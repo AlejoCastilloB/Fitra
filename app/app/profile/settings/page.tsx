@@ -11,6 +11,7 @@ import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, NUTRITION_CLOSE_DAY_OPTIONS, type UnitSystem } from "@/lib/units";
+import { FOOD_TASTE_OPTIONS } from "@/lib/foodTastes";
 import { clearSwCache } from "@/lib/clearSwCache";
 import { computeNutritionGoals, COMMITMENT_OPTIONS, type Sex, type CommitmentLevel } from "@/lib/computeNutritionGoals";
 
@@ -53,6 +54,8 @@ export default function ProfileSettingsPage() {
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
+  const [foodLikes, setFoodLikes] = useState<string[]>([]);
+  const [foodDislikes, setFoodDislikes] = useState<string[]>([]);
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
   const [measurementZones, setMeasurementZones] = useState<string[]>([]);
   const [progressReminderDays, setProgressReminderDays] = useState<number | null>(null);
@@ -81,9 +84,12 @@ export default function ProfileSettingsPage() {
       setUid(id);
       setEmail(auth.user!.email ?? "");
 
-      const [{ data: userRow }, { data: clientRow }] = await Promise.all([
+      const [{ data: userRow }, { data: clientRow }, { data: foodTasteRow }] = await Promise.all([
         supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days, physical_reminder_days, nutrition_reminder_time").eq("id", id).single(),
         supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
+        // Consulta aparte: si esta migración nueva (food_likes/food_dislikes) todavía no corrió,
+        // que falle sola y no tumbe el resto de "clients" (peso, altura, restricciones, etc.)
+        supabase.from("clients").select("food_likes, food_dislikes").eq("user_id", id).single(),
       ]);
 
       if (userRow) {
@@ -106,6 +112,11 @@ export default function ProfileSettingsPage() {
         setCommitment((clientRow.commitment as CommitmentLevel) ?? "moderado");
         setGoal(clientRow.lifestyle?.goal ?? null);
         setDaysAvailable(clientRow.lifestyle?.days_available ?? 3);
+      }
+
+      if (foodTasteRow) {
+        setFoodLikes(foodTasteRow.food_likes || []);
+        setFoodDislikes(foodTasteRow.food_dislikes || []);
       }
 
       if ("Notification" in window) setNotifEnabled(Notification.permission === "granted");
@@ -187,12 +198,24 @@ export default function ProfileSettingsPage() {
   }
 
   async function saveDietaryInfo() {
-    await supabase.from("clients").update({ dietary_restrictions: dietaryRestrictions, kitchen_equipment: kitchenEquipment }).eq("user_id", uid);
+    await Promise.all([
+      supabase.from("clients").update({ dietary_restrictions: dietaryRestrictions, kitchen_equipment: kitchenEquipment }).eq("user_id", uid),
+      // Aparte de lo de arriba: si esta migración nueva todavía no corrió, que falle sola.
+      supabase.from("clients").update({ food_likes: foodLikes, food_dislikes: foodDislikes }).eq("user_id", uid),
+    ]);
     setShowDietEdit(false);
   }
 
   function toggleEquipment(item: string) {
     setKitchenEquipment((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
+  }
+
+  function toggleFoodLike(item: string) {
+    setFoodLikes((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
+  }
+
+  function toggleFoodDislike(item: string) {
+    setFoodDislikes((prev) => prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]);
   }
 
   function toggleZone(key: string) {
@@ -337,6 +360,28 @@ export default function ProfileSettingsPage() {
 
       {showDietEdit && (
         <Modal title="Preferencias de nutrición" onClose={() => setShowDietEdit(false)} maxWidth={380}>
+          <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Te gusta comer</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+            {FOOD_TASTE_OPTIONS.map((item) => (
+              <button key={item} onClick={() => toggleFoodLike(item)} style={{
+                padding: "7px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer", fontWeight: 600,
+                border: `1px solid ${foodLikes.includes(item) ? palette.accent : palette.panelBorder}`,
+                background: foodLikes.includes(item) ? `${palette.accent}22` : palette.inputBg,
+                color: foodLikes.includes(item) ? palette.accent : palette.inkDim,
+              }}>{item}</button>
+            ))}
+          </div>
+          <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>No te gusta o evitas</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+            {FOOD_TASTE_OPTIONS.map((item) => (
+              <button key={item} onClick={() => toggleFoodDislike(item)} style={{
+                padding: "7px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer", fontWeight: 600,
+                border: `1px solid ${foodDislikes.includes(item) ? palette.accent : palette.panelBorder}`,
+                background: foodDislikes.includes(item) ? `${palette.accent}22` : palette.inputBg,
+                color: foodDislikes.includes(item) ? palette.accent : palette.inkDim,
+              }}>{item}</button>
+            ))}
+          </div>
           <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 6 }}>Alimentos que restringes</label>
           <textarea
             value={dietaryRestrictions}

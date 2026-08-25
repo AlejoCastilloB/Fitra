@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { ChevronLeft, Send, Camera, Sparkles, Loader2, X, RotateCcw } from "lucide-react";
 import RecipeCard, { Recipe } from "@/components/RecipeCard";
+import FoodAnamnesisGate from "@/components/FoodAnamnesisGate";
 
 type Msg = { role: "user" | "assistant"; content: string; recipe?: Recipe | null; saved?: boolean };
 
@@ -13,6 +14,14 @@ const GREETING: Msg = { role: "assistant", content: "Hola, soy Fitra 👋 Cuént
 const CONTEXT_WINDOW = 20;
 
 export default function RecipeChatPage() {
+  return (
+    <FoodAnamnesisGate>
+      <RecipeChatInner />
+    </FoodAnamnesisGate>
+  );
+}
+
+function RecipeChatInner() {
   const palette = usePalette();
   const router = useRouter();
   const supabase = createClient();
