@@ -1,30 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
-
-const MIN_INTERVAL_MS = 60_000;
-
+// El middleware ya refresca la sesión en cada request al servidor (lib/supabase/middleware.ts),
+// y el SDK de Supabase ya maneja su propio refresh automático en el cliente (autoRefreshToken).
+// Este componente antes disparaba un refresh manual extra en cada visibilitychange — un tercer
+// trigger independiente que podía competir con los otros dos por rotar el mismo refresh token
+// casi al mismo tiempo, lo cual Supabase puede interpretar como reuso y cerrar la sesión entera.
+// Se deja como no-op para no perder el punto de montaje si hace falta reintroducir algo puntual.
 export default function SessionKeepAlive() {
-  const lastRefresh = useRef(0);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    function refresh() {
-      if (document.visibilityState !== "visible") return;
-      const now = Date.now();
-      if (now - lastRefresh.current < MIN_INTERVAL_MS) return;
-      lastRefresh.current = now;
-      supabase.auth.getSession().catch(() => {});
-    }
-
-    document.addEventListener("visibilitychange", refresh);
-
-    return () => {
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
-
   return null;
 }
