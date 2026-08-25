@@ -11,7 +11,7 @@ import SportSelector, { SportDetail } from "@/components/onboarding/SportSelecto
 import NotificationPermissionSlide from "@/components/onboarding/NotificationPermissionSlide";
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
-import { computeNutritionGoals, Sex, CommitmentLevel } from "@/lib/computeNutritionGoals";
+import { computeNutritionGoals, Sex, CommitmentLevel, COMMITMENT_OPTIONS } from "@/lib/computeNutritionGoals";
 
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 const LEVEL_EMOJI: Record<string, string> = { Principiante: "🌱", Intermedio: "⚡", Avanzado: "🔥" };
@@ -30,12 +30,7 @@ const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
 const DEFAULT_TRAINER_EMAIL = "topero2008@gmail.com";
 const STEP_COUNT = 14;
-const COMMITMENT_OPTIONS: { id: CommitmentLevel; label: string; text: string }[] = [
-  { id: "suave", label: "Suave", text: "Cambios pequeños y sostenibles — prioriza sentirte bien y mantener el hábito." },
-  { id: "moderado", label: "Moderado", text: "Un balance entre resultados y adherencia — el punto recomendado para la mayoría." },
-  { id: "agresivo", label: "Agresivo", text: "Resultados más rápidos, exige más disciplina — solo si te sientes listo para eso." },
-];
-const FACT_1 = "Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
+const FACT_1 ="Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
 
 type ClientAnswers = {
@@ -208,6 +203,7 @@ function OnboardingForm() {
       height_cm: d.heightCm,
       age: d.age,
       sex: d.sex,
+      commitment: d.commitment,
       daily_kcal_goal: nutritionGoals?.kcal ?? null,
       daily_protein_goal: nutritionGoals?.protein ?? null,
       daily_carbs_goal: nutritionGoals?.carbs ?? null,

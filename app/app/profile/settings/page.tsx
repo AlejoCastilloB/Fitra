@@ -12,6 +12,7 @@ import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
 import { clearSwCache } from "@/lib/clearSwCache";
+import { computeNutritionGoals, COMMITMENT_OPTIONS, type Sex, type CommitmentLevel } from "@/lib/computeNutritionGoals";
 
 const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }> = {
   clasico: { label: "Clásico", freq: 880, pattern: [0.35] },
@@ -56,10 +57,18 @@ export default function ProfileSettingsPage() {
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
   const [measurementZones, setMeasurementZones] = useState<string[]>([]);
   const [progressReminderDays, setProgressReminderDays] = useState<number | null>(null);
+  const [weightKg, setWeightKg] = useState<number | null>(null);
+  const [heightCm, setHeightCm] = useState<number | null>(null);
+  const [age, setAge] = useState<number | null>(null);
+  const [sex, setSex] = useState<Sex | null>(null);
+  const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
+  const [goal, setGoal] = useState<string | null>(null);
+  const [daysAvailable, setDaysAvailable] = useState(3);
 
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [showWeightEdit, setShowWeightEdit] = useState(false);
+  const [showPhysicalEdit, setShowPhysicalEdit] = useState(false);
   const [showDietEdit, setShowDietEdit] = useState(false);
   const [showProgressEdit, setShowProgressEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -74,7 +83,7 @@ export default function ProfileSettingsPage() {
 
       const [{ data: userRow }, { data: clientRow }] = await Promise.all([
         supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days").eq("id", id).single(),
-        supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight").eq("user_id", id).single(),
+        supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, weight_kg, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
       ]);
 
       if (userRow) {
@@ -89,6 +98,13 @@ export default function ProfileSettingsPage() {
         setDietaryRestrictions(clientRow.dietary_restrictions || "");
         setKitchenEquipment(clientRow.kitchen_equipment || []);
         setCurrentWeight(clientRow.current_weight ? String(clientRow.current_weight) : "");
+        setWeightKg(clientRow.weight_kg ?? null);
+        setHeightCm(clientRow.height_cm ?? null);
+        setAge(clientRow.age ?? null);
+        setSex((clientRow.sex as Sex) ?? null);
+        setCommitment((clientRow.commitment as CommitmentLevel) ?? "moderado");
+        setGoal(clientRow.lifestyle?.goal ?? null);
+        setDaysAvailable(clientRow.lifestyle?.days_available ?? 3);
       }
 
       if ("Notification" in window) setNotifEnabled(Notification.permission === "granted");
@@ -140,6 +156,30 @@ export default function ProfileSettingsPage() {
     setCurrentWeight(w);
     await supabase.from("clients").update({ current_weight: +w || null }).eq("user_id", uid);
     setShowWeightEdit(false);
+  }
+
+  async function savePhysicalProfile(next: { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel }) {
+    setWeightKg(next.weightKg);
+    setHeightCm(next.heightCm);
+    setAge(next.age);
+    setSex(next.sex);
+    setCommitment(next.commitment);
+
+    const nutritionGoals = (next.weightKg && next.heightCm && next.age && next.sex)
+      ? computeNutritionGoals({
+          weightKg: next.weightKg, heightCm: next.heightCm, age: next.age, sex: next.sex,
+          daysAvailable, goal, commitment: next.commitment,
+        })
+      : null;
+
+    await supabase.from("clients").update({
+      weight_kg: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
+      ...(nutritionGoals && {
+        daily_kcal_goal: nutritionGoals.kcal, daily_protein_goal: nutritionGoals.protein,
+        daily_carbs_goal: nutritionGoals.carbs, daily_fat_goal: nutritionGoals.fat,
+      }),
+    }).eq("user_id", uid);
+    setShowPhysicalEdit(false);
   }
 
   async function saveDietaryInfo() {
@@ -226,6 +266,12 @@ export default function ProfileSettingsPage() {
         <ListRow label="Nombre" sublabel={displayName || "Sin definir"} showChevron onClick={() => setShowNameEdit(true)} />
         <ListRow label="Correo" sublabel={email} />
         <ListRow label="Peso actual" sublabel={currentWeight ? `${currentWeight} kg` : "Sin registrar"} showChevron onClick={() => setShowWeightEdit(true)} />
+        <ListRow
+          label="Perfil físico"
+          sublabel={weightKg && heightCm && age ? `${weightKg} kg · ${heightCm} cm · ${age} años` : "Sin registrar — usado para tus metas de calorías"}
+          showChevron
+          onClick={() => setShowPhysicalEdit(true)}
+        />
         <ListRow label="Cerrar sesión" onClick={handleLogout} />
         <ListRow label="Eliminar cuenta" danger onClick={() => setShowDeleteConfirm(true)} />
       </SettingsGroup>
@@ -260,6 +306,16 @@ export default function ProfileSettingsPage() {
       {showWeightEdit && (
         <Modal title="Peso actual" onClose={() => setShowWeightEdit(false)} maxWidth={300}>
           <WeightEditor initial={currentWeight} onSave={saveWeight} />
+        </Modal>
+      )}
+
+      {showPhysicalEdit && (
+        <Modal title="Perfil físico" onClose={() => setShowPhysicalEdit(false)} maxWidth={340}>
+          <PhysicalProfileEditor
+            initial={{ weightKg, heightCm, age, sex, commitment }}
+            showCommitment={goal !== null && goal !== "salud"}
+            onSave={savePhysicalProfile}
+          />
         </Modal>
       )}
 
@@ -370,6 +426,83 @@ function WeightEditor({ initial, onSave }: { initial: string; onSave: (v: string
     <div>
       <input type="number" value={val} onChange={(e) => setVal(e.target.value)} placeholder="kg" style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 14 }} />
       <button onClick={() => onSave(val)} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Guardar</button>
+    </div>
+  );
+}
+
+type PhysicalProfile = { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel };
+
+function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: PhysicalProfile; showCommitment: boolean; onSave: (v: PhysicalProfile) => void }) {
+  const palette = usePalette();
+  const [weightKg, setWeightKg] = useState(initial.weightKg);
+  const [heightCm, setHeightCm] = useState(initial.heightCm);
+  const [age, setAge] = useState(initial.age);
+  const [sex, setSex] = useState(initial.sex);
+  const [commitment, setCommitment] = useState(initial.commitment);
+
+  function numberInput(value: number | null, onChange: (v: number | null) => void, label: string) {
+    return (
+      <label style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: palette.inkDim }}>
+        {label}
+        <input
+          type="number" inputMode="decimal" min={0} value={value ?? ""}
+          onChange={(e) => onChange(e.target.value ? Math.max(0, +e.target.value) : null)}
+          onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
+          style={{ width: "100%", padding: 10, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, textAlign: "center" }}
+        />
+      </label>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 14, lineHeight: 1.4 }}>
+        Estos datos se usan para calcular tus metas de calorías y macros — actualízalos si cambian.
+      </p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        {numberInput(weightKg, setWeightKg, "Peso (kg)")}
+        {numberInput(heightCm, setHeightCm, "Altura (cm)")}
+        {numberInput(age, setAge, "Edad")}
+      </div>
+      <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Sexo biológico</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: showCommitment ? 18 : 4 }}>
+        {(["male", "female"] as Sex[]).map((s) => (
+          <button key={s} onClick={() => setSex(s)} style={{
+            flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+            border: `1px solid ${sex === s ? palette.accent : palette.panelBorder}`,
+            background: sex === s ? `${palette.accent}22` : palette.inputBg, color: sex === s ? palette.accent : palette.ink,
+          }}>{s === "male" ? "Hombre" : "Mujer"}</button>
+        ))}
+      </div>
+
+      {showCommitment && (
+        <>
+          <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Nivel de compromiso con tu objetivo</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+            {COMMITMENT_OPTIONS.map((c) => (
+              <button key={c.id} onClick={() => setCommitment(c.id)} style={{
+                textAlign: "left", padding: "9px 12px", borderRadius: 10, cursor: "pointer",
+                border: `1px solid ${commitment === c.id ? palette.accent : palette.panelBorder}`,
+                background: commitment === c.id ? `${palette.accent}18` : palette.inputBg,
+              }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: palette.ink }}>{c.label}</div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={() => onSave({ weightKg, heightCm, age, sex, commitment })}
+        disabled={!weightKg || !heightCm || !age || !sex}
+        style={{
+          width: "100%", padding: 12, borderRadius: 11, border: "none",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+          fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: (!weightKg || !heightCm || !age || !sex) ? 0.5 : 1,
+        }}
+      >
+        Guardar
+      </button>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 export type Sex = "male" | "female";
 export type CommitmentLevel = "suave" | "moderado" | "agresivo";
 
+export const COMMITMENT_OPTIONS: { id: CommitmentLevel; label: string; text: string }[] = [
+  { id: "suave", label: "Suave", text: "Cambios pequeños y sostenibles — prioriza sentirte bien y mantener el hábito." },
+  { id: "moderado", label: "Moderado", text: "Un balance entre resultados y adherencia — el punto recomendado para la mayoría." },
+  { id: "agresivo", label: "Agresivo", text: "Resultados más rápidos, exige más disciplina — solo si te sientes listo para eso." },
+];
+
 export type NutritionGoals = { kcal: number; protein: number; carbs: number; fat: number };
 
 // % de ajuste sobre el gasto calórico total (TDEE), por objetivo y nivel de compromiso.
