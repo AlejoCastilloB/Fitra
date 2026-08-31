@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Check, Mail, Lock, Eye, EyeOff, MailCheck } from "lucide-react";
@@ -77,7 +77,14 @@ export default function OnboardingPage() {
 
 function OnboardingForm() {
   const router = useRouter();
-  const supabase = createClient();
+
+  // El cliente de Supabase del navegador solo puede construirse en el navegador. Creado
+  // durante el render del servidor reventaba el prerender de esta página en `next build`
+  // cuando las variables NEXT_PUBLIC_SUPABASE_* no están definidas — que es justo lo que
+  // pasa en los deploys de preview. Todas las llamadas de abajo ocurren en handlers o
+  // efectos, así que se crea la primera vez que de verdad se necesita.
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const getSupabase = () => (supabaseRef.current ??= createClient());
   const searchParams = useSearchParams();
   const urlInvite = searchParams.get("invite");
 
@@ -141,12 +148,12 @@ function OnboardingForm() {
       injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
     };
     setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth } = await getSupabase().auth.getUser();
     const uid = auth.user!.id;
 
     let trainerId: string | null = null;
     if (d.effectiveInvite) {
-      const { data: invite } = await supabase
+      const { data: invite } = await getSupabase()
         .from("invites")
         .select("id, trainer_id, used_by")
         .eq("code", d.effectiveInvite)
@@ -154,13 +161,13 @@ function OnboardingForm() {
 
       if (invite && !invite.used_by) {
         trainerId = invite.trainer_id;
-        await supabase.from("invites").update({ used_by: uid }).eq("id", invite.id);
+        await getSupabase().from("invites").update({ used_by: uid }).eq("id", invite.id);
       }
       localStorage.removeItem(PENDING_INVITE_KEY);
     }
 
     if (!trainerId) {
-      const { data: defaultTrainer } = await supabase
+      const { data: defaultTrainer } = await getSupabase()
         .from("users")
         .select("id")
         .eq("email", DEFAULT_TRAINER_EMAIL)
@@ -187,10 +194,10 @@ function OnboardingForm() {
         })
       : null;
 
-    const { error: usersError } = await supabase.from("users").upsert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
+    const { error: usersError } = await getSupabase().from("users").upsert({ id: uid, email: auth.user!.email, role: "client", display_name: d.displayName.trim(), theme_pref: "light" });
     if (usersError) { setSaving(false); return false; }
 
-    const { error: clientsError } = await supabase.from("clients").insert({
+    const { error: clientsError } = await getSupabase().from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
       lifestyle: { goal: d.goal, secondary_goals: d.secondaryGoals, level: d.level, days_available: d.daysAvailable },
@@ -212,7 +219,7 @@ function OnboardingForm() {
     if (clientsError) { setSaving(false); return false; }
 
     if (sportsDetails.length > 0) {
-      await supabase.from("client_sports").insert(
+      await getSupabase().from("client_sports").insert(
         sportsDetails.map((sd) => ({
           client_id: uid, sport: sd.sport, level: sd.level, experience: sd.experience, include_in_plan: sd.includeInPlan,
         }))
@@ -233,9 +240,9 @@ function OnboardingForm() {
       if (!invite) invite = localStorage.getItem(PENDING_INVITE_KEY);
       if (invite) setEffectiveInvite(invite);
 
-      const { data: auth } = await supabase.auth.getUser();
+      const { data: auth } = await getSupabase().auth.getUser();
       if (auth.user) {
-        const { data: existingUserRow } = await supabase.from("users").select("role").eq("id", auth.user.id).single();
+        const { data: existingUserRow } = await getSupabase().from("users").select("role").eq("id", auth.user.id).single();
         if (existingUserRow) {
           router.replace(existingUserRow.role === "trainer" ? "/coach" : "/app");
           return;
@@ -268,7 +275,7 @@ function OnboardingForm() {
     const redirectTo = effectiveInvite
       ? `${window.location.origin}/auth/callback?invite=${encodeURIComponent(effectiveInvite)}`
       : `${window.location.origin}/auth/callback`;
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await getSupabase().auth.signUp({
       email, password, options: { emailRedirectTo: redirectTo },
     });
 
