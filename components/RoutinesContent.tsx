@@ -43,7 +43,7 @@ export default function RoutinesContent() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
-          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Créala tú o pídele ayuda a Fitra</div>
+          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Arma la tuya ejercicio por ejercicio</div>
         </div>
         <ChevronRight size={18} color={palette.inkDim} />
       </Link>
@@ -52,7 +52,7 @@ export default function RoutinesContent() {
         <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 20 }}>Cargando...</p>
       ) : routines.length === 0 ? (
         <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 20 }}>
-          Todavía no tienes rutinas. Crea la tuya con ayuda de Fitra.
+          Todavía no tienes rutinas. Crea la primera desde “Nueva rutina”.
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

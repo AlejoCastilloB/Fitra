@@ -8,16 +8,17 @@ import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
-import { getWeightComparison } from "@/lib/weightComparisons";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
-import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Camera, Link2, StickyNote } from "lucide-react";
+import { finishWorkoutSession, type FinishedWorkout } from "@/lib/finishWorkout";
+import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import SetTypePopover from "@/components/SetTypePopover";
 import RestBar from "@/components/RestBar";
 import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
+import WorkoutSummary from "@/components/WorkoutSummary";
 
 export default function WorkoutPage() {
   const palette = usePalette();
@@ -32,7 +33,7 @@ export default function WorkoutPage() {
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [finished, setFinished] = useState<null | { workoutLogId: string; routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number> }>(null);
+  const [finished, setFinished] = useState<FinishedWorkout | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [defaultRest, setDefaultRest] = useState(90);
@@ -211,63 +212,11 @@ export default function WorkoutPage() {
     setFinishError(null);
 
     try {
-      const durationSec = Math.round((Date.now() - session.startedAt) / 1000);
-
-      const { data: workoutLog, error: workoutLogError } = await supabase.from("workout_logs").insert({
-        client_id: uid, routine_id: id, duration_sec: durationSec, total_volume: 0,
-      }).select().single();
-      if (workoutLogError || !workoutLog) throw workoutLogError ?? new Error("no se pudo crear el registro del entreno");
-
-      const results = await Promise.all(session.exercises.map(async (ex) => {
-        let bestWeight = 0;
-        let exVolume = 0;
-        const doneSets = ex.sets.filter((s) => s.done);
-        const localBreakdown: Record<string, number> = {};
-        doneSets.forEach((s) => { localBreakdown[s.set_type] = (localBreakdown[s.set_type] ?? 0) + 1; });
-
-        const rows = doneSets.map((s, i) => {
-          if (s.weight && s.reps && s.set_type !== "warmup") {
-            exVolume += s.weight * s.reps;
-            if (s.weight > bestWeight) bestWeight = s.weight;
-          }
-          return {
-            workout_log_id: workoutLog.id, exercise_id: ex.id, set_number: i + 1,
-            weight: s.weight ?? null, reps: s.reps ?? null, time_sec: s.time_sec ?? null,
-            distance_m: s.distance_m ?? null, set_type: s.set_type, rpe: s.rpe ?? null,
-          };
-        });
-
-        if (rows.length > 0) {
-          const { error: setLogsError } = await supabase.from("set_logs").insert(rows);
-          if (setLogsError) throw setLogsError;
-        }
-
-        let prHit: string | null = null;
-        if (bestWeight > 0) {
-          const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", ex.id).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
-          if (!prevPr || bestWeight > prevPr.value) {
-            const { error: prError } = await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight, workout_log_id: workoutLog.id });
-            if (prError) throw prError;
-            prHit = ex.name;
-          }
-        }
-
-        return { volume: exVolume, breakdown: localBreakdown, prHit };
-      }));
-
-      let totalVolume = 0;
-      const prsHit: string[] = [];
-      const breakdown: Record<string, number> = { normal: 0, warmup: 0, dropset: 0, failure: 0 };
-      for (const r of results) {
-        totalVolume += r.volume;
-        if (r.prHit) prsHit.push(r.prHit);
-        for (const [k, v] of Object.entries(r.breakdown)) breakdown[k] = (breakdown[k] ?? 0) + v;
-      }
-
-      const { error: updateError } = await supabase.from("workout_logs").update({ total_volume: totalVolume }).eq("id", workoutLog.id);
-      if (updateError) throw updateError;
-
-      setFinished({ workoutLogId: workoutLog.id, routineName: session.routineName, volume: totalVolume, durationSec, prs: prsHit, breakdown });
+      const summary = await finishWorkoutSession({
+        supabase, uid, routineId: id, routineName: session.routineName,
+        exercises: session.exercises, startedAt: session.startedAt,
+      });
+      setFinished(summary);
       clearSession();
     } catch {
       setFinishError("No pudimos guardar tu entreno por un problema de conexión. No se perdió nada — reintenta cuando quieras o espera, se reintenta solo en cuanto vuelva la señal.");
@@ -292,7 +241,7 @@ export default function WorkoutPage() {
   if (loading) return <p style={{ color: palette.inkDim, textAlign: "center", marginTop: 60 }}>Cargando entrenamiento...</p>;
 
   if (finished) {
-    return <SummaryScreen workoutLogId={finished.workoutLogId} routineName={finished.routineName} volume={finished.volume} durationSec={finished.durationSec} prs={finished.prs} breakdown={finished.breakdown} onDone={() => router.push("/app")} />;
+    return <WorkoutSummary {...finished} suggestedRoutineName={`${finished.routineName} (copia)`} onDone={() => router.push("/app")} />;
   }
 
   const hasExercises = session && session.exercises.length > 0;
@@ -619,161 +568,5 @@ function SetInput({ value, onChange }: { value?: number; onChange: (v: number) =
       onChange={(e) => onChange(Math.max(0, +e.target.value || 0))}
       onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
       style={{ position: "relative", width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
-  );
-}
-
-const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
-
-function SummaryScreen({ workoutLogId, routineName, volume, durationSec, prs, breakdown, onDone }: {
-  workoutLogId: string; routineName: string; volume: number; durationSec: number; prs: string[]; breakdown: Record<string, number>; onDone: () => void;
-}) {
-  const palette = usePalette();
-  const supabase = createClient();
-  const minutes = Math.floor(durationSec / 60);
-  const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
-  const comparison = getWeightComparison(volume);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [sharing, setSharing] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
-  async function handleAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingPhoto(true);
-    const { data: auth } = await supabase.auth.getUser();
-    const path = `${auth.user!.id}/${workoutLogId}.jpg`;
-    await supabase.storage.from("food-photos").upload(path, file, { contentType: file.type, upsert: true });
-    const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
-    await supabase.from("workout_logs").update({ photo_url: pub.publicUrl }).eq("id", workoutLogId);
-    setPhotoUrl(pub.publicUrl);
-    setUploadingPhoto(false);
-  }
-
-  async function share() {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: TAG_SUGGESTION });
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "entreno-fittrack.png";
-        link.click();
-      }
-    } catch {
-      alert("No pudimos generar la imagen, intenta de nuevo.");
-    } finally {
-      setSharing(false);
-    }
-  }
-
-  const BADGE_LABELS: Record<string, { label: string; color: string }> = {
-    normal: { label: "Efectivas", color: palette.accent },
-    warmup: { label: "Calentamiento", color: "#FBBF24" },
-    dropset: { label: "Dropset", color: "#C77DFF" },
-    failure: { label: "Al fallo", color: "#F87171" },
-  };
-
-  return (
-    <div>
-      <style>{`
-        @keyframes ftStoryIn { from { opacity: 0; transform: scale(0.94) translateY(10px); } to { opacity: 1; transform: none; } }
-        @keyframes ftEmojiPop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
-        .ft-story-card { animation: ftStoryIn .45s cubic-bezier(.16,.8,.24,1) both; }
-        .ft-emoji-pop { animation: ftEmojiPop .5s cubic-bezier(.16,.8,.24,1) .15s both; }
-      `}</style>
-
-      <div ref={cardRef} className="ft-story-card" style={{
-        borderRadius: 26, padding: "36px 24px 28px", textAlign: "center", marginBottom: 20,
-        background: `${palette.bg}66`,
-        border: "1px solid rgba(255,255,255,0.14)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -10px rgba(0,0,0,0.35)",
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          width: 60, height: 60, borderRadius: "50%", background: `${palette.accent}22`,
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: palette.accent,
-        }}>
-          <Flame size={26} />
-        </div>
-        <p style={{ fontSize: 12, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Entreno completado</p>
-        <h1 style={{ fontSize: 19, fontWeight: 800, marginBottom: 16 }}>{capitalized}</h1>
-
-        <input ref={photoInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
-        {photoUrl ? (
-          <img src={photoUrl} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 14, marginBottom: 18 }} />
-        ) : (
-          <button onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto} style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: 10, borderRadius: 12,
-            border: `1px dashed ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 12, cursor: "pointer", marginBottom: 18,
-          }}>
-            <Camera size={14} /> {uploadingPhoto ? "Subiendo..." : "Agregar foto (opcional)"}
-          </button>
-        )}
-
-        <div style={{ fontSize: 38, fontWeight: 900, lineHeight: 1 }}>{volume.toLocaleString("es-CO")}</div>
-        <div style={{ fontSize: 13, color: palette.inkDim, marginBottom: 18 }}>kg de volumen total</div>
-
-        <div className="ft-emoji-pop" style={{ fontSize: 40, marginBottom: 8 }}>{comparison.emoji}</div>
-        <p style={{ fontSize: 13, color: palette.ink, lineHeight: 1.5, maxWidth: 280, margin: "0 auto 22px" }}>
-          Eso es como mover <strong>{comparison.text}</strong>
-        </p>
-
-        <div style={{ display: "flex", justifyContent: "center", gap: 24 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>{minutes} min</div>
-            <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Duración</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>{Object.values(breakdown).reduce((a, b) => a + b, 0)}</div>
-            <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Series</div>
-          </div>
-          {prs.length > 0 && (
-            <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: palette.accent }}>{prs.length}</div>
-              <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Récords</div>
-            </div>
-          )}
-        </div>
-
-        {prs.length > 0 && (
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${palette.panelBorder}`, textAlign: "left" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 12.5 }}>
-              <Trophy size={14} /> Hiciste récord en:
-            </div>
-            {prs.map((p) => <div key={p} style={{ fontSize: 12.5, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}><Trophy size={11} /> {p}</div>)}
-          </div>
-        )}
-
-        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
-      </div>
-
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 11, color: palette.inkDim, marginBottom: 10, textTransform: "uppercase", fontWeight: 700 }}>Series por tipo</div>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          {Object.entries(breakdown).filter(([, count]) => count > 0).map(([type, count]) => (
-            <div key={type} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: BADGE_LABELS[type]?.color }} />
-              <span style={{ fontSize: 12.5 }}>{count} {BADGE_LABELS[type]?.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
-        {sharing ? "Generando imagen..." : "Compartir como imagen"}
-      </button>
-      <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>
-        Volver a Inicio
-      </button>
-    </div>
   );
 }

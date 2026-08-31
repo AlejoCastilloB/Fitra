@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
-import { Plus, Dumbbell, Camera, Sparkles, Phone } from "lucide-react";
+import { Plus, Dumbbell, Zap, Camera, Sparkles, Phone } from "lucide-react";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
 const ANIM_MS = 260;
@@ -68,7 +68,8 @@ export default function HomeFab() {
   }
 
   const items = [
-    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/progress", external: false },
+    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
+    { icon: <Zap size={17} />, label: "Entrenamiento vacío", href: "/app/workout/empty", external: false },
     { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
     { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
     ...(coachWhatsapp
@@ -78,7 +79,7 @@ export default function HomeFab() {
 
   return (
     <>
-      {!mounted && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
+      {!mounted && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, armar uno vacío sobre la marcha, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
 
       {mounted && (
         <div

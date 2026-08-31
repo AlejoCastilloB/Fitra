@@ -1,15 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAppUser } from "@/lib/getAppUser";
 import TodayScreen from "@/components/TodayScreen";
 
 export default async function ClientToday() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const uid = user!.id;
+  // Ya lo resolvió el layout en este mismo request: acá sale de la caché, sin red.
+  const { userId, row } = await getAppUser();
+  const uid = userId!;
 
-  const [{ data: clientRow }, { data: userRow }] = await Promise.all([
-    supabase.from("clients").select("trainer_id").eq("user_id", uid).single(),
-    supabase.from("users").select("display_name").eq("id", uid).single(),
-  ]);
+  const supabase = await createClient();
+  const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
 
   const { data: routines } = await supabase
     .from("routines")
@@ -23,7 +22,7 @@ export default async function ClientToday() {
 
   return (
     <TodayScreen
-      displayName={userRow?.display_name ?? null}
+      displayName={row?.display_name ?? null}
       todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name, source: todaysRoutine.source } : null}
       otherRoutines={otherRoutines.map((r) => ({ id: r.id, name: r.name, source: r.source }))}
     />

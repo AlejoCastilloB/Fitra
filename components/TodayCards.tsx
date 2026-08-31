@@ -66,22 +66,33 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
 
-      const { data: logs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", `${today}T00:00:00`);
+      // Las cuatro consultas son independientes entre sí: en serie eran cuatro viajes
+      // al servidor encadenados antes de pintar la tarjeta. En paralelo es uno solo.
+      const [{ data: logs }, { data: clientRow }, workoutTodayRes, exRowsRes] = await Promise.all([
+        supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", `${today}T00:00:00`),
+        supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single(),
+        todaysRoutine
+          ? supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", `${today}T00:00:00`).limit(1)
+          : Promise.resolve({ data: null }),
+        todaysRoutine
+          ? supabase.from("routine_exercises").select("target_sets, exercises(muscle_group)").eq("routine_id", todaysRoutine.id)
+          : Promise.resolve({ data: null }),
+      ]);
+
       setKcalConsumed((logs ?? []).reduce((s, l) => s + (l.kcal ?? 0), 0));
       setProteinConsumed((logs ?? []).reduce((s, l) => s + (l.protein ?? 0), 0));
       setCarbsConsumed((logs ?? []).reduce((s, l) => s + (l.carbs ?? 0), 0));
       setFatConsumed((logs ?? []).reduce((s, l) => s + (l.fat ?? 0), 0));
 
-      const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single();
       if (clientRow?.daily_kcal_goal) {
         setGoals({ kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal });
       }
 
       if (todaysRoutine) {
-        const { data: workoutToday } = await supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", `${today}T00:00:00`).limit(1);
+        const workoutToday = workoutTodayRes.data as any[] | null;
         setDone((workoutToday ?? []).length > 0);
 
-        const { data: exRows } = await supabase.from("routine_exercises").select("target_sets, exercises(muscle_group)").eq("routine_id", todaysRoutine.id);
+        const exRows = exRowsRes.data as any[] | null;
 
         let sets = 0, volume = 0;
         const muscleCounts: Record<string, number> = {};
