@@ -34,9 +34,25 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   const palette = theme === "dark" ? darkPalette : lightPalette;
 
+  // La franja de estado / barras del navegador se tintan con <meta name="theme-color">.
+  // Tiene que seguir el tema elegido DENTRO de la app, no el del sistema: si no, con el
+  // celular en claro y la app en oscuro queda una franja clara pegada a una app oscura.
   useEffect(() => {
     document.body.style.background = palette.bg;
-  }, [palette.bg]);
+    document.documentElement.style.background = palette.bg;
+
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = palette.bg;
+
+    // `color-scheme` hace que los controles nativos (scrollbars, inputs, el rebote del
+    // scroll en iOS) usen el mismo tema que la app en vez del del sistema.
+    document.documentElement.style.colorScheme = theme;
+  }, [palette.bg, theme]);
 
   return (
     <ThemeContext.Provider value={{ theme, palette, setTheme, hydrateTheme }}>

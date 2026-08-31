@@ -15,7 +15,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "falta GEMINI_API_KEY en Vercel" }, { status: 500 });
   }
 
-    const { imageBase64, mimeType, note, audioBase64, audioMimeType, photoUrl } = await request.json();
+  const { imageBase64, mimeType, note, audioBase64, audioMimeType, photoUrl, logId } = await request.json();
+
+  // Corrección de un registro ya existente: se reanaliza la MISMA foto sumándole el
+  // contexto nuevo que da el usuario, y al final se actualiza esa fila en vez de crear otra.
+  let existingLog: any = null;
+  if (logId) {
+    const { data } = await supabase
+      .from("nutrition_logs")
+      .select("id, photo_url, note, food_name, portion, kcal, protein, carbs, fat")
+      .eq("id", logId)
+      .eq("client_id", user.id)
+      .single();
+    if (!data) return NextResponse.json({ error: "no encontramos ese registro" }, { status: 404 });
+    existingLog = data;
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", user.id).single();
@@ -49,7 +63,31 @@ ${personalization ? `\nLo que sabes de este usuario en particular:\n${personaliz
     },
   ];
 
-  if (imageBase64) parts.push({ inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } });
+  let effectiveImage: { data: string; mime: string } | null =
+    imageBase64 ? { data: imageBase64, mime: mimeType || "image/jpeg" } : null;
+
+  if (!effectiveImage && existingLog?.photo_url) {
+    try {
+      const photoRes = await fetch(existingLog.photo_url);
+      if (photoRes.ok) {
+        const buf = Buffer.from(await photoRes.arrayBuffer());
+        effectiveImage = { data: buf.toString("base64"), mime: photoRes.headers.get("content-type") || "image/jpeg" };
+      }
+    } catch {
+      // sin la foto original igual se puede recalcular con el texto previo y la corrección
+    }
+  }
+
+  if (existingLog) {
+    parts.push({
+      text: `Este es un ANÁLISIS PREVIO tuyo que el usuario quiere corregir: ${JSON.stringify({
+        food_name: existingLog.food_name, portion: existingLog.portion,
+        kcal: existingLog.kcal, protein: existingLog.protein, carbs: existingLog.carbs, fat: existingLog.fat,
+      })}.${existingLog.note ? ` El contexto que ya había dado era: "${existingLog.note}".` : ""} A continuación viene una corrección o un dato que faltaba. Vuelve a calcular TODO el registro teniendo en cuenta esa corrección; no la ignores ni te limites a repetir tu estimación anterior.`,
+    });
+  }
+
+  if (effectiveImage) parts.push({ inline_data: { mime_type: effectiveImage.mime, data: effectiveImage.data } });
   if (audioBase64) parts.push({ inline_data: { mime_type: audioMimeType || "audio/webm", data: audioBase64 } });
   if (note) parts.push({ text: `Nota adicional del usuario: ${note}` });
 
@@ -83,10 +121,7 @@ ${personalization ? `\nLo que sabes de este usuario en particular:\n${personaliz
     return NextResponse.json({ error: `no pude interpretar la respuesta de Gemini: ${cleaned.slice(0, 200)}` }, { status: 500 });
   }
 
-    const { data: log, error } = await supabase.from("nutrition_logs").insert({
-    client_id: user.id,
-    photo_url: photoUrl || null,
-    note: note || null,
+  const values = {
     food_name: parsed.food_name,
     portion: parsed.portion,
     kcal: parsed.kcal,
@@ -96,8 +131,20 @@ ${personalization ? `\nLo que sabes de este usuario en particular:\n${personaliz
     fiber: parsed.fiber,
     sugar: parsed.sugar,
     sodium: parsed.sodium,
-    source: "photo_ai",
-  }).select().single();
+  };
+
+  const { data: log, error } = existingLog
+    ? await supabase.from("nutrition_logs").update({
+        ...values,
+        note: [existingLog.note, note].filter(Boolean).join(" · ") || null,
+      }).eq("id", existingLog.id).eq("client_id", user.id).select().single()
+    : await supabase.from("nutrition_logs").insert({
+        ...values,
+        client_id: user.id,
+        photo_url: photoUrl || null,
+        note: note || null,
+        source: "photo_ai",
+      }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
