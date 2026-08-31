@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
-import { POPULAR_EXERCISE_KEYWORDS } from "@/lib/popularExercises";
+import { equipmentLabel } from "@/lib/equipmentLabels";
+import { useExerciseSearch, useExerciseFilterOptions } from "@/lib/useExerciseSearch";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
 import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal } from "lucide-react";
@@ -46,6 +47,8 @@ export default function RoutineBuilder({
   const router = useRouter();
   const isEditing = !!routineId;
 
+  const { muscles, equipment: equipmentOptions } = useExerciseFilterOptions();
+
   const [name, setName] = useState(initialName);
   const [clientId, setClientId] = useState(initialClientId);
   const [routineNotes, setRoutineNotes] = useState(initialNotes);
@@ -53,8 +56,7 @@ export default function RoutineBuilder({
   const [clients, setClients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
-  const [muscles, setMuscles] = useState<string[]>([]);
-  const [results, setResults] = useState<any[]>([]);
+  const [equipmentFilter, setEquipmentFilter] = useState("");
   const [picked, setPicked] = useState<PickedExercise[]>(initialExercises);
   const [saving, setSaving] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -65,34 +67,14 @@ export default function RoutineBuilder({
   const [showDetails, setShowDetails] = useState(!isEditing);
 
   useEffect(() => {
+    if (role !== "trainer") return;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-
-      if (role === "trainer") {
-        const cliRes = await fetch("/api/coach/client-names").then((r) => r.json());
-        setClients(cliRes.clients ?? []);
-      }
-
-      const { data: mus } = await supabase.from("exercises").select("muscle_group").not("muscle_group", "is", null);
-      setMuscles(Array.from(new Set(mus?.map((m) => m.muscle_group))).sort());
+      const cliRes = await fetch("/api/coach/client-names").then((r) => r.json());
+      setClients(cliRes.clients ?? []);
     })();
   }, [role]);
 
-  useEffect(() => {
-    const t = setTimeout(async () => {
-      let query = supabase.from("exercises").select("id, name, measurement_type, muscle_group, media_url");
-      if (search) {
-        query = query.ilike("name", `%${search}%`).limit(30);
-      } else if (muscleFilter) {
-        query = query.eq("muscle_group", muscleFilter).limit(30);
-      } else {
-        query = query.or(POPULAR_EXERCISE_KEYWORDS.map((k) => `name.ilike.%${k}%`).join(",")).limit(15);
-      }
-      const { data } = await query;
-      setResults(data ?? []);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [search, muscleFilter]);
+  const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
 
   function addExercise(ex: any) {
     if (picked.some((p) => p.id === ex.id)) return;
@@ -219,16 +201,30 @@ export default function RoutineBuilder({
 
       {showLibrary && (
         <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 14, marginBottom: 18 }}>
+          <div style={{ position: "relative", marginBottom: 8 }}>
+            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre..." style={{ ...inputStyle(palette), paddingLeft: 32, fontSize: 13 }} />
+          </div>
+
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: palette.inkDim }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar ejercicio..." style={{ ...inputStyle(palette), paddingLeft: 32, fontSize: 13 }} />
-            </div>
-            <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...inputStyle(palette), width: 130, fontSize: 12.5 }}>
-              <option value="">Músculo</option>
+            <select value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)} style={{ ...filterStyle(palette, !!muscleFilter) }}>
+              <option value="">Grupo muscular</option>
               {muscles.map((m) => <option key={m} value={m}>{muscleLabel(m)}</option>)}
             </select>
+            <select value={equipmentFilter} onChange={(e) => setEquipmentFilter(e.target.value)} style={{ ...filterStyle(palette, !!equipmentFilter) }}>
+              <option value="">Equipamiento</option>
+              {equipmentOptions.map((e) => <option key={e} value={e}>{equipmentLabel(e)}</option>)}
+            </select>
           </div>
+
+          {(muscleFilter || equipmentFilter) && (
+            <button
+              onClick={() => { setMuscleFilter(""); setEquipmentFilter(""); }}
+              style={{ background: "none", border: "none", color: palette.accent, fontSize: 11.5, fontWeight: 700, cursor: "pointer", padding: "0 0 8px" }}
+            >
+              Quitar filtros
+            </button>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
             {results.map((r) => {
@@ -240,8 +236,13 @@ export default function RoutineBuilder({
                   border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: already ? "default" : "pointer",
                   fontSize: 12.5, opacity: already ? 0.5 : 1,
                 }}>
-                  <GifThumb src={r.media_url} size={28} />
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                  <GifThumb src={r.media_url} size={30} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                    <span style={{ display: "block", fontSize: 10.5, color: palette.inkDim, marginTop: 1 }}>
+                      {[r.muscle_group ? muscleLabel(r.muscle_group) : null, r.equipment ? equipmentLabel(r.equipment) : null].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
                   {!already && <Plus size={13} color={palette.accent} style={{ flexShrink: 0 }} />}
                 </button>
               );
@@ -462,6 +463,15 @@ function fieldLabel(palette: Palette): React.CSSProperties {
 }
 function inputStyle(palette: Palette): React.CSSProperties {
   return { width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit" };
+}
+function filterStyle(palette: Palette, active: boolean): React.CSSProperties {
+  return {
+    flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 10, fontSize: 12.5, fontFamily: "inherit", cursor: "pointer",
+    border: `1px solid ${active ? palette.accent : palette.panelBorder}`,
+    background: active ? `${palette.accent}18` : palette.inputBg,
+    color: active ? palette.accent : palette.ink,
+    fontWeight: active ? 700 : 400,
+  };
 }
 function smallInput(palette: Palette): React.CSSProperties {
   return { width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 };

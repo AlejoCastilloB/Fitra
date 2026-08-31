@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon } from "lucide-react";
+import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon, MoreVertical, Wand2, Images } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
+import FitraCamera from "@/components/FitraCamera";
 import Link from "next/link";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
@@ -31,6 +32,8 @@ export default function NutritionContent() {
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const fixRecorderRef = useRef<MediaRecorder | null>(null);
+  const fixChunksRef = useRef<Blob[]>([]);
   const closeDayRecorderRef = useRef<MediaRecorder | null>(null);
   const closeDayChunksRef = useRef<Blob[]>([]);
 
@@ -51,6 +54,14 @@ export default function NutritionContent() {
   const [goals, setGoals] = useState(DAILY_GOALS);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [fixingId, setFixingId] = useState<string | null>(null);
+  const [fixText, setFixText] = useState("");
+  const [fixRecording, setFixRecording] = useState(false);
+  const [fixAudioBlob, setFixAudioBlob] = useState<Blob | null>(null);
+  const [fixSubmitting, setFixSubmitting] = useState(false);
+  const [fixError, setFixError] = useState("");
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [closeDayText, setCloseDayText] = useState("");
   const [closeDayRecording, setCloseDayRecording] = useState(false);
@@ -193,6 +204,66 @@ export default function NutritionContent() {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setShowCamera(false);
+    setError("");
+    setCoachTip("");
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    setPendingFile(file);
+    setPendingPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function openFix(logId: string) {
+    setMenuOpenId(null);
+    setExpandedId(logId);
+    setFixingId(logId);
+    setFixText(""); setFixAudioBlob(null); setFixError("");
+  }
+
+  function closeFix() {
+    setFixingId(null);
+    setFixText(""); setFixAudioBlob(null); setFixError("");
+  }
+
+  async function toggleFixRecording() {
+    if (fixRecording) { fixRecorderRef.current?.stop(); setFixRecording(false); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      fixChunksRef.current = [];
+      recorder.ondataavailable = (e) => fixChunksRef.current.push(e.data);
+      recorder.onstop = () => { setFixAudioBlob(new Blob(fixChunksRef.current, { type: "audio/webm" })); stream.getTracks().forEach((t) => t.stop()); };
+      recorder.start();
+      fixRecorderRef.current = recorder;
+      setFixRecording(true);
+    } catch { setFixError("No pudimos acceder al micrófono."); }
+  }
+
+  // Reanaliza la misma foto sumándole lo que el usuario aclara, y actualiza ese registro.
+  async function submitFix(logId: string) {
+    if (!fixText.trim() && !fixAudioBlob) return;
+    setFixSubmitting(true);
+    setFixError("");
+    try {
+      const body: any = { logId };
+      if (fixText.trim()) body.note = fixText.trim();
+      if (fixAudioBlob) { body.audioBase64 = await fileToBase64(fixAudioBlob, false); body.audioMimeType = "audio/webm"; }
+
+      const res = await fetch("/api/ai/log-food", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+
+      if (!res.ok) setFixError(data.message || data.error || "No pudimos ajustar el registro");
+      else {
+        setRemaining(data.remaining);
+        setCoachTip(data.coachTip || "");
+        closeFix();
+        await loadAll();
+      }
+    } catch { setFixError("Fallo de red, inténtalo de nuevo"); }
+    finally { setFixSubmitting(false); }
+  }
+
+  function handleCameraCapture(file: File) {
+    setShowCamera(false);
     setError("");
     setCoachTip("");
     if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
@@ -356,7 +427,7 @@ export default function NutritionContent() {
         </div>
       </div>
 
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} style={{ display: "none" }} />
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} style={{ display: "none" }} />
 
       {pendingFile ? (
         <div className="ft-pop" style={{ ...palette.glassPanel, padding: 16, marginBottom: 16 }}>
@@ -367,7 +438,7 @@ export default function NutritionContent() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>Antes de calcular...</div>
               <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.4 }}>
-                Cuéntale a Fitra qué es o cómo se preparó — el cálculo sale más preciso con contexto.
+                Cuéntale qué es, cómo se preparó o cuál parte de la foto comiste — Fitra calcula solo eso.
               </p>
             </div>
             <button onClick={cancelPending} aria-label="Quitar foto" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", flexShrink: 0, display: "flex" }}>
@@ -375,7 +446,7 @@ export default function NutritionContent() {
             </button>
           </div>
 
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: 2 tazas de arroz, con aceite de oliva..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: solo el plato de la izquierda, sin el arroz..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
           <button onClick={toggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
             {recording ? <><Square size={13} /> Detener grabación</> : <><Mic size={13} /> Grabar nota de voz</>}
           </button>
@@ -383,7 +454,7 @@ export default function NutritionContent() {
             <p style={{ fontSize: 11.5, color: palette.accent, marginBottom: 14 }}>✓ Nota de voz lista</p>
           ) : (
             <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.4, marginBottom: 14 }}>
-              💡 También puedes grabar un audio explicando qué tiene el plato o cómo lo preparaste.
+              💡 Si la foto tiene comida de varias personas o no te lo comiste todo, dilo en el audio y Fitra cuenta solo tu parte.
             </p>
           )}
 
@@ -401,12 +472,16 @@ export default function NutritionContent() {
         </div>
       ) : (
         <>
-          <button onClick={() => fileRef.current?.click()} style={{
+          <button onClick={() => { setError(""); setCoachTip(""); setShowCamera(true); }} style={{
             width: "100%", padding: 16, borderRadius: 14, border: "none", marginBottom: 8,
             background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
             fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
             <Camera size={17} /> Foto de tu comida
+          </button>
+
+          <button onClick={() => { setError(""); setCoachTip(""); fileRef.current?.click(); }} style={{ ...secondaryBtn(palette), width: "100%", marginBottom: 8 }}>
+            <Images size={14} /> Subir foto de la galería
           </button>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -458,9 +533,34 @@ export default function NutritionContent() {
                     </div>
                     <ChevronDown size={15} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
                   </button>
-                  <button onClick={() => toggleFavorite(l)} style={{ background: "none", border: "none", color: l.saved_meal_id ? palette.accent : palette.inkDim, cursor: "pointer", padding: "0 14px" }} title={l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}>
-                    <Star size={15} fill={l.saved_meal_id ? palette.accent : "none"} />
-                  </button>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={() => setMenuOpenId(menuOpenId === l.id ? null : l.id)}
+                      aria-label="Opciones de la comida"
+                      style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: "0 12px" }}
+                    >
+                      <MoreVertical size={17} />
+                    </button>
+
+                    {menuOpenId === l.id && (
+                      <>
+                        <div onClick={() => setMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
+                        <div style={{
+                          position: "absolute", right: 8, top: "100%", marginTop: 4, zIndex: 100, width: 208,
+                          background: palette.bg, border: `1px solid ${palette.panelBorder}`, borderRadius: 14, padding: 6,
+                          boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
+                        }}>
+                          <button onClick={() => { setMenuOpenId(null); toggleFavorite(l); }} style={logMenuItem(palette)}>
+                            <Star size={14} fill={l.saved_meal_id ? palette.accent : "none"} color={l.saved_meal_id ? palette.accent : "currentColor"} />
+                            {l.saved_meal_id ? "Quitar de favoritas" : "Guardar como favorita"}
+                          </button>
+                          <button onClick={() => { setMenuOpenId(null); setConfirmDeleteId(l.id); }} style={{ ...logMenuItem(palette), color: "#f87171" }}>
+                            <Trash2 size={14} /> Eliminar registro
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {isOpen && (
@@ -490,18 +590,57 @@ export default function NutritionContent() {
                     )}
 
                     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${palette.panelBorder}` }}>
-                      {confirmDeleteId === l.id ? (
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: 9, borderRadius: 9, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 12, cursor: "pointer" }}>
-                            Cancelar
-                          </button>
-                          <button onClick={() => deleteLog(l.id)} style={{ flex: 1, padding: 9, borderRadius: 9, border: "none", background: "#f87171", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                            Sí, eliminar
-                          </button>
+                      {fixingId === l.id ? (
+                        <div>
+                          <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                            <Wand2 size={12} /> Ajustar con Fitra
+                          </div>
+                          <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.45, marginBottom: 8 }}>
+                            Cuéntale qué faltó o qué quedó mal y vuelve a calcular sobre la misma foto.
+                          </p>
+                          <textarea
+                            value={fixText} onChange={(e) => setFixText(e.target.value)}
+                            placeholder="Ej: de eso solo comí la mitad, y el pollo iba apanado"
+                            style={{ width: "100%", minHeight: 60, resize: "vertical", padding: "9px 11px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, fontFamily: "inherit", marginBottom: 8 }}
+                          />
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                            <button onClick={toggleFixRecording} style={{
+                              display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 10, cursor: "pointer",
+                              border: `1px solid ${fixRecording ? "#f87171" : palette.panelBorder}`,
+                              background: fixRecording ? "#f8717118" : palette.inputBg,
+                              color: fixRecording ? "#f87171" : palette.ink, fontSize: 12, fontWeight: 600,
+                            }}>
+                              {fixRecording ? <><Square size={12} /> Detener</> : <><Mic size={13} /> Nota de voz</>}
+                            </button>
+                            {fixAudioBlob && !fixRecording && (
+                              <span style={{ fontSize: 11.5, color: palette.accent, fontWeight: 600 }}>Audio listo ✓</span>
+                            )}
+                          </div>
+                          {fixError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 8 }}>{fixError}</p>}
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={closeFix} style={{ flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 12.5, cursor: "pointer" }}>
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => submitFix(l.id)}
+                              disabled={fixSubmitting || (!fixText.trim() && !fixAudioBlob)}
+                              style={{
+                                flex: 1, padding: 10, borderRadius: 10, border: "none", background: palette.accent, color: palette.bg,
+                                fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+                                opacity: (fixSubmitting || (!fixText.trim() && !fixAudioBlob)) ? 0.5 : 1,
+                              }}
+                            >
+                              {fixSubmitting ? "Ajustando..." : "Recalcular"}
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmDeleteId(l.id)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
-                          <Trash2 size={13} /> Eliminar registro
+                        <button onClick={() => openFix(l.id)} style={{
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", padding: 11, borderRadius: 11,
+                          border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
+                          fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+                        }}>
+                          <Wand2 size={14} /> Ajustar resultados
                         </button>
                       )}
                     </div>
@@ -511,6 +650,31 @@ export default function NutritionContent() {
             );
           })}
         </div>
+      )}
+
+      {confirmDeleteId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
+          <div style={{ background: palette.bg, border: `1px solid ${palette.panelBorder}`, borderRadius: 18, padding: 22, width: "100%", maxWidth: 320 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Eliminar este registro?</h3>
+            <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se quita de tu día y de los totales. No se puede deshacer.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button onClick={() => { const id = confirmDeleteId; setConfirmDeleteId(null); deleteLog(id); }} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#f87171", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCamera && (
+        <FitraCamera
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+          onPickFromGallery={() => fileRef.current?.click()}
+        />
       )}
 
       {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
@@ -573,6 +737,13 @@ function MacroRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function logMenuItem(palette: Palette): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px",
+    borderRadius: 9, background: "none", border: "none", cursor: "pointer",
+    fontSize: 12.5, fontWeight: 600, color: palette.ink, textAlign: "left",
+  };
+}
 function waterBtn(palette: Palette): React.CSSProperties {
   return {
     width: 30, height: 30, borderRadius: 9, border: `1px solid ${palette.panelBorder}`,

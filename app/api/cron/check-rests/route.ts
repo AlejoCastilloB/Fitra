@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+import { ensureVapidConfigured } from "@/lib/vapid";
 
 export async function GET(req: Request) {
   if (process.env.CRON_SECRET) {
@@ -14,6 +9,10 @@ export async function GET(req: Request) {
     if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     }
+  }
+
+  if (!ensureVapidConfigured()) {
+    return NextResponse.json({ error: "faltan las variables de VAPID" }, { status: 503 });
   }
 
   const admin = createServiceClient(
