@@ -17,7 +17,10 @@ type Session = {
 
 type Ctx = {
   session: Session; now: number;
+  /** false hasta que se leyó la sesión persistida en localStorage. */
+  hydrated: boolean;
   startSession: (routineId: string, routineName: string, exercises: LiveExercise[]) => void;
+  addExercise: (exercise: Omit<LiveExercise, "sets"> & { sets?: LiveSet[] }) => void;
   toggleSetDone: (exIdx: number, setIdx: number, restSeconds: number) => void;
   updateSet: (exIdx: number, setIdx: number, field: string, value: any) => void;
   addSet: (exIdx: number) => void;
@@ -43,6 +46,7 @@ function emptySetFor(ex: LiveExercise): LiveSet {
 
 export function WorkoutSessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -54,12 +58,16 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
         setSession(parsed);
       } catch {}
     }
+    setHydrated(true);
   }, []);
 
+  // Recién persistimos después de hidratar, para no borrar la sesión guardada
+  // con el `session: null` del primer render.
   useEffect(() => {
+    if (!hydrated) return;
     if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     else localStorage.removeItem(STORAGE_KEY);
-  }, [session]);
+  }, [session, hydrated]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -71,6 +79,17 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       routineId, routineName,
       exercises: exercises.map((e) => ({ restSeconds: 90, ...e })),
       startedAt: Date.now(), restEndAt: null, restForExIdx: null,
+    });
+  }, []);
+
+  // Agrega un ejercicio a la sesión en curso (entrenamiento vacío / sobre la marcha).
+  const addExercise = useCallback((exercise: Omit<LiveExercise, "sets"> & { sets?: LiveSet[] }) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      if (prev.exercises.some((e) => e.id === exercise.id)) return prev;
+      const next: LiveExercise = { restSeconds: 90, ...exercise, sets: exercise.sets ?? [] };
+      if (next.sets.length === 0) next.sets = [emptySetFor(next)];
+      return { ...prev, exercises: [...prev.exercises, next] };
     });
   }, []);
 
@@ -156,7 +175,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   const clearSession = useCallback(() => setSession(null), []);
 
   return (
-    <WorkoutSessionContext.Provider value={{ session, now, startSession, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, insertWarmupSets, clearSession }}>
+    <WorkoutSessionContext.Provider value={{ session, now, hydrated, startSession, addExercise, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, insertWarmupSets, clearSession }}>
       {children}
     </WorkoutSessionContext.Provider>
   );

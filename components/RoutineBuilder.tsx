@@ -10,7 +10,6 @@ import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
 import { Search, Plus, Trash2, X, GripVertical, Mic, Square, Loader2, Link2, ChevronDown, SlidersHorizontal } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
-import AIRoutineGenerator from "@/components/AIRoutineGenerator";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
@@ -60,7 +59,6 @@ export default function RoutineBuilder({
   const [saving, setSaving] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
-  const [showAI, setShowAI] = useState(false);
   const [editingType, setEditingType] = useState<{ exId: string; setIdx: number; x: number; y: number } | null>(null);
   const [supersetPopoverFor, setSupersetPopoverFor] = useState<{ exId: string; x: number; y: number } | null>(null);
   const [recordingFor, setRecordingFor] = useState<string | null>(null);
@@ -197,15 +195,6 @@ export default function RoutineBuilder({
     setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
   }
 
-  function handleAIGenerated(result: { name: string; exercises: any[] }) {
-    setName(result.name);
-    setPicked(result.exercises.map((e: any) => ({
-      id: e.id, name: e.name, media_url: e.media_url, measurement_type: e.measurement_type,
-      sets: e.sets, notes: "", supersetGroup: typeof e.superset_group === "number" ? e.superset_group : undefined,
-    })));
-    setShowAI(false);
-  }
-
   async function handleSave() {
     if (!name || picked.length === 0) return;
     setSaving(true);
@@ -300,14 +289,6 @@ export default function RoutineBuilder({
         </div>
       )}
 
-      <button onClick={() => setShowAI(true)} style={{
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "11px", borderRadius: 12, marginBottom: 14,
-        border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
-        fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-      }}>
-        ✨ Pedirle a Fitra que arme la rutina
-      </button>
-
       <button onClick={() => setShowDetails((v) => !v)} style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 2px",
         background: "none", border: "none", cursor: "pointer", marginBottom: showDetails ? 10 : 4,
@@ -353,7 +334,7 @@ export default function RoutineBuilder({
 
       {picked.length === 0 ? (
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
-          Agrega ejercicios desde "Ejercicios" arriba o pídele a Fitra que arme la rutina.
+          Agrega ejercicios desde "Ejercicios" arriba.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -507,8 +488,6 @@ export default function RoutineBuilder({
       }}>
         {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}
       </button>
-
-      {showAI && <AIRoutineGenerator onClose={() => setShowAI(false)} onGenerated={handleAIGenerated} />}
 
       {editingType && (
         <SetTypePopover
