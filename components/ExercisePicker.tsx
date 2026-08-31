@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
@@ -25,13 +26,27 @@ export default function ExercisePicker({
   const [search, setSearch] = useState("");
   const [muscle, setMuscle] = useState("");
   const [equipment, setEquipment] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // Hoja a pantalla completa: el body no debe seguir desplazándose por detrás.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, []);
 
   const { muscles, equipment: equipmentOptions } = useExerciseFilterOptions();
   const { results, loading } = useExerciseSearch({ search, muscle, equipment });
 
   const activeFilters = (muscle ? 1 : 0) + (equipment ? 1 : 0);
 
-  return (
+  if (!mounted) return null;
+
+  // Igual que la cámara: montada en <body> para que `position: fixed` sea relativo a
+  // la ventana y no a la columna del contenido.
+  return createPortal(
     <div
       className="ft-sheet-in"
       style={{
@@ -125,7 +140,8 @@ export default function ExercisePicker({
           <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 28 }}>Buscando...</p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

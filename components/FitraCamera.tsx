@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePalette } from "@/lib/theme";
 import { X, Images, RefreshCw, Sparkles } from "lucide-react";
 
@@ -23,6 +24,17 @@ export default function FitraCamera({
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // La cámara ocupa la pantalla completa: si el body sigue desplazándose detrás, el
+  // obturador se va fuera de vista y aparece el menú de la app por encima.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,8 +49,11 @@ export default function FitraCamera({
       }
 
       try {
+        // Sin pedir resolución: forzar 1920x1920 (cuadrado) empujaba al navegador a
+        // elegir otro lente —el gran angular— y a recortar. Así usa la cámara por
+        // defecto del teléfono, que es lo que el usuario espera.
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1920 } },
+          video: { facingMode: { ideal: facingMode } },
           audio: false,
         });
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
@@ -65,19 +80,14 @@ export default function FitraCamera({
     const video = videoRef.current;
     if (!video || !ready) return;
 
-    // Se recorta al cuadrado que ve el usuario, para que la foto que analiza Fitra
-    // sea exactamente el encuadre que eligió y no la imagen completa del sensor.
-    const side = Math.min(video.videoWidth, video.videoHeight);
+    // Se guarda el cuadro completo, sin recortar: el usuario ve en pantalla exactamente
+    // lo mismo que queda en la foto, sin zoom ni bordes perdidos.
     const canvas = document.createElement("canvas");
-    canvas.width = side;
-    canvas.height = side;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(
-      video,
-      (video.videoWidth - side) / 2, (video.videoHeight - side) / 2, side, side,
-      0, 0, side, side,
-    );
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     setFlash(true);
     setTimeout(() => setFlash(false), 180);
@@ -88,7 +98,13 @@ export default function FitraCamera({
     }, "image/jpeg", 0.92);
   }
 
-  return (
+  if (!mounted) return null;
+
+  // Va montada en <body>. Dentro del árbol de la app, un ancestro con animación o
+  // filtro le crea un containing block a `position: fixed` y la cámara termina
+  // encerrada en la columna del contenido: parece una tarjeta, hay que hacer scroll
+  // para llegar al obturador y el vídeo sale recortado.
+  return createPortal(
     <div style={{
       position: "fixed", inset: 0, zIndex: 400, background: "#000",
       display: "flex", flexDirection: "column",
@@ -100,7 +116,7 @@ export default function FitraCamera({
 
       <video
         ref={videoRef} playsInline muted autoPlay
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
       />
 
       {flash && <div className="ft-shutter" style={{ position: "absolute", inset: 0, background: "#fff", zIndex: 3 }} />}
@@ -143,7 +159,7 @@ export default function FitraCamera({
             </button>
           </div>
         ) : (
-          <div style={{ position: "relative", width: "100%", maxWidth: 340, aspectRatio: "1 / 1" }}>
+          <div style={{ position: "absolute", inset: 24 }}>
             {[
               { top: 0, left: 0, borderTop: true, borderLeft: true },
               { top: 0, right: 0, borderTop: true, borderRight: true },
@@ -199,7 +215,8 @@ export default function FitraCamera({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
