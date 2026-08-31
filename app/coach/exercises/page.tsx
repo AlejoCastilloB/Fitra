@@ -208,7 +208,7 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
       alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20,
     }}>
       <form onSubmit={handleSubmit} style={{
-        ...palette.glassPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
+        ...palette.modalPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700 }}>{isEditing ? "Editar ejercicio" : "Nuevo ejercicio"}</h2>

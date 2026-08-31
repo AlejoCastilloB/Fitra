@@ -19,11 +19,13 @@ export type Palette = {
   metallic: string;
   metallicBorder: string;
   glassPanel: React.CSSProperties;
+  /** Superficies flotantes (diálogos, hojas, popovers): opacas y sin borde claro. */
+  modalPanel: React.CSSProperties;
   cleanGroup: React.CSSProperties;
   groupTitle: React.CSSProperties;
 };
 
-type PaletteBase = Omit<Palette, "glassPanel" | "cleanGroup" | "groupTitle">;
+type PaletteBase = Omit<Palette, "glassPanel" | "modalPanel" | "cleanGroup" | "groupTitle">;
 
 function buildPalette(base: PaletteBase & { glassFill: string; glassBorder: string; glassHighlight: string; glassShadow: string }): Palette {
   const { glassFill, glassBorder, glassHighlight, glassShadow, ...rest } = base;
@@ -35,11 +37,21 @@ function buildPalette(base: PaletteBase & { glassFill: string; glassBorder: stri
     borderRadius: 20,
     boxShadow: `inset 0 1px 0 ${glassHighlight}, 0 8px 28px -10px ${glassShadow}`,
   };
+  // Las tarjetas flotantes van sobre un velo oscuro. Con el relleno translúcido del
+  // glassPanel se veían lavadas, y su borde casi blanco (0.75 de opacidad en el tema
+  // claro) se recortaba contra el velo como un aro blanco duro. Por eso estas van
+  // opacas, con el borde normal de panel: se leen igual de bien en claro y en oscuro.
+  const modalPanel: React.CSSProperties = {
+    background: base.bg,
+    border: `1px solid ${base.panelBorder}`,
+    borderRadius: 20,
+    boxShadow: `0 24px 60px -16px ${glassShadow}`,
+  };
   const cleanGroup: React.CSSProperties = { ...glassPanel, padding: 0, overflow: "hidden" };
   const groupTitle: React.CSSProperties = {
     fontSize: 12.5, fontWeight: 700, color: base.inkDim, marginBottom: 8, paddingLeft: 4,
   };
-  return { ...rest, glassPanel, cleanGroup, groupTitle };
+  return { ...rest, glassPanel, modalPanel, cleanGroup, groupTitle };
 }
 
 export const darkPalette: Palette = buildPalette({

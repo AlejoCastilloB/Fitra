@@ -546,9 +546,8 @@ export default function NutritionContent() {
                       <>
                         <div onClick={() => setMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
                         <div style={{
+                          ...palette.modalPanel, borderRadius: 14, padding: 6,
                           position: "absolute", right: 8, top: "100%", marginTop: 4, zIndex: 100, width: 208,
-                          background: palette.bg, border: `1px solid ${palette.panelBorder}`, borderRadius: 14, padding: 6,
-                          boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
                         }}>
                           <button onClick={() => { setMenuOpenId(null); toggleFavorite(l); }} style={logMenuItem(palette)}>
                             <Star size={14} fill={l.saved_meal_id ? palette.accent : "none"} color={l.saved_meal_id ? palette.accent : "currentColor"} />
@@ -654,7 +653,7 @@ export default function NutritionContent() {
 
       {confirmDeleteId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div style={{ background: palette.bg, border: `1px solid ${palette.panelBorder}`, borderRadius: 18, padding: 22, width: "100%", maxWidth: 320 }}>
+          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Eliminar este registro?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se quita de tu día y de los totales. No se puede deshacer.</p>
             <div style={{ display: "flex", gap: 10 }}>
