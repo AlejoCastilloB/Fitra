@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon, MoreVertical, Wand2 } from "lucide-react";
+import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon, MoreVertical, Wand2, Images } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
@@ -204,6 +204,7 @@ export default function NutritionContent() {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setShowCamera(false);
     setError("");
     setCoachTip("");
     if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
@@ -437,7 +438,7 @@ export default function NutritionContent() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>Antes de calcular...</div>
               <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.4 }}>
-                Cuéntale a Fitra qué es o cómo se preparó — el cálculo sale más preciso con contexto.
+                Cuéntale qué es, cómo se preparó o cuál parte de la foto comiste — Fitra calcula solo eso.
               </p>
             </div>
             <button onClick={cancelPending} aria-label="Quitar foto" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", flexShrink: 0, display: "flex" }}>
@@ -445,7 +446,7 @@ export default function NutritionContent() {
             </button>
           </div>
 
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: 2 tazas de arroz, con aceite de oliva..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: solo el plato de la izquierda, sin el arroz..." style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10 }} />
           <button onClick={toggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
             {recording ? <><Square size={13} /> Detener grabación</> : <><Mic size={13} /> Grabar nota de voz</>}
           </button>
@@ -453,7 +454,7 @@ export default function NutritionContent() {
             <p style={{ fontSize: 11.5, color: palette.accent, marginBottom: 14 }}>✓ Nota de voz lista</p>
           ) : (
             <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.4, marginBottom: 14 }}>
-              💡 También puedes grabar un audio explicando qué tiene el plato o cómo lo preparaste.
+              💡 Si la foto tiene comida de varias personas o no te lo comiste todo, dilo en el audio y Fitra cuenta solo tu parte.
             </p>
           )}
 
@@ -477,6 +478,10 @@ export default function NutritionContent() {
             fontWeight: 700, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
             <Camera size={17} /> Foto de tu comida
+          </button>
+
+          <button onClick={() => { setError(""); setCoachTip(""); fileRef.current?.click(); }} style={{ ...secondaryBtn(palette), width: "100%", marginBottom: 8 }}>
+            <Images size={14} /> Subir foto de la galería
           </button>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -595,7 +600,7 @@ export default function NutritionContent() {
                           </p>
                           <textarea
                             value={fixText} onChange={(e) => setFixText(e.target.value)}
-                            placeholder="Ej: también tenía media taza de arroz, y el pollo iba apanado"
+                            placeholder="Ej: de eso solo comí la mitad, y el pollo iba apanado"
                             style={{ width: "100%", minHeight: 60, resize: "vertical", padding: "9px 11px", borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, fontFamily: "inherit", marginBottom: 8 }}
                           />
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -668,7 +673,7 @@ export default function NutritionContent() {
         <FitraCamera
           onCapture={handleCameraCapture}
           onClose={() => setShowCamera(false)}
-          onFallback={() => { setShowCamera(false); fileRef.current?.click(); }}
+          onPickFromGallery={() => fileRef.current?.click()}
         />
       )}
 

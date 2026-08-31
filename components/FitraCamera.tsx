@@ -6,15 +6,15 @@ import { X, Images, RefreshCw, Sparkles } from "lucide-react";
 
 /**
  * Cámara propia a pantalla completa con overlay de Fitra, en vez del selector nativo.
- * Si `getUserMedia` no está disponible o el usuario niega el permiso, avisa y deja
- * abrir la cámara/galería del sistema como respaldo (`onFallback`).
+ * `onPickFromGallery` abre el selector del sistema para subir una foto ya tomada; también
+ * sirve de respaldo si `getUserMedia` no está disponible o el permiso se niega.
  */
 export default function FitraCamera({
-  onCapture, onClose, onFallback,
+  onCapture, onClose, onPickFromGallery,
 }: {
   onCapture: (file: File) => void;
   onClose: () => void;
-  onFallback: () => void;
+  onPickFromGallery: () => void;
 }) {
   const palette = usePalette();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -134,11 +134,12 @@ export default function FitraCamera({
         {error ? (
           <div style={{ textAlign: "center", maxWidth: 300 }}>
             <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.5, marginBottom: 16 }}>{error}</p>
-            <button onClick={onFallback} style={{
+            <button onClick={onPickFromGallery} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8, margin: "0 auto",
               padding: "12px 20px", borderRadius: 12, border: "none", cursor: "pointer",
               background: palette.accent, color: palette.bg, fontSize: 13.5, fontWeight: 700,
             }}>
-              Usar la cámara del teléfono
+              <Images size={16} /> Subir desde la galería
             </button>
           </div>
         ) : (
@@ -178,8 +179,9 @@ export default function FitraCamera({
           </p>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <button onClick={onFallback} aria-label="Elegir de la galería" style={roundBtn}>
+            <button onClick={onPickFromGallery} style={{ ...roundBtn, width: "auto", height: "auto", borderRadius: 16, padding: "8px 10px", flexDirection: "column", gap: 3 }}>
               <Images size={20} color="#fff" />
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#fff" }}>Galería</span>
             </button>
 
             <button
@@ -193,7 +195,7 @@ export default function FitraCamera({
               <span style={{ width: 56, height: 56, borderRadius: "50%", background: "#fff" }} />
             </button>
 
-            <span style={{ width: 40 }} />
+            <span style={{ width: 52 }} />
           </div>
         </div>
       )}
