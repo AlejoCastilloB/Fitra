@@ -68,7 +68,7 @@ export default function HomeFab() {
   }
 
   const items = [
-    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/progress", external: false },
+    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
     { icon: <Zap size={17} />, label: "Entrenamiento vacío", href: "/app/workout/empty", external: false },
     { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
     { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
