@@ -1,8 +1,18 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* El fondo estaba fijo en claro, así que la franja de estado, el área segura y el
+   rebote del scroll se pintaban de blanco aunque la app estuviera en tema oscuro.
+   Ahora sale de una variable: el valor por defecto sigue al tema del sistema (para
+   que el primer pintado, antes de hidratar, ya sea correcto) y ThemeProvider la
+   sobrescribe con el tema elegido dentro de la app. */
+:root { --ft-bg: #F4F5F7; }
+@media (prefers-color-scheme: dark) {
+  :root { --ft-bg: #0A0C10; }
+}
+
 html, body {
   height: 100%;
-  background: #F4F5F7;
+  background: var(--ft-bg);
   overscroll-behavior-y: none;
   touch-action: pan-x pan-y;
 }

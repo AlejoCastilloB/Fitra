@@ -38,16 +38,18 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   // Tiene que seguir el tema elegido DENTRO de la app, no el del sistema: si no, con el
   // celular en claro y la app en oscuro queda una franja clara pegada a una app oscura.
   useEffect(() => {
-    document.body.style.background = palette.bg;
-    document.documentElement.style.background = palette.bg;
+    // Alimenta el fondo de html y body definido en globals.css, que es lo que pinta
+    // la franja de estado, el área segura y el rebote del scroll.
+    document.documentElement.style.setProperty("--ft-bg", palette.bg);
 
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "theme-color";
-      document.head.appendChild(meta);
-    }
+    // El layout deja dos etiquetas condicionadas por `prefers-color-scheme`. Ya en el
+    // navegador se sustituyen por una sola sin `media`: si no, el navegador seguiría
+    // eligiendo por el tema del SISTEMA y volvería a contrastar con el de la app.
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
     meta.content = palette.bg;
+    document.head.appendChild(meta);
 
     // `color-scheme` hace que los controles nativos (scrollbars, inputs, el rebote del
     // scroll en iOS) usen el mismo tema que la app en vez del del sistema.
