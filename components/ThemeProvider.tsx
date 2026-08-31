@@ -42,14 +42,19 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     // la franja de estado, el área segura y el rebote del scroll.
     document.documentElement.style.setProperty("--ft-bg", palette.bg);
 
-    // El layout deja dos etiquetas condicionadas por `prefers-color-scheme`. Ya en el
-    // navegador se sustituyen por una sola sin `media`: si no, el navegador seguiría
-    // eligiendo por el tema del SISTEMA y volvería a contrastar con el de la app.
-    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
-    const meta = document.createElement("meta");
-    meta.name = "theme-color";
+    // Etiqueta propia, creada por nosotros, marcada con data-ft-theme-color y reutilizada
+    // siempre. NUNCA hay que tocar las etiquetas que renderiza React (las del `viewport`
+    // de Next): al borrarlas por debajo, en la siguiente navegación React intenta
+    // quitarlas del head, ya no están, y la app entera cae con una excepción de cliente.
+    // Por eso el layout ya no declara themeColor: aquí no hay nada de React que pisar.
+    let meta = document.querySelector<HTMLMetaElement>("meta[data-ft-theme-color]");
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.setAttribute("data-ft-theme-color", "");
+      document.head.appendChild(meta);
+    }
     meta.content = palette.bg;
-    document.head.appendChild(meta);
 
     // `color-scheme` hace que los controles nativos (scrollbars, inputs, el rebote del
     // scroll en iOS) usen el mismo tema que la app en vez del del sistema.
