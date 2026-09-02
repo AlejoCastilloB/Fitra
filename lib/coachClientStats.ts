@@ -1,7 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ClientStats = {
-  daysWithCoach: number | null;
   workoutsThisWeek: number;
   plannedThisWeek: number;
   lastWorkoutAt: string | null;
@@ -25,12 +24,8 @@ function startOfWeek(): Date {
  * de entrenamiento y nutrición de sus clientes; quien llama ya verificó que esos
  * user_id le pertenecen.
  */
-export async function getClientStats(
-  clientIds: string[],
-  joinedAtByClient: Record<string, string | null>,
-): Promise<Record<string, ClientStats>> {
-  const empty = (id: string): ClientStats => ({
-    daysWithCoach: daysSince(joinedAtByClient[id]),
+export async function getClientStats(clientIds: string[]): Promise<Record<string, ClientStats>> {
+  const empty = (): ClientStats => ({
     workoutsThisWeek: 0, plannedThisWeek: 0, lastWorkoutAt: null,
     daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0,
   });
@@ -49,7 +44,7 @@ export async function getClientStats(
   ]);
 
   const stats: Record<string, ClientStats> = {};
-  clientIds.forEach((id) => { stats[id] = empty(id); });
+  clientIds.forEach((id) => { stats[id] = empty(); });
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const weekStartMs = weekStart.getTime();
@@ -91,10 +86,4 @@ export async function getClientStats(
   });
 
   return stats;
-}
-
-function daysSince(iso: string | null | undefined): number | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(ms / 86_400_000));
 }

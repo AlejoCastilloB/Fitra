@@ -140,7 +140,7 @@ function ClientCard({ client, palette, index }: { client: ClientRow; palette: Pa
           <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
           <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
             <CalendarDays size={11} />
-            {s.daysWithCoach !== null ? `${s.daysWithCoach} ${s.daysWithCoach === 1 ? "día" : "días"} contigo` : "Recién agregado"}
+            {s.activeDaysThisWeek > 0 ? `${s.activeDaysThisWeek}/7 días activo esta semana` : "Sin actividad esta semana"}
             {client.status && client.status !== "active" && (
               <span style={{ marginLeft: 4, padding: "1px 7px", borderRadius: 999, background: palette.inputBg, fontSize: 10, fontWeight: 700 }}>
                 {client.status}
