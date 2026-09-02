@@ -183,21 +183,31 @@ function WhatsappEditor({ initial, onSave }: { initial: string; onSave: (v: stri
   );
 }
 
+function inDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function AddReminderForm({ trainerId, clients, onSaved }: { trainerId: string; clients: ClientOption[]; onSaved: () => void }) {
   const palette = usePalette();
   const supabase = createClient();
   const [note, setNote] = useState("");
   const [clientId, setClientId] = useState("");
-  const [remindAt, setRemindAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [remindAt, setRemindAt] = useState(() => inDays(1));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   async function save() {
     if (!note.trim()) return;
     setSaving(true);
-    await supabase.from("trainer_reminders").insert({
+    setError("");
+    const { error: err } = await supabase.from("trainer_reminders").insert({
       trainer_id: trainerId, client_id: clientId || null, note: note.trim(), remind_at: remindAt, done: false,
     });
     setSaving(false);
+    // Antes el fallo se ignoraba y el modal se cerraba como si hubiera guardado.
+    if (err) { setError(`No pudimos guardar el recordatorio: ${err.message}`); return; }
     onSaved();
   }
 
@@ -220,11 +230,32 @@ function AddReminderForm({ trainerId, clients, onSaved }: { trainerId: string; c
         {clients.map((c) => <option key={c.user_id} value={c.user_id}>{c.name}</option>)}
       </select>
 
-      <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Fecha</label>
+      <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 8 }}>Cuándo</label>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {[["Mañana", 1], ["En 3 días", 3], ["En 6 días", 6], ["En 1 semana", 7], ["En 2 semanas", 14]].map(([label, days]) => {
+          const value = inDays(days as number);
+          const active = remindAt === value;
+          return (
+            <button
+              key={label as string} type="button" onClick={() => setRemindAt(value)}
+              style={{
+                padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 600,
+                border: `1px solid ${active ? palette.accent : palette.panelBorder}`,
+                background: active ? `${palette.accent}18` : palette.inputBg,
+                color: active ? palette.accent : palette.inkDim,
+              }}
+            >
+              {label as string}
+            </button>
+          );
+        })}
+      </div>
       <input
         type="date" value={remindAt} onChange={(e) => setRemindAt(e.target.value)}
         style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13.5, marginBottom: 16 }}
       />
+
+      {error && <p style={{ color: "#f87171", fontSize: 12, marginBottom: 12 }}>{error}</p>}
 
       <button onClick={save} disabled={saving || !note.trim()} style={{
         width: "100%", padding: 12, borderRadius: 11, border: "none",

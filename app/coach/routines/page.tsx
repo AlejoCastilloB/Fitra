@@ -14,6 +14,8 @@ export default function RoutinesPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [clientsError, setClientsError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -26,8 +28,16 @@ export default function RoutinesPage() {
       .order("created_at", { ascending: false });
     setRoutines(r ?? []);
 
-    const clientsRes = await fetch("/api/coach/client-names").then((res) => res.json());
-    setClients(clientsRes.clients ?? []);
+    try {
+      const res = await fetch("/api/coach/client-names");
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || `error ${res.status}`);
+      setClients(body.clients ?? []);
+      setClientsError(null);
+    } catch (e: any) {
+      setClients([]);
+      setClientsError(`No pudimos cargar tus clientes, por eso no aparecen para asignar: ${e.message}`);
+    }
 
     setLoading(false);
   }
@@ -35,10 +45,12 @@ export default function RoutinesPage() {
   useEffect(() => { load(); }, []);
 
   async function reassign(routineId: string, newClientId: string) {
-    await supabase.from("routines").update({
+    setActionError(null);
+    const { error } = await supabase.from("routines").update({
       client_id: newClientId || null,
       assigned_at: newClientId ? new Date().toISOString() : null,
     }).eq("id", routineId);
+    if (error) { setActionError(`No pudimos asignar la rutina: ${error.message}`); return; }
     load();
   }
 
@@ -112,6 +124,15 @@ export default function RoutinesPage() {
           <Plus size={15} /> Nueva rutina
         </Link>
       </div>
+
+      {(actionError || clientsError) && (
+        <div style={{
+          padding: 13, borderRadius: 12, marginBottom: 16, fontSize: 13, lineHeight: 1.5,
+          background: "#f8717118", border: "1px solid #f8717155", color: "#b91c1c",
+        }}>
+          {actionError || clientsError}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Cargando...</div>

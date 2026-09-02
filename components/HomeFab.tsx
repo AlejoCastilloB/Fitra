@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { localDayOfWeek } from "@/lib/localDate";
 import { Plus, Dumbbell, Zap, Camera, Sparkles, Phone } from "lucide-react";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
@@ -30,7 +31,7 @@ export default function HomeFab() {
         .select("id, days_of_week")
         .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`);
 
-      const todayDow = new Date().getDay();
+      const todayDow = localDayOfWeek();
       const todays = (routines ?? []).find((r) => r.days_of_week?.includes(todayDow));
       setTodaysRoutineId(todays?.id ?? null);
 

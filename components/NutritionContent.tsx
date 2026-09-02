@@ -12,6 +12,7 @@ import FitraCamera from "@/components/FitraCamera";
 import Overlay from "@/components/Overlay";
 import Link from "next/link";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
+import { localDateKey, startOfLocalDay } from "@/lib/localDate";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
 const HEALTH_TARGETS = { fiber: 30, sugarLimit: 50, sodiumLimit: 2300 };
@@ -73,9 +74,10 @@ export default function NutritionContent() {
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateKey();
+    const dayStart = startOfLocalDay().toISOString();
 
-    const { data: logsData } = await supabase.from("nutrition_logs").select("*").eq("client_id", uid).gte("date", `${today}T00:00:00`).order("date", { ascending: false });
+    const { data: logsData } = await supabase.from("nutrition_logs").select("*").eq("client_id", uid).gte("date", dayStart).order("date", { ascending: false });
     setLogs(logsData ?? []);
 
     const { data: savedData } = await supabase.from("saved_meals").select("*").eq("client_id", uid).order("created_at", { ascending: false });
@@ -103,7 +105,7 @@ export default function NutritionContent() {
     const next = Math.max(0, water + delta);
     setWater(next);
     const { data: auth } = await supabase.auth.getUser();
-    await supabase.from("water_logs").upsert({ client_id: auth.user!.id, date: new Date().toISOString().slice(0, 10), ml: next });
+    await supabase.from("water_logs").upsert({ client_id: auth.user!.id, date: localDateKey(), ml: next });
   }
 
   function fileToBase64(file: File | Blob, isImage: boolean): Promise<string> {

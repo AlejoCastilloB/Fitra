@@ -15,7 +15,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("clients")
-    .select("user_id, status, created_at, users(display_name, email)")
+    .select("user_id, status, users(display_name, email)")
     .eq("trainer_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -23,7 +23,6 @@ export async function GET() {
   const clients = (data ?? []).map((c: any) => ({
     user_id: c.user_id,
     status: c.status,
-    created_at: c.created_at,
     display_name: c.users?.display_name ?? null,
     email: c.users?.email ?? null,
   }));

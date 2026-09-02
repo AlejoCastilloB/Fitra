@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { localDateKey, toLocalDateKey, startOfLocalWeek } from "@/lib/localDate";
 import Modal from "@/components/Modal";
 import { Dumbbell, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -19,12 +20,7 @@ type DayData = {
 };
 
 function getMonday(offsetWeeks: number) {
-  const d = new Date();
-  const day = d.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diffToMonday + offsetWeeks * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return startOfLocalWeek(offsetWeeks);
 }
 
 export default function DayStrip() {
@@ -59,10 +55,10 @@ export default function DayStrip() {
       const built: DayData[] = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date(monday);
         d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = localDateKey(d);
 
-        const dayWorkout: any = (workouts ?? []).find((w: any) => w.date?.slice(0, 10) === dateStr);
-        const dayMeals = (meals ?? []).filter((m: any) => m.date?.slice(0, 10) === dateStr);
+        const dayWorkout: any = (workouts ?? []).find((w: any) => toLocalDateKey(w.date) === dateStr);
+        const dayMeals = (meals ?? []).filter((m: any) => toLocalDateKey(m.date) === dateStr);
         const kcalTotal = dayMeals.reduce((s: number, m: any) => s + (m.kcal ?? 0), 0);
 
         return {
@@ -94,7 +90,7 @@ export default function DayStrip() {
     touchStartX.current = null;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateKey();
 
   return (
     <div style={{ marginBottom: 22 }}>

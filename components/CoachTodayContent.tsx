@@ -1,6 +1,11 @@
 "use client";
 
-import { usePalette } from "@/lib/theme";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { usePalette, type Palette } from "@/lib/theme";
+import { localDateKey, toLocalDateKey } from "@/lib/localDate";
+import { BellRing, Check, Clock } from "lucide-react";
 import Link from "next/link";
 
 type ClientRow = { user_id: string; status: string; email: string | undefined };
@@ -10,6 +15,41 @@ export default function CoachTodayContent({ clients, activeCount, total, reminde
   clients: ClientRow[]; activeCount: number; total: number; reminders: ReminderRow[];
 }) {
   const palette = usePalette();
+  const router = useRouter();
+  const supabase = createClient();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<string[]>([]);
+
+  // Los recordatorios del entrenador no van por push: se avisan acá, al entrar. Vence
+  // según SU reloj, no el del servidor.
+  const today = localDateKey();
+  const visible = reminders.filter((r) => !hidden.includes(r.id));
+  const dueReminders = useMemo(
+    () => visible.filter((r) => (toLocalDateKey(r.remind_at) ?? "") <= today),
+    [visible, today],
+  );
+  const upcomingReminders = useMemo(
+    () => visible.filter((r) => (toLocalDateKey(r.remind_at) ?? "") > today).slice(0, 5),
+    [visible, today],
+  );
+
+  async function markDone(id: string) {
+    setBusyId(id);
+    setHidden((prev) => [...prev, id]);
+    await supabase.from("trainer_reminders").update({ done: true }).eq("id", id);
+    setBusyId(null);
+    router.refresh();
+  }
+
+  async function snooze(id: string) {
+    setBusyId(id);
+    setHidden((prev) => [...prev, id]);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    await supabase.from("trainer_reminders").update({ remind_at: localDateKey(tomorrow) }).eq("id", id);
+    setBusyId(null);
+    router.refresh();
+  }
 
   return (
     <div>
@@ -23,13 +63,52 @@ export default function CoachTodayContent({ clients, activeCount, total, reminde
         <StatCard label="Alertas" value="—" hint="próximamente" />
       </div>
 
-      {reminders.length > 0 && (
-        <Section title="Recordatorios">
-          {reminders.map((r) => (
+      {dueReminders.length > 0 && (
+        <div className="ft-fade-in-up" style={{
+          ...palette.glassPanel, padding: 16, marginBottom: 20,
+          border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, color: palette.accent, fontWeight: 700, fontSize: 12.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <BellRing size={14} /> Para hoy
+          </div>
+
+          {dueReminders.map((r) => (
+            <div key={r.id} style={{
+              display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0",
+              borderTop: `1px solid ${palette.panelBorder}`,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.4 }}>{r.note}</div>
+                <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 3 }}>
+                  {r.clientName ? `${r.clientName} · ` : ""}{formatDay(r.remind_at)}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={() => snooze(r.id)} disabled={busyId === r.id} title="Recordármelo mañana"
+                  style={smallAction(palette, false)}
+                >
+                  <Clock size={13} />
+                </button>
+                <button
+                  onClick={() => markDone(r.id)} disabled={busyId === r.id} title="Marcar como hecho"
+                  style={smallAction(palette, true)}
+                >
+                  <Check size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {upcomingReminders.length > 0 && (
+        <Section title="Próximos recordatorios">
+          {upcomingReminders.map((r) => (
             <div key={r.id} style={{ ...palette.glassPanel, padding: "13px 16px", marginBottom: 8 }}>
               <div style={{ fontSize: 13.5, fontWeight: 500 }}>{r.note}</div>
               <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
-                {r.clientName ? `${r.clientName} · ` : ""}{new Date(r.remind_at).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                {r.clientName ? `${r.clientName} · ` : ""}{formatDay(r.remind_at)}
               </div>
             </div>
           ))}
@@ -91,4 +170,22 @@ function EmptyState({ text }: { text: string }) {
       {text}
     </div>
   );
+}
+
+function formatDay(iso: string): string {
+  const key = toLocalDateKey(iso);
+  const today = localDateKey();
+  if (key === today) return "Hoy";
+  if (key && key < today) return "Atrasado";
+  return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+}
+
+function smallAction(palette: Palette, primary: boolean): React.CSSProperties {
+  return {
+    width: 30, height: 30, borderRadius: 9, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    border: `1px solid ${primary ? palette.accent : palette.panelBorder}`,
+    background: primary ? `${palette.accent}22` : "transparent",
+    color: primary ? palette.accent : palette.inkDim,
+  };
 }
