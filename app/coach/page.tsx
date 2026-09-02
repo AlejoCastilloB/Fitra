@@ -18,7 +18,7 @@ export default async function CoachToday() {
       .eq("trainer_id", user!.id)
       .eq("done", false)
       .order("remind_at", { ascending: true })
-      .limit(5),
+      .limit(20),
   ]);
 
   const activeCount = clients?.filter((c) => c.status === "active").length ?? 0;

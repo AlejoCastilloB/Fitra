@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { startOfLocalDay } from "@/lib/localDate";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
 import { Dumbbell } from "lucide-react";
 
@@ -64,15 +65,16 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   useEffect(() => {
     if (!uid) return;
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      // Inicio del día en la hora del usuario, no en UTC.
+      const dayStart = startOfLocalDay().toISOString();
 
       // Las cuatro consultas son independientes entre sí: en serie eran cuatro viajes
       // al servidor encadenados antes de pintar la tarjeta. En paralelo es uno solo.
       const [{ data: logs }, { data: clientRow }, workoutTodayRes, exRowsRes] = await Promise.all([
-        supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", `${today}T00:00:00`),
+        supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", dayStart),
         supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single(),
         todaysRoutine
-          ? supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", `${today}T00:00:00`).limit(1)
+          ? supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", dayStart).limit(1)
           : Promise.resolve({ data: null }),
         todaysRoutine
           ? supabase.from("routine_exercises").select("target_sets, exercises(muscle_group)").eq("routine_id", todaysRoutine.id)
