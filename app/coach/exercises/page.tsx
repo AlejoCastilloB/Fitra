@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { Search, Plus, X, Image as ImageIcon } from "lucide-react";
+import Overlay from "@/components/Overlay";
 
 const MEASUREMENT_LABELS: Record<string, string> = {
   reps_weight: "Reps y peso",
@@ -203,11 +204,8 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
   }
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex",
-      alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20,
-    }}>
-      <form onSubmit={handleSubmit} style={{
+    <Overlay onClose={onClose} zIndex={50}>
+      <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()} style={{
         ...palette.modalPanel, width: "100%", maxWidth: 440, padding: 24, maxHeight: "90vh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -284,7 +282,7 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
           {error && <p style={{ color: "#f87171", fontSize: 12.5, textAlign: "center" }}>{error}</p>}
         </div>
       </form>
-    </div>
+    </Overlay>
   );
 }
 

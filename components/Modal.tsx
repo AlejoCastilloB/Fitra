@@ -2,20 +2,14 @@
 
 import { X } from "lucide-react";
 import { usePalette } from "@/lib/theme";
+import Overlay from "@/components/Overlay";
 
 export default function Modal({
   title, onClose, children, maxWidth = 440,
 }: { title: string; onClose: () => void; children: React.ReactNode; maxWidth?: number }) {
   const palette = usePalette();
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 200, padding: 20, backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
-      }}
-    >
+    <Overlay onClose={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="ft-modal-pop"
@@ -33,6 +27,6 @@ export default function Modal({
           .ft-modal-pop { animation: ftModalPop .25s cubic-bezier(.16,.8,.24,1) both; }
         `}</style>
       </div>
-    </div>
+    </Overlay>
   );
 }

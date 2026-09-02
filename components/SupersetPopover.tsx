@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePalette } from "@/lib/theme";
 import { Check } from "lucide-react";
 
@@ -27,11 +28,19 @@ export default function SupersetPopover({
     };
   }, [onClose]);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const width = 230;
   const left = Math.min(Math.max(8, x - width / 2), (typeof window !== "undefined" ? window.innerWidth : 400) - width - 8);
   const top = Math.min(y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - 260);
 
-  return (
+  if (!mounted) return null;
+
+  // x/y vienen de getBoundingClientRect, o sea coordenadas de ventana. Montado dentro
+  // del árbol, un ancestro animado hace que `fixed` deje de ser relativo a la ventana y
+  // el popover sale corrido. En <body> las coordenadas vuelven a coincidir.
+  return createPortal(
     <div
       ref={ref}
       style={{
@@ -66,6 +75,7 @@ export default function SupersetPopover({
           <span style={{ fontSize: 12.5, color: palette.ink, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.name}</span>
         </button>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { MoreVertical, Save, Trash2, X } from "lucide-react";
+import Overlay from "@/components/Overlay";
 
 type ExerciseGroup = {
   exercise_id: string;
@@ -83,8 +84,8 @@ export default function WorkoutLogMenu({
       )}
 
       {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
+        <Overlay onClose={() => setConfirmDelete(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700 }}>¿Borrar este entreno?</h3>
               <button onClick={() => setConfirmDelete(false)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={18} /></button>
@@ -97,7 +98,7 @@ export default function WorkoutLogMenu({
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
     </>
   );

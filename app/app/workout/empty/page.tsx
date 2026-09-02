@@ -16,6 +16,7 @@ import SetTypePopover from "@/components/SetTypePopover";
 import RestBar from "@/components/RestBar";
 import ExercisePicker from "@/components/ExercisePicker";
 import WorkoutSummary from "@/components/WorkoutSummary";
+import Overlay from "@/components/Overlay";
 
 const EMPTY_ROUTINE_ID = "empty";
 const EMPTY_WORKOUT_NAME = "Entreno libre";
@@ -291,8 +292,8 @@ export default function EmptyWorkoutPage() {
       )}
 
       {confirmCancel && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
-          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
+        <Overlay onClose={() => setConfirmCancel(false)} zIndex={100}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Cancelar entrenamiento?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se perderá todo el progreso de esta sesión, no se guarda nada.</p>
             <div style={{ display: "flex", gap: 10 }}>
@@ -300,7 +301,7 @@ export default function EmptyWorkoutPage() {
               <button onClick={() => { setLeaving(true); clearSession(); router.push("/app"); }} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Sí, cancelar</button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
     </div>
   );
