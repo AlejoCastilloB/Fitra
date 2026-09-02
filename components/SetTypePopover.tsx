@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePalette, type Palette } from "@/lib/theme";
 import { Trash2 } from "lucide-react";
 
@@ -32,11 +33,19 @@ export default function SetTypePopover({
     };
   }, [onClose]);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const width = 168;
   const left = Math.min(Math.max(8, x - width / 2), (typeof window !== "undefined" ? window.innerWidth : 400) - width - 8);
   const top = Math.min(y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - (onDelete ? 250 : 200));
 
-  return (
+  if (!mounted) return null;
+
+  // x/y vienen de getBoundingClientRect, o sea coordenadas de ventana. Montado dentro
+  // del árbol, un ancestro animado hace que `fixed` deje de ser relativo a la ventana y
+  // el popover sale corrido. En <body> las coordenadas vuelven a coincidir.
+  return createPortal(
     <div
       ref={ref}
       style={{
@@ -82,6 +91,7 @@ export default function SetTypePopover({
           </button>
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

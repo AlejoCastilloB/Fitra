@@ -9,6 +9,7 @@ import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
 import FitraCamera from "@/components/FitraCamera";
+import Overlay from "@/components/Overlay";
 import Link from "next/link";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
@@ -652,8 +653,8 @@ export default function NutritionContent() {
       )}
 
       {confirmDeleteId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
+        <Overlay onClose={() => setConfirmDeleteId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Eliminar este registro?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se quita de tu día y de los totales. No se puede deshacer.</p>
             <div style={{ display: "flex", gap: 10 }}>
@@ -665,7 +666,7 @@ export default function NutritionContent() {
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
 
       {showCamera && (

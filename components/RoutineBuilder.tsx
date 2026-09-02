@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
@@ -9,14 +9,16 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { useExerciseSearch, useExerciseFilterOptions } from "@/lib/useExerciseSearch";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
-import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal, Timer, Check, Loader2, AlertCircle } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
-type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number };
+type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number; restSeconds?: number };
+
+export const DEFAULT_REST_SECONDS = 90;
 
 function emptySet(measurementType: string): SetRow {
   if (measurementType === "time") return { set_type: "normal", time_sec: 30 };
@@ -33,6 +35,7 @@ export default function RoutineBuilder({
   initialExercises = [],
   initialDays = [],
   role = "trainer",
+  clients = [],
 }: {
   routineId?: string;
   initialName?: string;
@@ -41,6 +44,7 @@ export default function RoutineBuilder({
   initialExercises?: PickedExercise[];
   initialDays?: number[];
   role?: "trainer" | "client";
+  clients?: { user_id: string; display_name: string | null; email: string | null }[];
 }) {
   const palette = usePalette();
   const supabase = createClient();
@@ -53,12 +57,21 @@ export default function RoutineBuilder({
   const [clientId, setClientId] = useState(initialClientId);
   const [routineNotes, setRoutineNotes] = useState(initialNotes);
   const [days, setDays] = useState<number[]>(initialDays);
-  const [clients, setClients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
   const [equipmentFilter, setEquipmentFilter] = useState("");
   const [picked, setPicked] = useState<PickedExercise[]>(initialExercises);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentId, setCurrentId] = useState<string | undefined>(routineId);
+  // Evita que dos autoguardados simultáneos creen dos rutinas distintas.
+  const creatingRef = useRef(false);
+  const firstRunRef = useRef(true);
+  // Firma de los ejercicios ya guardados: evita borrarlos y reinsertarlos en cada
+  // tecla del nombre, que además abre una ventana donde la rutina queda sin ejercicios
+  // si la reinserción falla.
+  const savedRowsRef = useRef<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openNotesFor, setOpenNotesFor] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<{ exId: string; setIdx: number; x: number; y: number } | null>(null);
@@ -66,19 +79,11 @@ export default function RoutineBuilder({
   const [showLibrary, setShowLibrary] = useState(false);
   const [showDetails, setShowDetails] = useState(!isEditing);
 
-  useEffect(() => {
-    if (role !== "trainer") return;
-    (async () => {
-      const cliRes = await fetch("/api/coach/client-names").then((r) => r.json());
-      setClients(cliRes.clients ?? []);
-    })();
-  }, [role]);
-
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
 
   function addExercise(ex: any) {
     if (picked.some((p) => p.id === ex.id)) return;
-    setPicked([...picked, { id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)], notes: "" }]);
+    setPicked([...picked, { id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)], notes: "", restSeconds: DEFAULT_REST_SECONDS }]);
   }
 
   function removeExercise(id: string) {
@@ -111,6 +116,10 @@ export default function RoutineBuilder({
     });
   }
 
+  function updateExerciseRest(exId: string, seconds: number) {
+    setPicked((prev) => prev.map((p) => p.id === exId ? { ...p, restSeconds: Math.max(0, seconds) } : p));
+  }
+
   function addSet(exId: string) {
     setPicked(picked.map((p) => p.id === exId ? { ...p, sets: [...p.sets, emptySet(p.measurement_type)] } : p));
   }
@@ -139,45 +148,86 @@ export default function RoutineBuilder({
     setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
   }
 
-  async function handleSave() {
-    if (!name || picked.length === 0) return;
+  // Guarda la rutina completa. Sirve tanto para el autoguardado como para el botón:
+  // crea la fila la primera vez y a partir de ahí actualiza siempre la misma.
+  const persist = useCallback(async () => {
+    if (!name.trim() || picked.length === 0) return;
+    if (creatingRef.current) return;
+
     setSaving(true);
-    const { data: auth } = await supabase.auth.getUser();
+    setSaveError(null);
 
-    let currentRoutineId = routineId;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("sesión expirada");
 
-    if (isEditing) {
-      await supabase.from("routines").update({
-        name, client_id: role === "client" ? auth.user!.id : (clientId || null), notes: routineNotes, days_of_week: days,
-      }).eq("id", routineId);
-      await supabase.from("routine_exercises").delete().eq("routine_id", routineId);
-    } else {
-      const { data: routine, error } = await supabase.from("routines").insert({
-        trainer_id: role === "trainer" ? auth.user!.id : null,
-        created_by: auth.user!.id,
-        client_id: role === "client" ? auth.user!.id : (clientId || null),
-        source: role,
-        name,
-        notes: routineNotes,
-        days_of_week: days,
-      }).select().single();
+      let id = currentId;
 
-      if (error || !routine) { setSaving(false); return; }
-      currentRoutineId = routine.id;
+      if (id) {
+        const { error } = await supabase.from("routines").update({
+          name: name.trim(), client_id: role === "client" ? auth.user.id : (clientId || null),
+          notes: routineNotes, days_of_week: days,
+        }).eq("id", id);
+        if (error) throw error;
+      } else {
+        creatingRef.current = true;
+        const { data: routine, error } = await supabase.from("routines").insert({
+          trainer_id: role === "trainer" ? auth.user.id : null,
+          created_by: auth.user.id,
+          client_id: role === "client" ? auth.user.id : (clientId || null),
+          source: role,
+          name: name.trim(),
+          notes: routineNotes,
+          days_of_week: days,
+        }).select().single();
+        creatingRef.current = false;
+        if (error || !routine) throw error ?? new Error("no se pudo crear la rutina");
+        id = routine.id;
+        setCurrentId(id);
+        // Cambiar la URL sin re-montar: si el entrenador recarga, sigue editando esta
+        // misma rutina en vez de empezar otra en blanco.
+        if (role === "trainer") window.history.replaceState(null, "", `/coach/routines/${id}/edit`);
+      }
+
+      const rows = picked.map((p, i) => ({
+        routine_id: id,
+        exercise_id: p.id,
+        order_index: i,
+        // No hay columna de descanso en routine_exercises, así que viaja dentro del
+        // JSON de las series. Las filas viejas simplemente no lo traen y caen al
+        // valor por defecto al abrir el entreno.
+        target_sets: p.sets.map((set) => ({ ...set, rest_sec: p.restSeconds ?? DEFAULT_REST_SECONDS })),
+        notes: p.notes || null,
+        superset_group: p.supersetGroup ?? null,
+      }));
+
+      const signature = JSON.stringify(rows.map(({ routine_id, ...rest }) => rest));
+      if (signature !== savedRowsRef.current) {
+        await supabase.from("routine_exercises").delete().eq("routine_id", id);
+        const { error: rowsError } = await supabase.from("routine_exercises").insert(rows);
+        if (rowsError) { savedRowsRef.current = null; throw rowsError; }
+        savedRowsRef.current = signature;
+      }
+
+      setSavedAt(Date.now());
+    } catch (e: any) {
+      creatingRef.current = false;
+      setSaveError(e?.message ? `No se pudo guardar: ${e.message}` : "No se pudo guardar. Revisa tu conexión.");
+    } finally {
+      setSaving(false);
     }
+  }, [name, picked, clientId, routineNotes, days, role, currentId]);
 
-    const rows = picked.map((p, i) => ({
-      routine_id: currentRoutineId,
-      exercise_id: p.id,
-      order_index: i,
-      target_sets: p.sets,
-      notes: p.notes || null,
-      superset_group: p.supersetGroup ?? null,
-    }));
+  // Autoguardado: se dispara solo cuando algo cambió de verdad, con una pausa para no
+  // escribir en cada tecla.
+  useEffect(() => {
+    if (firstRunRef.current) { firstRunRef.current = false; return; }
+    if (!name.trim() || picked.length === 0) return;
+    const t = setTimeout(() => { persist(); }, 1200);
+    return () => clearTimeout(t);
+  }, [name, picked, clientId, routineNotes, days]);
 
-    await supabase.from("routine_exercises").insert(rows);
-    router.push(role === "client" ? "/app/routines" : "/coach/routines");
-  }
+  const canSave = !!name.trim() && picked.length > 0;
 
   return (
     <div>
@@ -367,6 +417,22 @@ export default function RoutineBuilder({
 
                 <ExerciseVideoLink exerciseId={ex.id} />
 
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 4px" }}>
+                  <Timer size={13} color={palette.inkDim} />
+                  <span style={{ fontSize: 11.5, color: palette.inkDim }}>Descanso entre series</span>
+                  <input
+                    type="number" inputMode="numeric" min={0} step={15}
+                    value={ex.restSeconds ?? DEFAULT_REST_SECONDS}
+                    onChange={(e) => updateExerciseRest(ex.id, +e.target.value || 0)}
+                    onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
+                    style={{
+                      width: 62, padding: "5px 8px", borderRadius: 8, textAlign: "center",
+                      border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5,
+                    }}
+                  />
+                  <span style={{ fontSize: 11.5, color: palette.inkDim }}>seg</span>
+                </div>
+
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 2px 6px" }}>
                   <span style={{ width: 26, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Serie</span>
                   {ex.measurement_type === "reps_weight" && (
@@ -425,12 +491,39 @@ export default function RoutineBuilder({
         <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>
       </div>
 
-      <button onClick={handleSave} disabled={saving || !name || picked.length === 0} style={{
-        width: "100%", padding: 14, borderRadius: 14, border: "none",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
-        fontWeight: 700, fontSize: 14.5, cursor: "pointer", opacity: (saving || !name || picked.length === 0) ? 0.5 : 1,
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 7, minHeight: 22,
+        fontSize: 12, fontWeight: 600, marginBottom: 10,
+        color: saveError ? "#f87171" : palette.inkDim,
       }}>
-        {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar rutina"}
+        {saveError ? (
+          <>
+            <AlertCircle size={13} /> {saveError}
+            <button onClick={() => persist()} style={{ background: "none", border: "none", color: palette.accent, fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+              Reintentar
+            </button>
+          </>
+        ) : saving ? (
+          <><Loader2 size={13} /> Guardando...</>
+        ) : savedAt ? (
+          <><Check size={13} color={palette.accent} /> Guardado automáticamente</>
+        ) : canSave ? (
+          "Se guarda solo mientras editas"
+        ) : (
+          "Ponle nombre y agrega un ejercicio para que se guarde"
+        )}
+      </div>
+
+      <button
+        onClick={async () => { await persist(); router.push(role === "client" ? "/app/routines" : "/coach/routines"); }}
+        disabled={saving || !canSave}
+        style={{
+          width: "100%", padding: 14, borderRadius: 14, border: "none",
+          background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+          fontWeight: 700, fontSize: 14.5, cursor: "pointer", opacity: (saving || !canSave) ? 0.5 : 1,
+        }}
+      >
+        Listo
       </button>
 
       {editingType && (
