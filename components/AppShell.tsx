@@ -36,7 +36,14 @@ export default function AppShell({ children, initialTheme }: { children: React.R
         pointerEvents: "none", zIndex: 0, transition: "background .3s ease",
       }} />
 
-      <main style={{ position: "relative", zIndex: 1, padding: hideFloatingNav ? "24px 20px" : "24px 20px 110px", maxWidth: 480, margin: "0 auto" }}>
+      <main style={{
+        position: "relative", zIndex: 1, maxWidth: 480, margin: "0 auto",
+        // El área segura solo vale > 0 en la app instalada, donde la barra de estado se
+        // dibuja encima del contenido. En el navegador queda en 0 y no cambia nada.
+        paddingTop: "calc(env(safe-area-inset-top) + 24px)",
+        paddingLeft: 20, paddingRight: 20,
+        paddingBottom: hideFloatingNav ? 24 : 110,
+      }}>
         <div key={pathname} className="ft-fade-in-up">{children}</div>
       </main>
 

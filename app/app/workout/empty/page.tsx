@@ -292,7 +292,7 @@ export default function EmptyWorkoutPage() {
 
       {confirmCancel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
-          <div style={{ ...palette.glassPanel, padding: 22, width: "100%", maxWidth: 340 }}>
+          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Cancelar entrenamiento?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>Se perderá todo el progreso de esta sesión, no se guarda nada.</p>
             <div style={{ display: "flex", gap: 10 }}>

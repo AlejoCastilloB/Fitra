@@ -19,7 +19,7 @@ export default function Modal({
       <div
         onClick={(e) => e.stopPropagation()}
         className="ft-modal-pop"
-        style={{ ...palette.glassPanel, width: "100%", maxWidth, padding: 22, maxHeight: "80vh", overflowY: "auto" }}
+        style={{ ...palette.modalPanel, width: "100%", maxWidth, padding: 22, maxHeight: "80vh", overflowY: "auto" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700 }}>{title}</h2>

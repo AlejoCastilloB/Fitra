@@ -69,10 +69,8 @@ export default function WorkoutLogMenu({
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
           <div style={{
+            ...palette.modalPanel, borderRadius: 14, padding: 6,
             position: "absolute", right: 0, top: "100%", marginTop: 6, zIndex: 100, width: 210,
-            background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 14, padding: 6,
-            boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
           }}>
             <button onClick={saveAsRoutine} disabled={saving} style={menuItem(palette)}>
               <Save size={14} /> {saving ? "Guardando..." : "Guardar como rutina"}
@@ -86,7 +84,7 @@ export default function WorkoutLogMenu({
 
       {confirmDelete && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div style={{ background: palette.bg, border: `1px solid ${palette.panelBorder}`, borderRadius: 18, padding: 22, width: "100%", maxWidth: 320 }}>
+          <div style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 320 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700 }}>¿Borrar este entreno?</h3>
               <button onClick={() => setConfirmDelete(false)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={18} /></button>

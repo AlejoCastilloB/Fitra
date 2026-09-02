@@ -25,12 +25,20 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* Esta animación envuelve TODA la página en cada navegación. A .45s el cambio de
+   pantalla se sentía pesado; más corta y con menos desplazamiento se percibe
+   bastante más ágil sin perder la transición. */
 @keyframes ftFadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 .ft-fade-in-up {
-  animation: ftFadeInUp .45s cubic-bezier(.16,.8,.24,1) both;
+  animation: ftFadeInUp .26s cubic-bezier(.16,.8,.24,1) both;
+}
+
+/* Respeta a quien pide menos movimiento en el sistema. */
+@media (prefers-reduced-motion: reduce) {
+  .ft-fade-in-up, .ft-step-in { animation-duration: .01ms; }
 }
 
 @keyframes ftStepIn {

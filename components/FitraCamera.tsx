@@ -121,6 +121,8 @@ export default function FitraCamera({
 
       {flash && <div className="ft-shutter" style={{ position: "absolute", inset: 0, background: "#fff", zIndex: 3 }} />}
 
+      {!error && <FramingGuide />}
+
       {/* Encabezado con la marca */}
       <div style={{
         position: "relative", zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -145,9 +147,9 @@ export default function FitraCamera({
         </button>
       </div>
 
-      {/* Marco de encuadre */}
+      {/* Zona central: solo el aviso de error; el marco va como capa aparte */}
       <div style={{ position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        {error ? (
+        {error && (
           <div style={{ textAlign: "center", maxWidth: 300 }}>
             <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.5, marginBottom: 16 }}>{error}</p>
             <button onClick={onPickFromGallery} style={{
@@ -157,28 +159,6 @@ export default function FitraCamera({
             }}>
               <Images size={16} /> Subir desde la galería
             </button>
-          </div>
-        ) : (
-          <div style={{ position: "absolute", inset: 24 }}>
-            {[
-              { top: 0, left: 0, borderTop: true, borderLeft: true },
-              { top: 0, right: 0, borderTop: true, borderRight: true },
-              { bottom: 0, left: 0, borderBottom: true, borderLeft: true },
-              { bottom: 0, right: 0, borderBottom: true, borderRight: true },
-            ].map((c, i) => (
-              <span key={i} style={{
-                position: "absolute", width: 34, height: 34,
-                top: c.top, left: c.left, right: c.right, bottom: c.bottom,
-                borderTop: c.borderTop ? "3px solid rgba(255,255,255,0.92)" : undefined,
-                borderBottom: c.borderBottom ? "3px solid rgba(255,255,255,0.92)" : undefined,
-                borderLeft: c.borderLeft ? "3px solid rgba(255,255,255,0.92)" : undefined,
-                borderRight: c.borderRight ? "3px solid rgba(255,255,255,0.92)" : undefined,
-                borderTopLeftRadius: c.borderTop && c.borderLeft ? 14 : undefined,
-                borderTopRightRadius: c.borderTop && c.borderRight ? 14 : undefined,
-                borderBottomLeftRadius: c.borderBottom && c.borderLeft ? 14 : undefined,
-                borderBottomRightRadius: c.borderBottom && c.borderRight ? 14 : undefined,
-              }} />
-            ))}
           </div>
         )}
       </div>
@@ -217,6 +197,38 @@ export default function FitraCamera({
       )}
     </div>,
     document.body,
+  );
+}
+
+function FramingGuide() {
+  const CORNERS = [
+    { top: 0, left: 0, borderTop: true, borderLeft: true },
+    { top: 0, right: 0, borderTop: true, borderRight: true },
+    { bottom: 0, left: 0, borderBottom: true, borderLeft: true },
+    { bottom: 0, right: 0, borderBottom: true, borderRight: true },
+  ];
+  return (
+    <div style={{
+      position: "absolute", inset: 0, zIndex: 1,
+      display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none",
+    }}>
+      <div style={{ position: "relative", width: "min(78vw, 340px)", height: "min(78vw, 340px)" }}>
+        {CORNERS.map((c, i) => (
+          <span key={i} style={{
+            position: "absolute", width: 34, height: 34,
+            top: c.top, left: c.left, right: c.right, bottom: c.bottom,
+            borderTop: c.borderTop ? "3px solid rgba(255,255,255,0.92)" : undefined,
+            borderBottom: c.borderBottom ? "3px solid rgba(255,255,255,0.92)" : undefined,
+            borderLeft: c.borderLeft ? "3px solid rgba(255,255,255,0.92)" : undefined,
+            borderRight: c.borderRight ? "3px solid rgba(255,255,255,0.92)" : undefined,
+            borderTopLeftRadius: c.borderTop && c.borderLeft ? 14 : undefined,
+            borderTopRightRadius: c.borderTop && c.borderRight ? 14 : undefined,
+            borderBottomLeftRadius: c.borderBottom && c.borderLeft ? 14 : undefined,
+            borderBottomRightRadius: c.borderBottom && c.borderRight ? 14 : undefined,
+          }} />
+        ))}
+      </div>
+    </div>
   );
 }
 
