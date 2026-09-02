@@ -14,7 +14,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const admin = createAdminClient();
   const { data: client } = await admin
     .from("clients")
-    .select("user_id, status, created_at, lifestyle, injuries, medical_notes, dietary_restrictions, kitchen_equipment, ai_context, trainer_notes, trainer_id, users(display_name, email)")
+    .select("user_id, status, lifestyle, injuries, medical_notes, dietary_restrictions, kitchen_equipment, ai_context, trainer_notes, trainer_id, users(display_name, email)")
     .eq("user_id", params.id)
     .eq("trainer_id", user.id)
     .single();
@@ -33,7 +33,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       displayName={users?.display_name ?? null}
       email={users?.email ?? null}
       status={client.status}
-      createdAt={client.created_at}
+      createdAt={null}
       lifestyle={(client.lifestyle ?? {}) as { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number }}
       injuries={(client.injuries ?? {}) as { notes?: string }}
       medicalNotes={client.medical_notes}

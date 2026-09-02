@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { Search, Plus, X, Image as ImageIcon } from "lucide-react";
+import { muscleLabel } from "@/lib/muscleLabels";
+import { equipmentLabel } from "@/lib/equipmentLabels";
+import { useExerciseSearch, useExerciseFilterOptions } from "@/lib/useExerciseSearch";
 import Overlay from "@/components/Overlay";
 
 const MEASUREMENT_LABELS: Record<string, string> = {
@@ -16,42 +19,27 @@ const MEASUREMENT_LABELS: Record<string, string> = {
 export default function ExercisesPage() {
   const palette = usePalette();
   const supabase = createClient();
-  const [exercises, setExercises] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
+  const [equipmentFilter, setEquipmentFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingExercise, setEditingExercise] = useState<any | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  async function load() {
-    setLoading(true);
-    const { data } = await supabase
-      .from("exercises")
-      .select("*")
-      .order("name")
-      .limit(5000);
-    setExercises(data ?? []);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  const muscles = Array.from(new Set(exercises.map((e) => e.muscle_group).filter(Boolean))).sort();
-
-  const filtered = exercises.filter((e) => {
-    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase());
-    const matchesMuscle = !muscleFilter || e.muscle_group === muscleFilter;
-    return matchesSearch && matchesMuscle;
+  const { muscles, equipment: equipmentOptions } = useExerciseFilterOptions();
+  const { results: filtered, loading } = useExerciseSearch({
+    search, muscle: muscleFilter, equipment: equipmentFilter, reloadKey,
   });
+
+  const isFiltering = !!(search.trim() || muscleFilter || equipmentFilter);
+  function load() { setReloadKey((k) => k + 1); }
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Ejercicios</h1>
-          <p style={{ color: palette.inkDim, fontSize: 14 }}>{exercises.length} ejercicios disponibles</p>
+          <p style={{ color: palette.inkDim, fontSize: 14 }}>Busca uno o crea el tuyo</p>
         </div>
         <button onClick={() => setShowForm(true)} style={{
           display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 12, border: "none",
@@ -69,7 +57,7 @@ export default function ExercisesPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar ejercicio..."
+            placeholder="Buscar en español o inglés..."
             style={{
               width: "100%", padding: "10px 12px 10px 36px", borderRadius: 11,
               border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14,
@@ -85,9 +73,28 @@ export default function ExercisesPage() {
           }}
         >
           <option value="">Todos los músculos</option>
-          {muscles.map((m) => <option key={m} value={m}>{m}</option>)}
+          {muscles.map((m) => <option key={m} value={m}>{muscleLabel(m)}</option>)}
+        </select>
+        <select
+          value={equipmentFilter}
+          onChange={(e) => setEquipmentFilter(e.target.value)}
+          style={{
+            padding: "10px 12px", borderRadius: 11, border: `1px solid ${palette.panelBorder}`,
+            background: palette.inputBg, color: palette.ink, fontSize: 13.5,
+          }}
+        >
+          <option value="">Todo el equipamiento</option>
+          {equipmentOptions.map((e) => <option key={e} value={e}>{equipmentLabel(e)}</option>)}
         </select>
       </div>
+
+      {!isFiltering && (
+        <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 14, lineHeight: 1.5 }}>
+          Mostrando algunos ejercicios frecuentes. Escribe para buscar en todo el catálogo —
+          sirve el nombre en español o en inglés, sin tildes, y con cualquier palabra suelta
+          (por ejemplo “tumbado” encuentra “Curl femoral tumbado”).
+        </p>
+      )}
 
       {/* grid */}
       {loading ? (
@@ -98,9 +105,7 @@ export default function ExercisesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>
-          {exercises.length === 0
-            ? "Todavía no hay ejercicios cargados (falta correr el seed de la biblioteca base)."
-            : "Ningún ejercicio coincide con tu búsqueda."}
+          Ningún ejercicio coincide con esa búsqueda.
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
@@ -114,15 +119,10 @@ export default function ExercisesPage() {
               <div style={{ padding: 10 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{ex.name}</div>
                 <div style={{ fontSize: 11, color: palette.inkDim }}>
-                  {ex.muscle_group} · {MEASUREMENT_LABELS[ex.measurement_type]}
+                  {muscleLabel(ex.muscle_group)} · {MEASUREMENT_LABELS[ex.measurement_type]}
                 </div>
                 {ex.trainer_id && (
                   <span style={{ fontSize: 9.5, color: palette.accent, fontWeight: 700, textTransform: "uppercase" }}>Propio</span>
-                )}
-                {ex.counts_toward_exercise_id && (
-                  <div style={{ fontSize: 10, color: palette.inkDim, marginTop: 2 }}>
-                    Suma volumen a {exercises.find((e) => e.id === ex.counts_toward_exercise_id)?.name ?? "otro ejercicio"}
-                  </div>
                 )}
               </div>
             </button>
@@ -130,10 +130,10 @@ export default function ExercisesPage() {
         </div>
       )}
 
-      {showForm && <ExerciseForm existingExercises={exercises} onClose={() => setShowForm(false)} onSaved={load} />}
+      {showForm && <ExerciseForm existingExercises={filtered} onClose={() => setShowForm(false)} onSaved={load} />}
       {editingExercise && (
         <ExerciseForm
-          existingExercises={exercises.filter((e) => e.id !== editingExercise.id)}
+          existingExercises={filtered.filter((e) => e.id !== editingExercise.id)}
           exercise={editingExercise}
           onClose={() => setEditingExercise(null)}
           onSaved={load}
@@ -146,6 +146,7 @@ export default function ExercisesPage() {
 function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { existingExercises: any[]; exercise?: any; onClose: () => void; onSaved: () => void }) {
   const palette = usePalette();
   const supabase = createClient();
+  const { muscles, equipment: equipmentOptions } = useExerciseFilterOptions();
   const isEditing = !!exercise;
   const [name, setName] = useState(exercise?.name ?? "");
   const [muscleGroup, setMuscleGroup] = useState(exercise?.muscle_group ?? "");
@@ -178,11 +179,17 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
     if (mediaFile) {
       const ext = mediaFile.name.split(".").pop() || "jpg";
       const path = `exercise-media/${uid}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("food-photos").upload(path, mediaFile, { contentType: mediaFile.type });
-      if (!uploadError) {
-        const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
-        mediaUrl = pub.publicUrl;
+      const { error: uploadError } = await supabase.storage
+        .from("food-photos")
+        .upload(path, mediaFile, { contentType: mediaFile.type || "image/gif", upsert: true });
+      if (uploadError) {
+        // Antes esto se ignoraba y el ejercicio se guardaba sin imagen, sin avisar.
+        setSaving(false);
+        setError(`No pudimos subir la imagen: ${uploadError.message}`);
+        return;
       }
+      const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
+      mediaUrl = pub.publicUrl;
     }
 
     const payload = {
@@ -237,11 +244,19 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
           </FormField>
 
           <FormField label="Grupo muscular">
-            <input value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} placeholder="Ej: pecho, espalda, cuádriceps" style={inputStyle(palette)} />
+            <ChoiceWithOther
+              value={muscleGroup} onChange={setMuscleGroup} options={muscles}
+              labelFor={muscleLabel} placeholder="Escribe el grupo muscular"
+              emptyLabel="Elige un grupo muscular" palette={palette}
+            />
           </FormField>
 
           <FormField label="Equipamiento">
-            <input value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Ej: barra, mancuernas, banda" style={inputStyle(palette)} />
+            <ChoiceWithOther
+              value={equipment} onChange={setEquipment} options={equipmentOptions}
+              labelFor={equipmentLabel} placeholder="Escribe el material"
+              emptyLabel="Elige el material" palette={palette}
+            />
           </FormField>
 
           <FormField label="Forma de medición">
@@ -283,6 +298,37 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
         </div>
       </form>
     </Overlay>
+  );
+}
+
+/** Select con la lista existente más una opción "Otro" que abre un campo libre. */
+function ChoiceWithOther({
+  value, onChange, options, labelFor, placeholder, emptyLabel, palette,
+}: {
+  value: string; onChange: (v: string) => void; options: string[];
+  labelFor: (v: string) => string; placeholder: string; emptyLabel: string; palette: Palette;
+}) {
+  const known = !value || options.includes(value);
+  const [other, setOther] = useState(!known);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <select
+        value={other ? "__other__" : value}
+        onChange={(e) => {
+          if (e.target.value === "__other__") { setOther(true); onChange(""); }
+          else { setOther(false); onChange(e.target.value); }
+        }}
+        style={inputStyle(palette)}
+      >
+        <option value="">{emptyLabel}</option>
+        {options.map((o) => <option key={o} value={o}>{labelFor(o)}</option>)}
+        <option value="__other__">Otro...</option>
+      </select>
+      {other && (
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle(palette)} />
+      )}
+    </div>
   );
 }
 

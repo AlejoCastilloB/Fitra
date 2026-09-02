@@ -8,7 +8,7 @@ export default async function EditRoutinePage({ params }: { params: { id: string
 
   const [{ data: routine }, clients] = await Promise.all([
     supabase.from("routines").select("*").eq("id", params.id).single(),
-    getCoachClients(),
+    getCoachClients().catch(() => []),
   ]);
   if (!routine) redirect("/coach/routines");
 

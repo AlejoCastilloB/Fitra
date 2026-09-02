@@ -20,10 +20,9 @@ export default async function ClientsPage() {
   }
 
   const ids = clients.map((c) => c.user_id);
-  const joinedAt = Object.fromEntries(clients.map((c) => [c.user_id, c.created_at]));
 
   const [stats, { data: invites }] = await Promise.all([
-    ids.length ? getClientStats(ids, joinedAt) : Promise.resolve({} as Record<string, ClientStats>),
+    ids.length ? getClientStats(ids) : Promise.resolve({} as Record<string, ClientStats>),
     supabase.from("invites").select("id, client_email").eq("trainer_id", trainerId).is("used_by", null).order("created_at", { ascending: false }),
   ]);
 
@@ -38,7 +37,7 @@ export default async function ClientsPage() {
         display_name: c.display_name,
         email: c.email,
         stats: stats[c.user_id] ?? {
-          daysWithCoach: null, workoutsThisWeek: 0, plannedThisWeek: 0,
+          workoutsThisWeek: 0, plannedThisWeek: 0,
           lastWorkoutAt: null, daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0,
         },
       }))}
