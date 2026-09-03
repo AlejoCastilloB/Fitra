@@ -27,16 +27,34 @@ function relativeDay(iso: string | null): string {
 }
 
 export default function CoachClientsContent({
-  trainerId, clients, invites, loadError,
+  trainerId, clients, invites, loadError, unassignedCount = 0,
 }: {
   trainerId: string;
   clients: ClientRow[];
   invites: InviteRow[];
   loadError: string | null;
+  unassignedCount?: number;
 }) {
   const palette = usePalette();
   const router = useRouter();
   const [showInvite, setShowInvite] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  async function claimUnassigned() {
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      const res = await fetch("/api/coach/claim-unassigned", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || `error ${res.status}`);
+      router.refresh();
+    } catch (e: any) {
+      setClaimError(`No pudimos vincularlos: ${e.message}`);
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   return (
     <div>
@@ -62,6 +80,28 @@ export default function CoachClientsContent({
           background: "#f8717118", border: "1px solid #f8717155", color: "#b91c1c",
         }}>
           {loadError}
+        </div>
+      )}
+
+      {unassignedCount > 0 && (
+        <div style={{
+          ...palette.glassPanel, padding: 16, marginBottom: 20,
+          border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+        }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 4 }}>
+            {unassignedCount} {unassignedCount === 1 ? "persona registrada" : "personas registradas"} sin entrenador
+          </div>
+          <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, marginBottom: 12 }}>
+            Se registraron cuando el vínculo automático estaba fallando. Puedes agregarlas a tu cargo de una vez.
+          </p>
+          {claimError && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 10 }}>{claimError}</p>}
+          <button onClick={claimUnassigned} disabled={claiming} style={{
+            display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 11, border: "none",
+            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+            fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: claiming ? 0.6 : 1,
+          }}>
+            <UserPlus size={15} /> {claiming ? "Vinculando..." : "Agregarlas a mis clientes"}
+          </button>
         </div>
       )}
 

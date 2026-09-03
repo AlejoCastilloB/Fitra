@@ -28,7 +28,6 @@ const EQUIPMENT_EMOJI: Record<string, string> = {
 
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
-const DEFAULT_TRAINER_EMAIL = "topero2008@gmail.com";
 const STEP_COUNT = 14;
 const FACT_1 ="Las personas que entrenan siguiendo un plan estructurado tienen 2 a 3 veces más probabilidades de mantener el hábito después de 6 meses, comparado con quienes entrenan sin rutina.";
 const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un número y una fecha) multiplica por casi 10 tus probabilidades de lograrla.";
@@ -167,13 +166,15 @@ function OnboardingForm() {
     }
 
     if (!trainerId) {
-      const { data: defaultTrainer } = await getSupabase()
-        .from("users")
-        .select("id")
-        .eq("email", DEFAULT_TRAINER_EMAIL)
-        .eq("role", "trainer")
-        .single();
-      trainerId = defaultTrainer?.id ?? null;
+      // Se resuelve en el servidor: el RLS de "users" solo deja leer la fila propia, así
+      // que buscarlo por correo desde el navegador siempre volvía vacío y el cliente
+      // quedaba sin entrenador, invisible en el panel.
+      try {
+        const res = await fetch("/api/onboarding/default-trainer");
+        if (res.ok) trainerId = (await res.json()).trainerId ?? null;
+      } catch {
+        // sin entrenador por defecto igual se completa el registro; se puede vincular después
+      }
     }
 
     const sportsDetails = d.sports.map((s) => ({
