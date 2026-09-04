@@ -160,6 +160,18 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
   const [mediaPreview, setMediaPreview] = useState(exercise?.media_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Si la subida de la imagen falla, el ejercicio igual se puede guardar sin ella en vez
+  // de dejar al entrenador bloqueado.
+  const [uploadFailed, setUploadFailed] = useState(false);
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 
   function handleMediaChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -168,34 +180,31 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
     setMediaPreview(URL.createObjectURL(file));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent, skipImage = false) {
     e.preventDefault();
     setSaving(true);
     setError("");
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user!.id;
 
-    let mediaUrl: string | null = exercise?.media_url ?? null;
-    if (mediaFile) {
-      const ext = mediaFile.name.split(".").pop() || "jpg";
-      const path = `exercise-media/${uid}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("food-photos")
-        .upload(path, mediaFile, { contentType: mediaFile.type || "image/gif", upsert: true });
-      if (uploadError) {
-        // Antes esto se ignoraba y el ejercicio se guardaba sin imagen, sin avisar.
+    const payload: Record<string, unknown> = {
+      name, muscleGroup, equipment, measurementType, description, annotations,
+      mediaUrl: exercise?.media_url ?? null,
+      videoUrl: videoUrl.trim() || null,
+      countsTowardExerciseId: countsToward || null,
+    };
+
+    if (mediaFile && !skipImage) {
+      try {
+        payload.mediaBase64 = await fileToBase64(mediaFile);
+        payload.mediaType = mediaFile.type || "image/gif";
+      } catch {
         setSaving(false);
-        setError(`No pudimos subir la imagen: ${uploadError.message}`);
+        setUploadFailed(true);
+        setError("No pudimos leer el archivo de imagen.");
         return;
       }
-      const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
-      mediaUrl = pub.publicUrl;
     }
-
-    const payload = {
-      name, muscleGroup, equipment, measurementType, description, annotations,
-      mediaUrl, videoUrl: videoUrl.trim() || null, countsTowardExerciseId: countsToward || null,
-    };
 
     const res = await fetch(isEditing ? `/api/coach/exercises/${exercise.id}` : "/api/coach/exercises", {
       method: isEditing ? "PATCH" : "POST",
@@ -205,7 +214,11 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
     const data = await res.json();
 
     setSaving(false);
-    if (!res.ok) { setError(data.error || "No pudimos guardar el ejercicio"); return; }
+    if (!res.ok) {
+      setError(data.error || "No pudimos guardar el ejercicio");
+      if (String(data.error || "").includes("imagen")) setUploadFailed(true);
+      return;
+    }
     onSaved();
     onClose();
   }
@@ -295,6 +308,17 @@ function ExerciseForm({ existingExercises, exercise, onClose, onSaved }: { exist
             {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear ejercicio"}
           </button>
           {error && <p style={{ color: "#f87171", fontSize: 12.5, textAlign: "center" }}>{error}</p>}
+          {uploadFailed && (
+            <button
+              type="button" onClick={(e) => handleSubmit(e as any, true)} disabled={saving}
+              style={{
+                width: "100%", padding: 11, borderRadius: 11, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim,
+              }}
+            >
+              Guardar el ejercicio sin la imagen
+            </button>
+          )}
         </div>
       </form>
     </Overlay>
