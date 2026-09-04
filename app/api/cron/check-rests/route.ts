@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
+import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 
 export async function GET(req: Request) {
   if (process.env.CRON_SECRET) {
@@ -20,11 +21,17 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Se adelanta unos segundos: entre que se manda el push y el teléfono lo pinta pasa un
+  // rato, así sale más cerca del momento real en que termina el descanso. La app también
+  // programa su propio aviso con el mismo `tag`, y el que llegue segundo reemplaza al
+  // primero en vez de duplicarlo.
+  const lookAheadIso = new Date(Date.now() + REST_NOTIFY_LEAD_MS).toISOString();
+
   const { data: pending } = await admin
     .from("active_rests")
     .select("user_id, routine_name")
     .eq("notified", false)
-    .lte("rest_end_at", new Date().toISOString());
+    .lte("rest_end_at", lookAheadIso);
 
   if (!pending || pending.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 

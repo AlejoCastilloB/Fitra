@@ -5,6 +5,7 @@ import { useWorkoutSession } from "@/lib/workoutSession";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { createClient } from "@/lib/supabase/client";
 import { ensurePushSubscribed } from "@/lib/push";
+import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 
 const SOUNDS: Record<string, { freq: number; pattern: number[] }> = {
   clasico: { freq: 880, pattern: [0.35] },
@@ -70,6 +71,34 @@ export default function RestAlarm() {
       }
     } catch {}
   }
+
+  // El aviso del fin del descanso lo dispara la propia app con un temporizador, no el cron:
+  // el cron corre cada varios minutos y llegaría tardísimo. Se programa unos segundos antes
+  // del cero para compensar lo que tarda el sistema en pintarlo. Lleva `tag`, así que si
+  // además llega el push del servidor lo reemplaza en vez de duplicarlo.
+  useEffect(() => {
+    const endAt = session?.restEndAt;
+    if (!endAt) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    const delay = endAt - REST_NOTIFY_LEAD_MS - Date.now();
+    if (delay < 0) return;
+
+    const routineName = session?.routineName;
+    const timer = setTimeout(async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification("Descanso terminado", {
+          body: routineName ? `${routineName} — es hora de tu próxima serie` : "Es hora de tu próxima serie",
+          icon: "/icon-192.png", badge: "/icon-192.png",
+          tag: "rest-done",
+          data: { url: "/app" },
+        });
+      } catch {}
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [session?.restEndAt, session?.routineName]);
 
   useEffect(() => {
     if (!session?.restEndAt) return;

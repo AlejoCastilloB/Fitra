@@ -66,10 +66,16 @@ export async function GET(req: Request) {
       continue;
     }
 
+    // La ventana era de 15 minutos, lo que obligaba a que el cron cayera justo dentro de
+    // ella. Ningún programador gratuito es tan puntual (GitHub Actions puede retrasarse
+    // bastante cuando hay cola), así que con 15 minutos el aviso simplemente no salía.
+    // Con una hora de margen, el primer pase después de la hora de la comida lo manda —y
+    // la fila en meal_reminders_sent garantiza que solo salga uno por franja y día—.
+    // Las franjas están separadas por 3 horas o más, así que no se pisan entre ellas.
     const localTotalMin = local.hour * 60 + local.minute;
     const slot = MEAL_SLOTS.find((s) => {
       const diff = localTotalMin - (s.hour * 60 + s.minute);
-      return diff >= 0 && diff < 15;
+      return diff >= 0 && diff < 60;
     });
     if (!slot) continue;
 
