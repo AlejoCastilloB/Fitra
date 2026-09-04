@@ -11,7 +11,7 @@ import { supersetColor } from "@/lib/supersetColors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
 import { finishWorkoutSession, type FinishedWorkout } from "@/lib/finishWorkout";
-import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote } from "lucide-react";
+import { Check, X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote, Info } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import SetTypePopover from "@/components/SetTypePopover";
@@ -19,6 +19,7 @@ import RestBar from "@/components/RestBar";
 import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 import WorkoutSummary from "@/components/WorkoutSummary";
+import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import Overlay from "@/components/Overlay";
 
 export default function WorkoutPage() {
@@ -51,10 +52,15 @@ export default function WorkoutPage() {
   const [highlightSet, setHighlightSet] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
+  // La rutina cargada pero AÚN NO iniciada. Antes se llamaba a startSession apenas
+  // cargaba la página, así que abrir otra rutina por error pisaba la sesión en curso y
+  // borraba lo ya registrado. Ahora hay que pulsar "Empezar rutina" a propósito.
+  const [preview, setPreview] = useState<{ name: string; exercises: LiveExercise[] } | null>(null);
+  const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
-    if (session && session.routineId === id) { setLoading(false); return; }
 
     (async () => {
       const [
@@ -128,7 +134,7 @@ export default function WorkoutPage() {
       }
       setPreviousMap(prevMap);
 
-      startSession(id, routine?.name ?? "Entrenamiento", built);
+      setPreview({ name: routine?.name ?? "Entrenamiento", exercises: built });
       setLoading(false);
     })();
   }, [id, uid]);
@@ -239,10 +245,119 @@ export default function WorkoutPage() {
     router.push("/app");
   }
 
+  const isActive = !!session && session.routineId === id;
+  const otherSession = session && session.routineId !== id ? session : null;
+
+  function requestStart() {
+    // Si hay otro entreno abierto, se pregunta antes: empezar este descarta el anterior.
+    if (otherSession) { setConfirmReplace(true); return; }
+    startWorkout();
+  }
+
+  function startWorkout() {
+    if (!preview) return;
+    setConfirmReplace(false);
+    startSession(id, preview.name, preview.exercises);
+  }
+
   if (loading) return <p style={{ color: palette.inkDim, textAlign: "center", marginTop: 60 }}>Cargando entrenamiento...</p>;
 
   if (finished) {
     return <WorkoutSummary {...finished} suggestedRoutineName={`${finished.routineName} (copia)`} onDone={() => router.push("/app")} />;
+  }
+
+  // Mientras no se haya pulsado "Empezar rutina", solo se muestra la rutina.
+  if (!isActive) {
+    return (
+      <div>
+        <div style={{ ...palette.glassPanel, padding: "14px 16px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button onClick={() => router.push("/app")} aria-label="Volver" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={20} /></button>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>{preview?.name ?? "Rutina"}</span>
+            <span style={{ width: 20 }} />
+          </div>
+        </div>
+
+        {otherSession && (
+          <div style={{
+            ...palette.glassPanel, padding: 14, marginBottom: 14,
+            border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Tienes un entreno en curso</div>
+            <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, marginBottom: 10 }}>
+              “{otherSession.routineName}” sigue abierto con tu progreso guardado.
+            </p>
+            <button onClick={() => router.push(`/app/workout/${otherSession.routineId}`)} style={{
+              padding: "9px 14px", borderRadius: 11, border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+              background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+            }}>
+              Volver a ese entreno
+            </button>
+          </div>
+        )}
+
+        {(preview?.exercises.length ?? 0) === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: palette.inkDim, marginBottom: 20 }}>
+            <p style={{ marginBottom: 8 }}>Esta rutina no tiene ejercicios cargados.</p>
+            {loadError && <p style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace" }}>{loadError}</p>}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+            {preview!.exercises.map((ex) => (
+              <button
+                key={ex.id} onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                style={{
+                  ...palette.glassPanel, padding: 14, display: "flex", alignItems: "center", gap: 12,
+                  width: "100%", textAlign: "left", cursor: "pointer", color: palette.ink,
+                }}
+              >
+                <GifThumb src={ex.media_url} size={46} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{ex.name}</div>
+                  <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 2 }}>
+                    {muscleLabel(ex.muscle_group)} · {ex.sets.length} series · {ex.restSeconds}s de descanso
+                  </div>
+                </div>
+                <ChevronDown size={16} color={palette.inkDim} style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(preview?.exercises.length ?? 0) > 0 && (
+          <button onClick={requestStart} style={{
+            width: "100%", padding: 15, borderRadius: 14, border: "none",
+            background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
+            fontWeight: 700, fontSize: 15, cursor: "pointer",
+          }}>
+            Empezar rutina
+          </button>
+        )}
+
+        {detailFor && (
+          <ExerciseDetailModal exerciseId={detailFor.id} fallbackName={detailFor.name} onClose={() => setDetailFor(null)} />
+        )}
+
+        {confirmReplace && otherSession && (
+          <Overlay onClose={() => setConfirmReplace(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Ya tienes un entreno en curso</h3>
+              <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18, lineHeight: 1.5 }}>
+                Si empiezas “{preview?.name}”, se descarta “{otherSession.routineName}” y se pierde lo que llevas registrado ahí.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setConfirmReplace(false)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>
+                  Cancelar
+                </button>
+                <button onClick={startWorkout} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                  Descartar y empezar
+                </button>
+              </div>
+            </div>
+          </Overlay>
+        )}
+      </div>
+    );
   }
 
   const hasExercises = session && session.exercises.length > 0;
@@ -325,6 +440,18 @@ export default function WorkoutPage() {
                     </div>
                   </div>
                   <ChevronDown size={16} color={palette.inkDim} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+                </button>
+
+                <button
+                  onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                  title="Ver la ficha del ejercicio"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5, marginBottom: 10, padding: 0,
+                    background: "none", border: "none", cursor: "pointer",
+                    color: palette.accent, fontSize: 11.5, fontWeight: 700,
+                  }}
+                >
+                  <Info size={12} /> Ver ejercicio
                 </button>
 
                 {isOpen && (
@@ -487,6 +614,10 @@ export default function WorkoutPage() {
           {finishing ? "Guardando..." : finishError ? "Reintentar" : "Terminar entreno"}
         </button>
       </div>
+
+      {detailFor && (
+        <ExerciseDetailModal exerciseId={detailFor.id} fallbackName={detailFor.name} onClose={() => setDetailFor(null)} />
+      )}
 
       {editingType && (
         <SetTypePopover

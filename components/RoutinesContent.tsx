@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import Link from "next/link";
-import { Play, Pencil, Sparkles, ChevronRight } from "lucide-react";
+import { Pencil, Sparkles, ChevronRight } from "lucide-react";
 
 export default function RoutinesContent() {
   const palette = usePalette();
@@ -68,8 +68,8 @@ export default function RoutinesContent() {
                 {r.source === "client" && (
                   <Link href={`/app/routines/${r.id}/edit`} style={{ color: palette.inkDim, display: "flex" }}><Pencil size={16} /></Link>
                 )}
-                <Link href={`/app/workout/${r.id}`} style={{ width: 32, height: 32, borderRadius: "50%", background: palette.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Play size={13} color={palette.bg} fill={palette.bg} />
+                <Link href={`/app/workout/${r.id}`} aria-label="Ver rutina" style={{ display: "flex", color: palette.inkDim, flexShrink: 0 }}>
+                  <ChevronRight size={18} />
                 </Link>
               </div>
               {r.notes && (
