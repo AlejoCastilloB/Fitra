@@ -12,6 +12,10 @@ import NotificationPermissionSlide from "@/components/onboarding/NotificationPer
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
 import { computeNutritionGoals, Sex, CommitmentLevel, COMMITMENT_OPTIONS } from "@/lib/computeNutritionGoals";
+import {
+  CYCLE_REGULARITY_OPTIONS, CYCLE_IMPACT_OPTIONS, describeCycle, hasCycleAnswers,
+  type MenstrualCycleAnswers,
+} from "@/lib/menstrualCycle";
 
 const LEVELS = ["Principiante", "Intermedio", "Avanzado"];
 const LEVEL_EMOJI: Record<string, string> = { Principiante: "🌱", Intermedio: "⚡", Avanzado: "🔥" };
@@ -35,18 +39,20 @@ const FACT_2 = "Ponerte una meta concreta (no \"quiero mejorar\", sino un númer
 type ClientAnswers = {
   displayName: string; goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
   weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel;
+  cycle: MenstrualCycleAnswers;
   injuries: string; medicalNotes: string; sports: string[]; otherSportText: string;
   sportDetails: Record<string, SportDetail>; dietaryRestrictions: string; kitchenEquipment: string[];
   effectiveInvite: string | null;
 };
 
 function buildAiContext({
-  goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, commitment, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
+  goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, commitment, sportsDetails, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment, cycle,
 }: {
   goal: string | null; secondaryGoals: string[]; level: string | null; daysAvailable: number;
   weightKg: number | null; heightCm: number | null; age: number | null; commitment: CommitmentLevel;
   sportsDetails: { sport: string; level: string; experience: string; includeInPlan: boolean }[];
   injuries: string; medicalNotes: string; dietaryRestrictions: string; kitchenEquipment: string[];
+  cycle: MenstrualCycleAnswers | null;
 }) {
   const secondaryLabels = secondaryGoals.map((id) => goalLabel(id));
   const lines: string[] = [];
@@ -63,6 +69,8 @@ function buildAiContext({
   if (medicalNotes.trim()) lines.push(`Notas médicas: ${medicalNotes.trim()}.`);
   if (dietaryRestrictions.trim()) lines.push(`Restricciones alimentarias: ${dietaryRestrictions.trim()}.`);
   if (kitchenEquipment.length > 0) lines.push(`Utensilios de cocina disponibles: ${kitchenEquipment.join(", ")}.`);
+  const cycleText = describeCycle(cycle);
+  if (cycleText) lines.push(cycleText);
   return lines.join(" ");
 }
 
@@ -101,6 +109,7 @@ function OnboardingForm() {
   const [heightCm, setHeightCm] = useState<number | null>(null);
   const [age, setAge] = useState<number | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
+  const [cycle, setCycle] = useState<MenstrualCycleAnswers>({});
   const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
   const [injuries, setInjuries] = useState("");
   const [medicalNotes, setMedicalNotes] = useState("");
@@ -143,7 +152,7 @@ function OnboardingForm() {
 
   async function saveClientData(overrides?: ClientAnswers): Promise<boolean> {
     const d: ClientAnswers = overrides ?? {
-      displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment,
+      displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment, cycle,
       injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite,
     };
     setSaving(true);
@@ -186,6 +195,7 @@ function OnboardingForm() {
       goal: d.goal, secondaryGoals: d.secondaryGoals, level: d.level, daysAvailable: d.daysAvailable,
       weightKg: d.weightKg, heightCm: d.heightCm, age: d.age, commitment: d.commitment, sportsDetails,
       injuries: d.injuries, medicalNotes: d.medicalNotes, dietaryRestrictions: d.dietaryRestrictions, kitchenEquipment: d.kitchenEquipment,
+      cycle: d.sex === "female" ? d.cycle : null,
     });
 
     const nutritionGoals = (d.weightKg && d.heightCm && d.age && d.sex)
@@ -201,7 +211,12 @@ function OnboardingForm() {
     const { error: clientsError } = await getSupabase().from("clients").insert({
       user_id: uid,
       trainer_id: trainerId,
-      lifestyle: { goal: d.goal, secondary_goals: d.secondaryGoals, level: d.level, days_available: d.daysAvailable },
+      lifestyle: {
+        goal: d.goal, secondary_goals: d.secondaryGoals, level: d.level, days_available: d.daysAvailable,
+        // Va dentro de lifestyle (jsonb) en vez de columnas nuevas: sin migración que
+        // pueda romper el registro de una clienta nueva en pleno despliegue.
+        ...(d.sex === "female" && hasCycleAnswers(d.cycle) ? { menstrual_cycle: d.cycle } : {}),
+      },
       injuries: { notes: d.injuries },
       medical_notes: d.medicalNotes,
       dietary_restrictions: d.dietaryRestrictions,
@@ -303,7 +318,7 @@ function OnboardingForm() {
     }
 
     localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
-      answers: { displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
+      answers: { displayName, goal, secondaryGoals, level, daysAvailable, weightKg, heightCm, age, sex, commitment, cycle, injuries, medicalNotes, sports, otherSportText, sportDetails, dietaryRestrictions, kitchenEquipment, effectiveInvite },
     }));
     setAwaitingConfirmation(true);
     setCreating(false);
@@ -383,6 +398,55 @@ function OnboardingForm() {
               <Pill active={sex === "male"} onClick={() => setSex("male")}>Hombre</Pill>
               <Pill active={sex === "female"} onClick={() => setSex("female")}>Mujer</Pill>
             </div>
+
+            {/* Estas preguntas aparecen solo si eligió "Mujer" y son todas opcionales:
+                no bloquean el botón de continuar. Le sirven al coach para saber si
+                conviene mover las semanas de más carga. */}
+            {sex === "female" && (
+              <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${palette.panelBorder}` }}>
+                <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 4 }}>Sobre tu ciclo menstrual · opcional</div>
+                <p style={{ fontSize: 11, color: palette.inkDim, marginBottom: 14, lineHeight: 1.4 }}>
+                  Si quieres contarlo, tu coach lo tiene en cuenta al repartir las semanas de más carga. Puedes saltarte esta parte sin problema.
+                </p>
+
+                <div style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 8 }}>¿Cómo es tu ciclo?</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                  {CYCLE_REGULARITY_OPTIONS.map((o) => (
+                    <Pill
+                      key={o.id}
+                      active={cycle.regularity === o.id}
+                      onClick={() => setCycle((c) => ({ ...c, regularity: c.regularity === o.id ? undefined : o.id }))}
+                    >{o.label}</Pill>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 8 }}>¿Sientes que te afecta la fuerza o la energía?</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                  {CYCLE_IMPACT_OPTIONS.map((o) => (
+                    <Pill
+                      key={o.id}
+                      active={cycle.strengthImpact === o.id}
+                      onClick={() => setCycle((c) => ({ ...c, strengthImpact: c.strengthImpact === o.id ? undefined : o.id }))}
+                    >{o.label}</Pill>
+                  ))}
+                </div>
+
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: palette.inkDim }}>
+                  ¿Algo más que quieras contarle a tu coach? (opcional)
+                  <textarea
+                    value={cycle.notes ?? ""}
+                    onChange={(e) => setCycle((c) => ({ ...c, notes: e.target.value }))}
+                    placeholder="Ej. los primeros dos días me cuesta mucho entrenar pesado."
+                    rows={3}
+                    style={{
+                      width: "100%", padding: 10, borderRadius: 10, resize: "vertical",
+                      border: `1px solid ${palette.panelBorder}`, background: palette.inputBg,
+                      color: palette.ink, fontSize: 13.5, fontFamily: "inherit",
+                    }}
+                  />
+                </label>
+              </div>
+            )}
           </AnamnesisStep>
         )}
 
