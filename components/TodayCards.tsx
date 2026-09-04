@@ -123,7 +123,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         onClick={() => setMode((m) => (m === "remaining" ? "consumed" : "remaining"))}
         style={{
           textAlign: "left", padding: 18, borderRadius: 18, border: `1px solid ${palette.panelBorder}`,
-          background: palette.panel, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          background: palette.panel,
           cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}
       >
@@ -150,8 +150,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         style={{
           display: "flex", alignItems: "center", gap: 14, padding: 18, borderRadius: 18,
           border: `1px solid ${done ? palette.accent + "55" : palette.panelBorder}`,
-          background: done ? `${palette.accent}12` : palette.panel,
-          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", textDecoration: "none", color: palette.ink,
+          background: done ? `${palette.accent}12` : palette.panel, textDecoration: "none", color: palette.ink,
         }}
       >
         <DumbbellRing done={done} />

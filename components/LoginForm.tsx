@@ -58,8 +58,7 @@ export default function LoginForm() {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>
       <div style={{
-        width: "100%", maxWidth: 400, background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", borderRadius: 20, padding: "32px 28px",
+        width: "100%", maxWidth: 400, background: palette.panel, border: `1px solid ${palette.panelBorder}`, borderRadius: 20, padding: "32px 28px",
         boxShadow: "0 20px 60px -20px rgba(0,0,0,0.35)",
       }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Bienvenido de vuelta</h2>

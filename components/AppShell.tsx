@@ -31,8 +31,12 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       position: "relative", transition: "background .3s ease, color .3s ease",
     }}>
       <div style={{
-        position: "fixed", top: "-15%", left: "-8%", width: 500, height: 500, borderRadius: "50%",
-        filter: "blur(120px)", opacity: 0.2, background: `radial-gradient(circle, ${palette.accent}, transparent 70%)`,
+        // El resplandor se hacía con filter: blur(120px) sobre un degradado. Eso obliga al
+        // navegador a reservar un búfer aparte y a desenfocarlo, y deja el fondo de la app
+        // "no plano", que es lo que encarecía cada tarjeta. Un degradado radial ya es suave
+        // por sí solo: se ve igual y no cuesta una capa extra.
+        position: "fixed", top: "-15%", left: "-8%", width: 620, height: 620, borderRadius: "50%",
+        opacity: 0.2, background: `radial-gradient(circle, ${palette.accent} 0%, transparent 62%)`,
         pointerEvents: "none", zIndex: 0, transition: "background .3s ease",
       }} />
 

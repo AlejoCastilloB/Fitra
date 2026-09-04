@@ -373,8 +373,7 @@ export default function NutritionContent() {
       <div className="ft-pop" style={{ marginBottom: 14 }}>
         <SwipeCarousel>
           <div style={{
-            background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
+            background: palette.panel, border: `1px solid ${palette.panelBorder}`, borderRadius: 20,
             padding: 22, position: "relative", overflow: "hidden",
           }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
@@ -388,8 +387,7 @@ export default function NutritionContent() {
           </div>
 
           <div style={{
-            background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderRadius: 20,
+            background: palette.panel, border: `1px solid ${palette.panelBorder}`, borderRadius: 20,
             padding: 22, position: "relative", overflow: "hidden",
           }}>
             <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 20 }}>
