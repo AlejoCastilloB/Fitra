@@ -101,7 +101,6 @@ export default function LandingContent() {
                 style={{
                   textAlign: "left", cursor: "pointer", padding: "14px 16px", borderRadius: 16,
                   background: palette.panel, border: `1px solid ${isOpen ? `${palette.accent}55` : palette.panelBorder}`,
-                  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
                   animationDelay: `${0.1 + i * 0.03}s`, transition: "border-color .25s ease",
                 }}
               >

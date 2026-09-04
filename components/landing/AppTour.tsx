@@ -24,8 +24,6 @@ const SET_BADGE: Record<string, { text: string; color: string }> = {
 const glassPanel: React.CSSProperties = {
   background: app.glassFill,
   border: `1px solid ${app.glassBorder}`,
-  backdropFilter: "blur(20px) saturate(170%)",
-  WebkitBackdropFilter: "blur(20px) saturate(170%)",
   borderRadius: 16,
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 8px 20px -10px rgba(20,20,30,0.14)",
 };

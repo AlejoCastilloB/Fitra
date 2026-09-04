@@ -13,8 +13,7 @@ export default function RestTimerRing({ secondsLeft, totalSeconds, onSkip }: { s
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 16, padding: 14, borderRadius: 16,
-      background: palette.panel, border: `1px solid ${palette.accent}55`, backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)", marginBottom: 16,
+      background: palette.panel, border: `1px solid ${palette.accent}55`, marginBottom: 16,
     }}>
       <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
         <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>

@@ -320,8 +320,7 @@ function OnboardingForm() {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: palette.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", padding: 20 }}>
       <div style={{
-        width: "100%", maxWidth: 440, background: palette.panel, border: `1px solid ${palette.panelBorder}`,
-        backdropFilter: "blur(32px) saturate(180%)", WebkitBackdropFilter: "blur(32px) saturate(180%)", borderRadius: 20, padding: "32px 28px",
+        width: "100%", maxWidth: 440, background: palette.panel, border: `1px solid ${palette.panelBorder}`, borderRadius: 20, padding: "32px 28px",
         boxShadow: palette.glassShadow,
       }}>
         <div style={{ height: 4, borderRadius: 999, background: palette.inputBg, marginBottom: 24, overflow: "hidden" }}>

@@ -29,11 +29,16 @@ type PaletteBase = Omit<Palette, "glassPanel" | "modalPanel" | "cleanGroup" | "g
 
 function buildPalette(base: PaletteBase & { glassFill: string; glassBorder: string; glassHighlight: string; glassShadow: string }): Palette {
   const { glassFill, glassBorder, glassHighlight, glassShadow, ...rest } = base;
+  // Sin backdrop-filter a propósito. Este estilo se repite en decenas de tarjetas por
+  // pantalla, y cada backdrop-filter obliga al compositor a muestrear el fondo ya
+  // compuesto, desenfocarlo y recortarlo en su propia capa. Al abrir o cerrar cualquier
+  // tarjeta modal el fondo cambia entero, así que TODOS esos desenfoques se invalidan y
+  // se recalculan a la vez: es lo que se sentía como un congelamiento de casi un segundo
+  // en iPhone. El relleno es translúcido sobre un fondo casi plano, así que desenfocarlo
+  // no se notaba; quitarlo se ve igual y le devuelve al compositor una sola capa.
   const glassPanel: React.CSSProperties = {
     background: glassFill,
     border: `1px solid ${glassBorder}`,
-    backdropFilter: "blur(28px) saturate(170%)",
-    WebkitBackdropFilter: "blur(28px) saturate(170%)",
     borderRadius: 20,
     boxShadow: `inset 0 1px 0 ${glassHighlight}, 0 8px 28px -10px ${glassShadow}`,
   };

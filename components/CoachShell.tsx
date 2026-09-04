@@ -38,15 +38,17 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
     }}>
       <SessionKeepAlive />
       <PrecacheWarmup routes={WARMUP_ROUTES} />
-      {/* blobs de luz — esto es lo que hace que el blur se vea */}
+      {/* Blobs de luz. Antes se desenfocaban con filter: blur(...), lo que reserva un
+          búfer aparte por cada uno. Un degradado radial ya cae suave: mismo resultado,
+          sin capas extra que el compositor tenga que rehacer. */}
       <div style={{
-        position: "fixed", top: "-15%", left: "-8%", width: 500, height: 500, borderRadius: "50%",
-        filter: "blur(120px)", opacity: 0.22, background: `radial-gradient(circle, ${palette.accent}, transparent 70%)`,
+        position: "fixed", top: "-15%", left: "-8%", width: 620, height: 620, borderRadius: "50%",
+        opacity: 0.22, background: `radial-gradient(circle, ${palette.accent} 0%, transparent 62%)`,
         pointerEvents: "none",
       }} />
       <div style={{
-        position: "fixed", bottom: "-18%", right: "-10%", width: 460, height: 460, borderRadius: "50%",
-        filter: "blur(130px)", opacity: 0.14, background: `radial-gradient(circle, ${palette.accentDeep}, transparent 70%)`,
+        position: "fixed", bottom: "-18%", right: "-10%", width: 580, height: 580, borderRadius: "50%",
+        opacity: 0.14, background: `radial-gradient(circle, ${palette.accentDeep} 0%, transparent 62%)`,
         pointerEvents: "none",
       }} />
 
