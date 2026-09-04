@@ -2,7 +2,7 @@
 
 import { usePalette } from "@/lib/theme";
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import DayStrip from "@/components/DayStrip";
 import TodayCards from "@/components/TodayCards";
 
@@ -70,7 +70,7 @@ function RoutineRow({ routine, isLast }: { routine: RoutineSummary; isLast: bool
           {routine.source === "platform" ? "Sugerida por FitTrack" : routine.source === "client" ? "Creada por ti" : "Asignada por tu coach"}
         </div>
       </div>
-      <Play size={15} color={palette.inkDim} />
+      <ChevronRight size={15} color={palette.inkDim} />
     </Link>
   );
 }
