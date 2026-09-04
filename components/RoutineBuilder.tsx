@@ -14,6 +14,7 @@ import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
+import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number; restSeconds?: number };
@@ -77,6 +78,7 @@ export default function RoutineBuilder({
   const [editingType, setEditingType] = useState<{ exId: string; setIdx: number; x: number; y: number } | null>(null);
   const [supersetPopoverFor, setSupersetPopoverFor] = useState<{ exId: string; x: number; y: number } | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
   const [showDetails, setShowDetails] = useState(!isEditing);
 
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
@@ -364,7 +366,19 @@ export default function RoutineBuilder({
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <GripVertical size={15} color={palette.inkDim} />
                     <GifThumb src={ex.media_url} size={34} />
-                    <span style={{ fontWeight: 600, fontSize: 13.5 }}>{ex.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                      title="Ver la ficha del ejercicio"
+                      style={{
+                        background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left",
+                        fontWeight: 600, fontSize: 13.5, color: palette.ink,
+                        textDecoration: "underline", textDecorationColor: palette.panelBorder,
+                        textUnderlineOffset: 3,
+                      }}
+                    >
+                      {ex.name}
+                    </button>
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     {role === "client" && (
@@ -525,6 +539,14 @@ export default function RoutineBuilder({
       >
         Listo
       </button>
+
+      {detailFor && (
+        <ExerciseDetailModal
+          exerciseId={detailFor.id}
+          fallbackName={detailFor.name}
+          onClose={() => setDetailFor(null)}
+        />
+      )}
 
       {editingType && (
         <SetTypePopover
