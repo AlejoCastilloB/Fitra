@@ -2,7 +2,15 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
-export type LiveSet = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number; rpe?: number; done: boolean };
+/** Valores objetivo que trae la rutina. Sirven de dos cosas: se muestran en gris dentro
+ *  del campo vacío (para saber qué tocaba hacer) y se rellenan solos al marcar la serie
+ *  como hecha si el campo quedó en blanco. */
+export type SetTarget = { reps?: number; weight?: number; time_sec?: number; distance_m?: number };
+
+export type LiveSet = {
+  set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number; rpe?: number; done: boolean;
+  target?: SetTarget;
+};
 export type LiveExercise = {
   id: string; name: string; media_url?: string; measurement_type: string; notes?: string;
   description?: string; equipment?: string; muscle_group?: string; instructions?: string[];
@@ -21,6 +29,7 @@ type Ctx = {
   hydrated: boolean;
   startSession: (routineId: string, routineName: string, exercises: LiveExercise[]) => void;
   addExercise: (exercise: Omit<LiveExercise, "sets"> & { sets?: LiveSet[] }) => void;
+  removeExercise: (exIdx: number) => void;
   toggleSetDone: (exIdx: number, setIdx: number, restSeconds: number) => void;
   updateSet: (exIdx: number, setIdx: number, field: string, value: any) => void;
   addSet: (exIdx: number) => void;
@@ -35,13 +44,29 @@ type Ctx = {
 const WorkoutSessionContext = createContext<Ctx | null>(null);
 const STORAGE_KEY = "fittrack_active_workout";
 
+// Las series nuevas nacen SIN valores: el número sugerido va en `target`, que se pinta en
+// gris dentro del campo. Así el campo se puede dejar en blanco y escribir directo, en vez
+// de tener que borrar primero un cero que no se dejaba borrar.
 function emptySetFor(ex: LiveExercise): LiveSet {
   const last = ex.sets[ex.sets.length - 1];
-  if (last) return { ...last, done: false };
-  if (ex.measurement_type === "time") return { set_type: "normal", time_sec: 30, done: false };
-  if (ex.measurement_type === "time_distance") return { set_type: "normal", time_sec: 60, distance_m: 200, done: false };
-  if (ex.measurement_type === "distance") return { set_type: "normal", distance_m: 100, done: false };
-  return { set_type: "normal", reps: 10, weight: 0, done: false };
+  if (last) return { ...last, done: false, rpe: undefined };
+  if (ex.measurement_type === "time") return { set_type: "normal", done: false, target: { time_sec: 30 } };
+  if (ex.measurement_type === "time_distance") return { set_type: "normal", done: false, target: { time_sec: 60, distance_m: 200 } };
+  if (ex.measurement_type === "distance") return { set_type: "normal", done: false, target: { distance_m: 100 } };
+  return { set_type: "normal", done: false, target: { reps: 10 } };
+}
+
+/** Al confirmar una serie, los campos que quedaron vacíos toman el valor objetivo. */
+function applyTarget(s: LiveSet): LiveSet {
+  const t = s.target;
+  if (!t) return s;
+  return {
+    ...s,
+    reps: s.reps ?? t.reps,
+    weight: s.weight ?? t.weight,
+    time_sec: s.time_sec ?? t.time_sec,
+    distance_m: s.distance_m ?? t.distance_m,
+  };
 }
 
 export function WorkoutSessionProvider({ children }: { children: React.ReactNode }) {
@@ -93,6 +118,20 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  // Sacar un ejercicio de la sesión en curso (ej. la máquina está ocupada y se cambia).
+  const removeExercise = useCallback((exIdx: number) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const exercises = prev.exercises.filter((_, i) => i !== exIdx);
+      // Si el descanso pertenecía al ejercicio borrado se corta; si era de uno posterior,
+      // su índice se corre una posición hacia arriba.
+      let { restEndAt, restForExIdx } = prev;
+      if (restForExIdx === exIdx) { restEndAt = null; restForExIdx = null; }
+      else if (restForExIdx != null && restForExIdx > exIdx) restForExIdx -= 1;
+      return { ...prev, exercises, restEndAt, restForExIdx };
+    });
+  }, []);
+
   const toggleSetDone = useCallback((exIdx: number, setIdx: number, restSeconds: number) => {
     setSession((prev) => {
       if (!prev) return prev;
@@ -100,7 +139,8 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       const wasDone = current.sets[setIdx].done;
       const exRest = current.restSeconds ?? restSeconds;
       const exercises = prev.exercises.map((ex, i) => i !== exIdx ? ex : {
-        ...ex, sets: ex.sets.map((s, j) => j !== setIdx ? s : { ...s, done: !s.done }),
+        ...ex,
+        sets: ex.sets.map((s, j) => j !== setIdx ? s : (wasDone ? { ...s, done: false } : { ...applyTarget(s), done: true })),
       });
 
       let shouldRest = true;
@@ -175,7 +215,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   const clearSession = useCallback(() => setSession(null), []);
 
   return (
-    <WorkoutSessionContext.Provider value={{ session, now, hydrated, startSession, addExercise, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, insertWarmupSets, clearSession }}>
+    <WorkoutSessionContext.Provider value={{ session, now, hydrated, startSession, addExercise, removeExercise, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, insertWarmupSets, clearSession }}>
       {children}
     </WorkoutSessionContext.Provider>
   );

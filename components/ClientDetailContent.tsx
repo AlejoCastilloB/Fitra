@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePalette, type Palette } from "@/lib/theme";
 import { goalLabel } from "@/lib/goals";
+import { describeCycle, type MenstrualCycleAnswers } from "@/lib/menstrualCycle";
 import { ChevronLeft, Sparkles, ClipboardList, Dumbbell } from "lucide-react";
 import TrainerNotesEditor from "@/components/TrainerNotesEditor";
 import CopyButton from "@/components/CopyButton";
@@ -14,13 +15,15 @@ export default function ClientDetailContent({
   aiContext, trainerNotes, clientId, sports,
 }: {
   displayName: string | null; email: string | null; status: string; createdAt: string | null;
-  lifestyle: { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number };
+  lifestyle: { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number; menstrual_cycle?: MenstrualCycleAnswers };
   injuries: { notes?: string };
   medicalNotes: string | null; dietaryRestrictions: string | null; kitchenEquipment: string[];
   aiContext: string | null; trainerNotes: string; clientId: string; sports: SportRow[];
 }) {
   const palette = usePalette();
   const secondaryGoals = lifestyle.secondary_goals ?? [];
+  // Solo aparece si la clienta contestó algo; son preguntas opcionales.
+  const cycleText = describeCycle(lifestyle.menstrual_cycle);
   const memberSince = createdAt ? new Date(createdAt).toLocaleDateString("es-CO", { month: "long", year: "numeric" }) : null;
 
   return (
@@ -52,6 +55,7 @@ export default function ClientDetailContent({
         <Field label="Notas médicas" value={medicalNotes || "Ninguna"} palette={palette} />
         <Field label="Restricciones alimentarias" value={dietaryRestrictions || "Ninguna"} palette={palette} />
         <Field label="Utensilios de cocina" value={kitchenEquipment.length > 0 ? kitchenEquipment.join(", ") : "Ninguno registrado"} palette={palette} />
+        {cycleText && <Field label="Ciclo menstrual" value={cycleText} palette={palette} />}
 
         {sports.length > 0 && (
           <div style={{ marginTop: 14 }}>

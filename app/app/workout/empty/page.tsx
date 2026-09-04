@@ -6,15 +6,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
-import { getSetBadge } from "@/lib/setBadges";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession } from "@/lib/workoutSession";
 import { finishWorkoutSession, type FinishedWorkout } from "@/lib/finishWorkout";
-import { Check, X, Plus, Timer, Trash2 } from "lucide-react";
+import { X, Plus, Timer, Trash2 } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
+import WorkoutSetRow from "@/components/WorkoutSetRow";
 import RestBar from "@/components/RestBar";
 import ExercisePicker from "@/components/ExercisePicker";
+import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import WorkoutSummary from "@/components/WorkoutSummary";
 import Overlay from "@/components/Overlay";
 
@@ -26,7 +27,7 @@ export default function EmptyWorkoutPage() {
   const router = useRouter();
   const supabase = createClient();
   const uid = useCurrentUser();
-  const { session, now, hydrated, startSession, addExercise, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, clearSession } = useWorkoutSession();
+  const { session, now, hydrated, startSession, addExercise, removeExercise, toggleSetDone, updateSet, addSet, removeSet, updateExerciseRest, adjustRest, skipRest, clearSession } = useWorkoutSession();
 
   const [leaving, setLeaving] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -36,6 +37,8 @@ export default function EmptyWorkoutPage() {
   const [finished, setFinished] = useState<FinishedWorkout | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
+  const [confirmRemoveEx, setConfirmRemoveEx] = useState<number | null>(null);
 
   // El entreno vacío arranca sin tocar Supabase: no hay rutina que cargar.
   // La primera consulta ocurre recién cuando el usuario abre el buscador.
@@ -139,33 +142,54 @@ export default function EmptyWorkoutPage() {
             const showRestHere = session.restForExIdx === exIdx && restLeft > 0;
             return (
               <div key={ex.id} style={{ ...palette.glassPanel, padding: 16, marginBottom: 14 }}>
+                {/* Tocar la imagen o el nombre abre la ficha del ejercicio; el bote lo saca
+                    del entreno. */}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                  <GifThumb src={ex.media_url} size={52} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <button
+                    onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                    aria-label={`Ver la ficha de ${ex.name}`}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}
+                  >
+                    <GifThumb src={ex.media_url} size={52} />
+                  </button>
+                  <button
+                    onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                    style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>{ex.name}</div>
                     <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 2 }}>
                       {muscleLabel(ex.muscle_group)} · {ex.sets.filter((s) => s.done).length}/{ex.sets.length} series
                     </div>
-                  </div>
+                  </button>
+                  <button
+                    onClick={() => setConfirmRemoveEx(exIdx)}
+                    aria-label={`Quitar ${ex.name} del entreno`}
+                    style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: palette.inkDim, display: "flex", flexShrink: 0 }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                  <Timer size={12} color={palette.inkDim} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 10 }}>
                   {editingRestFor === exIdx ? (
-                    <input
-                      type="number" inputMode="numeric" min={0} autoFocus defaultValue={ex.restSeconds}
-                      onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
-                      onBlur={(e) => { updateExerciseRest(exIdx, Math.max(0, +e.target.value || 90)); setEditingRestFor(null); }}
-                      style={{ width: 50, padding: "2px 6px", borderRadius: 6, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 11 }}
-                    />
+                    <div style={{ ...pillStyle(palette), color: palette.inkDim }}>
+                      <Timer size={13} />
+                      <input
+                        type="number" inputMode="numeric" min={0} autoFocus defaultValue={ex.restSeconds}
+                        onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
+                        onBlur={(e) => { updateExerciseRest(exIdx, Math.max(0, +e.target.value || 90)); setEditingRestFor(null); }}
+                        style={{ width: 46, padding: "2px 4px", borderRadius: 6, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12 }}
+                      />
+                      s
+                    </div>
                   ) : (
-                    <button onClick={() => setEditingRestFor(exIdx)} style={{ background: "none", border: "none", color: palette.inkDim, fontSize: 11, cursor: "pointer" }}>
-                      Descanso: {ex.restSeconds}s
+                    <button onClick={() => setEditingRestFor(exIdx)} style={{ ...pillStyle(palette), color: palette.inkDim }}>
+                      <Timer size={13} /> Descanso {ex.restSeconds}s
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 0 6px" }}>
                   <span style={{ width: 22, fontSize: 9, color: palette.inkDim, textTransform: "uppercase", fontWeight: 700, textAlign: "center" }}>Serie</span>
                   {ex.measurement_type === "reps_weight" && (
                     <>
@@ -181,48 +205,17 @@ export default function EmptyWorkoutPage() {
                   )}
                 </div>
 
-                {ex.sets.map((s, i) => {
-                  const badge = getSetBadge(ex.sets, i, palette.accent);
-                  return (
-                    <div key={i} style={{
-                      position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 8, padding: "9px 2px",
-                      background: i % 2 === 1 ? palette.panel : "transparent", borderRadius: 8,
-                    }}>
-                      <div style={{
-                        position: "absolute", top: 0, right: 0, bottom: 0, borderRadius: 8,
-                        width: s.done ? "100%" : "0%", background: "rgba(74,222,128,0.16)",
-                        transition: "width .45s cubic-bezier(.16,.8,.24,1)", pointerEvents: "none",
-                      }} />
-
-                      <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom }); }} style={{
-                        position: "relative", width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, flexShrink: 0,
-                        color: badge.color, background: `${badge.color}22`,
-                      }}>{badge.text}</button>
-
-                      {ex.measurement_type === "reps_weight" && (
-                        <>
-                          <SetInput value={s.weight} onChange={(v) => updateSet(exIdx, i, "weight", v)} />
-                          <SetInput value={s.reps} onChange={(v) => updateSet(exIdx, i, "reps", v)} />
-                        </>
-                      )}
-                      {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-                        <SetInput value={s.time_sec} onChange={(v) => updateSet(exIdx, i, "time_sec", v)} />
-                      )}
-                      {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-                        <SetInput value={s.distance_m} onChange={(v) => updateSet(exIdx, i, "distance_m", v)} />
-                      )}
-
-                      <div style={{ position: "relative", flex: 1 }} />
-                      <button onClick={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)} style={{
-                        position: "relative", width: 26, height: 26, borderRadius: 8, border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
-                        background: s.done ? "#4ADE80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
-                        transition: "background .3s ease, border-color .3s ease",
-                      }}>
-                        <Check size={13} color={s.done ? palette.bg : palette.inkDim} />
-                      </button>
-                    </div>
-                  );
-                })}
+                {ex.sets.map((s, i) => (
+                  <WorkoutSetRow
+                    key={i}
+                    exercise={ex} set={s} index={i}
+                    onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom })}
+                    onChangeField={(field, v) => updateSet(exIdx, i, field, v)}
+                    onToggleDone={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)}
+                    onRemove={() => removeSet(exIdx, i)}
+                    onSetRpe={(n) => updateSet(exIdx, i, "rpe", n)}
+                  />
+                ))}
 
                 <button onClick={() => addSet(exIdx)} style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
@@ -281,6 +274,25 @@ export default function EmptyWorkoutPage() {
         />
       )}
 
+      {detailFor && (
+        <ExerciseDetailModal exerciseId={detailFor.id} fallbackName={detailFor.name} onClose={() => setDetailFor(null)} />
+      )}
+
+      {confirmRemoveEx !== null && session.exercises[confirmRemoveEx] && (
+        <Overlay onClose={() => setConfirmRemoveEx(null)} zIndex={100}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Quitar este ejercicio?</h3>
+            <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18, lineHeight: 1.5 }}>
+              “{session.exercises[confirmRemoveEx].name}” sale de este entreno y se pierden las series que ya marcaste ahí.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmRemoveEx(null)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={() => { removeExercise(confirmRemoveEx); setConfirmRemoveEx(null); }} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Sí, quitar</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+
       {editingType && (
         <SetTypePopover
           current={session.exercises[editingType.exIdx].sets[editingType.setIdx].set_type}
@@ -324,13 +336,12 @@ function SessionStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SetInput({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
-  const palette = usePalette();
-  return (
-    <input
-      type="number" inputMode="decimal" min={0} value={value ?? ""}
-      onChange={(e) => onChange(Math.max(0, +e.target.value || 0))}
-      onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
-      style={{ position: "relative", width: 50, padding: "5px 6px", borderRadius: 7, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5, textAlign: "center" }} />
-  );
+/** Pastilla para las acciones secundarias de la tarjeta (descanso). */
+function pillStyle(palette: ReturnType<typeof usePalette>): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center", gap: 5,
+    padding: "7px 12px", borderRadius: 999,
+    border: `1px solid ${palette.panelBorder}`, background: palette.inputBg,
+    fontSize: 12, fontWeight: 700, cursor: "pointer",
+  };
 }

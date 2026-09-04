@@ -82,6 +82,11 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
+    // El mismo `tag` reemplaza el aviso en vez de apilar otro. El fin del descanso puede
+    // llegar por dos vías (el temporizador de la app y el push del servidor) y así el
+    // usuario ve uno solo.
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
     data: { url: data.url || "/app" },
   };
   event.waitUntil(self.registration.showNotification(title, options));

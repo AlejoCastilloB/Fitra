@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useWorkoutSession } from "@/lib/workoutSession";
 import { localDayOfWeek } from "@/lib/localDate";
 import { Plus, Dumbbell, Zap, Camera, Sparkles, Phone } from "lucide-react";
 import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
@@ -15,6 +17,8 @@ export default function HomeFab() {
   const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
+  const { session } = useWorkoutSession();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -68,9 +72,15 @@ export default function HomeFab() {
     }
   }
 
+  // Con un entreno abierto (o estando dentro de la pantalla de entreno) no tiene sentido
+  // ofrecer empezar otro: solo llevaría a descartar el que está en curso.
+  const inWorkout = !!session || pathname.startsWith("/app/workout");
+
   const items = [
-    { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
-    { icon: <Zap size={17} />, label: "Entrenamiento vacío", href: "/app/workout/empty", external: false },
+    ...(inWorkout ? [] : [
+      { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
+      { icon: <Zap size={17} />, label: "Entrenamiento vacío", href: "/app/workout/empty", external: false },
+    ]),
     { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
     { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
     ...(coachWhatsapp
@@ -80,7 +90,7 @@ export default function HomeFab() {
 
   return (
     <>
-      {!mounted && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, armar uno vacío sobre la marcha, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
+      {!mounted && !inWorkout && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, armar uno vacío sobre la marcha, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
 
       {mounted && (
         <div

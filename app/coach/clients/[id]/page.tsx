@@ -34,7 +34,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       email={users?.email ?? null}
       status={client.status}
       createdAt={null}
-      lifestyle={(client.lifestyle ?? {}) as { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number }}
+      lifestyle={(client.lifestyle ?? {}) as Parameters<typeof ClientDetailContent>[0]["lifestyle"]}
       injuries={(client.injuries ?? {}) as { notes?: string }}
       medicalNotes={client.medical_notes}
       dietaryRestrictions={client.dietary_restrictions}

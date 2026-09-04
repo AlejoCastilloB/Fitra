@@ -8,10 +8,12 @@ export const SPORTS_LIST = [
   "Boxeo/Artes marciales", "Crossfit", "Hyrox", "Patinaje", "Escalada", "Béisbol", "Rugby", "Golf", "Yoga/Pilates",
 ];
 
+// Emojis de objetos, no de personas: los muñecos deportivos salen como hombres en casi
+// todos los teléfonos y la app la usan tanto chicas como chicos.
 export const SPORT_EMOJI: Record<string, string> = {
-  "Fútbol": "⚽", "Baloncesto": "🏀", "Running/Atletismo": "🏃", "Ciclismo": "🚴", "Natación": "🏊",
-  "Tenis": "🎾", "Voleibol": "🏐", "Boxeo/Artes marciales": "🥊", "Crossfit": "🏋️", "Hyrox": "⏱️",
-  "Patinaje": "⛸️", "Escalada": "🧗", "Béisbol": "⚾", "Rugby": "🏉", "Golf": "⛳", "Yoga/Pilates": "🧘",
+  "Fútbol": "⚽", "Baloncesto": "🏀", "Running/Atletismo": "👟", "Ciclismo": "🚲", "Natación": "🌊",
+  "Tenis": "🎾", "Voleibol": "🏐", "Boxeo/Artes marciales": "🥊", "Crossfit": "🔔", "Hyrox": "⏱️",
+  "Patinaje": "⛸️", "Escalada": "⛰️", "Béisbol": "⚾", "Rugby": "🏉", "Golf": "⛳", "Yoga/Pilates": "🪷",
   "Otro": "🎯",
 };
 

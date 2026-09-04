@@ -1,0 +1,53 @@
+# Programador de las notificaciones de Fitra.
+#
+# El plan Hobby de Vercel solo permite dos crons y UNA corrida al día, y los avisos de
+# comida solo se mandan si algo llama al endpoint cerca de la hora de cada comida. Por eso
+# el disparador vive aquí: GitHub Actions sí permite correr cada pocos minutos y es gratis.
+#
+# Para que funcione hay que crear dos secretos en el repositorio
+# (Settings -> Secrets and variables -> Actions):
+#   FITRA_APP_URL  -> https://fittrack-co.vercel.app  (sin barra al final)
+#   CRON_SECRET    -> el mismo valor que la variable CRON_SECRET en Vercel
+#
+# Sin esos secretos el trabajo no falla: se salta y lo dice en el registro.
+
+name: Recordatorios de Fitra
+
+on:
+  schedule:
+    # Cada 10 minutos. GitHub puede retrasar la corrida cuando hay cola, por eso la
+    # ventana de las comidas en check-meals es de una hora y no de quince minutos.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fitra-cron
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar a /api/cron/tick
+        env:
+          APP_URL: ${{ secrets.FITRA_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "Falta el secreto FITRA_APP_URL — no hay nada que llamar."
+            exit 0
+          fi
+
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            --max-time 90 --retry 2 --retry-delay 5 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/tick")
+
+          echo "HTTP $status"
+          cat response.json || true
+          echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::El endpoint respondió $status"
+            exit 1
+          fi
