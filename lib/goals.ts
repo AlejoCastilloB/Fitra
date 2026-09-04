@@ -1,7 +1,9 @@
+// Los emojis van de objetos y símbolos, no de personas: los muñecos deportivos se dibujan
+// como hombres en casi todos los teléfonos.
 export const GOALS = [
-  { id: "fuerza", label: "Fuerza / Hipertrofia", emoji: "🏋️" },
+  { id: "fuerza", label: "Fuerza / Hipertrofia", emoji: "💪" },
   { id: "perdida_grasa", label: "Pérdida de grasa", emoji: "🔥" },
-  { id: "masa_muscular", label: "Ganancia de masa muscular", emoji: "💪" },
+  { id: "masa_muscular", label: "Ganancia de masa muscular", emoji: "📈" },
   { id: "rendimiento", label: "Rendimiento deportivo", emoji: "🏆" },
   { id: "salud", label: "Salud general", emoji: "❤️" },
 ];
