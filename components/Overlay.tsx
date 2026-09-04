@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -29,15 +29,24 @@ export default function Overlay({
     if (!lockScroll) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
+    return () => {
+      // Devolver el scroll al body obliga al navegador a re-maquetar la página entera.
+      // Hacerlo en el siguiente frame deja que la tarjeta desaparezca primero, así el
+      // cierre se ve inmediato aunque esa re-maquetación cueste.
+      requestAnimationFrame(() => { document.body.style.overflow = previous; });
+    };
   }, [lockScroll]);
 
+  // El handler suele venir como función nueva en cada render; guardarlo en una ref evita
+  // desmontar y volver a montar el listener cada vez que el padre se re-renderiza.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
-    if (!onClose) return;
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose!(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onCloseRef.current?.(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   if (!mounted) return null;
 
@@ -46,8 +55,11 @@ export default function Overlay({
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex,
-        background: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
+        // Sin backdrop-filter a propósito: el fondo de la app ya lleva blur en casi cada
+        // tarjeta (glassPanel), y superponerle otro desenfoque a pantalla completa obliga
+        // al compositor a rehacer todas esas capas al abrir y al cerrar. Un velo sólido un
+        // poco más oscuro se ve prácticamente igual y no cuesta nada.
+        background: "rgba(0,0,0,0.68)",
         display: "flex", alignItems: align === "end" ? "flex-end" : "center", justifyContent: "center",
         padding: align === "end" ? 0 : 20,
         overscrollBehavior: "contain",
