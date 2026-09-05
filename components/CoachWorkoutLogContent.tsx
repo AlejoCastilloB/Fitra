@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { formatDurationLabel } from "@/lib/formatDuration";
-import { ChevronLeft, Clock, Weight, Layers } from "lucide-react";
+import { ChevronLeft, Clock, Weight, Layers, NotebookPen } from "lucide-react";
 
 const MUSCLE_COLORS = ["#B9C2CE", "#C77DFF", "#7DD8C6", "#F5A97F", "#7DC4E8", "#F2B8D4"];
 
@@ -18,6 +18,8 @@ export type CoachWorkoutLogView = {
   durationSec: number;
   totalVolume: number;
   totalSets: number;
+  notes: string | null;
+  photoUrl: string | null;
   muscleDistribution: { muscle: string; pct: number }[];
   exercises: { id: string; name: string; measurement_type: string; sets: SetRow[] }[];
 };
@@ -55,6 +57,17 @@ export default function CoachWorkoutLogContent({
         <StatItem icon={<Weight size={15} />} value={`${Math.round(view.totalVolume).toLocaleString("es-CO")} kg`} label="Volumen" />
         <StatItem icon={<Layers size={15} />} value={`${view.totalSets}`} label="Series efectivas" />
       </div>
+
+      {view.photoUrl && (
+        <img src={view.photoUrl} alt="" style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 14, marginBottom: 22 }} />
+      )}
+
+      {view.notes && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={sectionLabel}><NotebookPen size={13} style={{ verticalAlign: -2, marginRight: 5 }} />Notas de {clientName}</div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: palette.ink, whiteSpace: "pre-wrap" }}>{view.notes}</p>
+        </div>
+      )}
 
       {view.muscleDistribution.length > 0 && (
         <div style={{ marginBottom: 26 }}>

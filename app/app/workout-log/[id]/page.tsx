@@ -23,6 +23,8 @@ export default async function WorkoutLogDetailPage({ params }: { params: { id: s
       durationSec={view.durationSec}
       totalVolume={view.totalVolume}
       totalSets={view.totalSets}
+      notes={view.notes}
+      photoUrl={view.photoUrl}
       muscleDistribution={view.muscleDistribution}
       exercises={view.exercises}
       exercisesForMenu={view.exercises.map((ex) => ({ exercise_id: ex.id, name: ex.name, measurement_type: ex.measurement_type, sets: ex.sets }))}

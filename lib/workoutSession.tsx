@@ -24,6 +24,8 @@ export type LiveExercise = {
 type Session = {
   routineId: string; routineName: string; exercises: LiveExercise[]; startedAt: number;
   restEndAt: number | null; restForExIdx: number | null;
+  /** Momento de la última serie marcada. De aquí cuenta el aviso de entreno abierto. */
+  lastSetAt: number;
 } | null;
 
 type Ctx = {
@@ -89,6 +91,8 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
         // Una sesión guardada antes de que existieran los uid no los trae; sin esto la
         // pantalla se quedaría sin keys al retomarla.
         if (parsed?.exercises) parsed.exercises = parsed.exercises.map((e: any) => ({ ...e, uid: e.uid || newExerciseUid() }));
+        // Las sesiones guardadas antes de que existiera lastSetAt arrancan desde su inicio.
+        if (parsed && typeof parsed.lastSetAt !== "number") parsed.lastSetAt = parsed.startedAt ?? Date.now();
         setSession(parsed);
       } catch {}
     }
@@ -112,7 +116,7 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
     setSession({
       routineId, routineName,
       exercises: exercises.map((e) => ({ restSeconds: 90, ...e, uid: e.uid || newExerciseUid() })),
-      startedAt: Date.now(), restEndAt: null, restForExIdx: null,
+      startedAt: Date.now(), restEndAt: null, restForExIdx: null, lastSetAt: Date.now(),
     });
   }, []);
 
@@ -161,10 +165,13 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       }
       if (current.sets[setIdx + 1]?.set_type === "dropset") shouldRest = false;
 
-      if (wasDone || !shouldRest) {
-        return { ...prev, exercises };
-      }
-      return { ...prev, exercises, restEndAt: Date.now() + exRest * 1000, restForExIdx: exIdx };
+      if (wasDone) return { ...prev, exercises };
+
+      // Marcar una serie es la señal de que sigue entrenando: reinicia la cuenta del
+      // aviso de "entrenamiento abierto". Desmarcarla no cuenta.
+      const lastSetAt = Date.now();
+      if (!shouldRest) return { ...prev, exercises, lastSetAt };
+      return { ...prev, exercises, lastSetAt, restEndAt: lastSetAt + exRest * 1000, restForExIdx: exIdx };
     });
   }, []);
 

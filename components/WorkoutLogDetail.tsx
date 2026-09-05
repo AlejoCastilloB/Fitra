@@ -3,7 +3,7 @@
 import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import Link from "next/link";
-import { ChevronLeft, Clock, Weight, Layers } from "lucide-react";
+import { ChevronLeft, Clock, Weight, Layers, NotebookPen } from "lucide-react";
 import WorkoutLogMenu from "@/components/WorkoutLogMenu";
 import { formatDurationLabel } from "@/lib/formatDuration";
 
@@ -15,9 +15,11 @@ type MuscleDistItem = { muscle: string; pct: number };
 
 export default function WorkoutLogDetail({
   workoutLogId, routineName, date, durationSec, totalVolume, totalSets, muscleDistribution, exercises, exercisesForMenu,
+  notes, photoUrl,
 }: {
   workoutLogId: string; routineName: string; date: string; durationSec: number; totalVolume: number; totalSets: number;
   muscleDistribution: MuscleDistItem[]; exercises: ExerciseGroup[];
+  notes: string | null; photoUrl: string | null;
   exercisesForMenu: { exercise_id: string; name: string; measurement_type: string; sets: SetRow[] }[];
 }) {
   const palette = usePalette();
@@ -46,6 +48,17 @@ export default function WorkoutLogDetail({
         <StatItem icon={<Weight size={15} />} value={`${Math.round(totalVolume).toLocaleString("es-CO")} kg`} label="Volumen" />
         <StatItem icon={<Layers size={15} />} value={`${totalSets}`} label="Series efectivas" />
       </div>
+
+      {photoUrl && (
+        <img src={photoUrl} alt="" style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 14, marginBottom: 22 }} />
+      )}
+
+      {notes && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={sectionLabel}><NotebookPen size={13} style={{ verticalAlign: -2, marginRight: 5 }} />Notas</div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: palette.ink, whiteSpace: "pre-wrap" }}>{notes}</p>
+        </div>
+      )}
 
       {muscleDistribution.length > 0 && (
         <div style={{ marginBottom: 26 }}>

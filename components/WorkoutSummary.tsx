@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import type { LiveExercise } from "@/lib/workoutSession";
-import { Camera, Flame, Save, Trophy } from "lucide-react";
+import { Camera, Check, Clock, Flame, NotebookPen, Save, Trophy } from "lucide-react";
 import { formatDurationLabel } from "@/lib/formatDuration";
 
 const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
@@ -33,6 +33,17 @@ export default function WorkoutSummary({
   const [sharing, setSharing] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  // La duración y las notas se pueden tocar aquí mismo: pasa seguido que uno olvide
+  // cerrar la sesión y el cronómetro siga corriendo horas de más.
+  const [editedDurationSec, setEditedDurationSec] = useState(durationSec);
+  const [hours, setHours] = useState(Math.floor(durationSec / 3600));
+  const [minutes, setMinutes] = useState(Math.round((durationSec % 3600) / 60));
+  const [notes, setNotes] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsSaved, setDetailsSaved] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   const [showSaveRoutine, setShowSaveRoutine] = useState(false);
   const [newRoutineName, setNewRoutineName] = useState(suggestedRoutineName);
@@ -46,13 +57,45 @@ export default function WorkoutSummary({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingPhoto(true);
+    setPhotoError(null);
+
     const { data: auth } = await supabase.auth.getUser();
-    const path = `${auth.user!.id}/${workoutLogId}.jpg`;
-    await supabase.storage.from("food-photos").upload(path, file, { contentType: file.type, upsert: true });
+    const uid = auth.user?.id;
+    if (!uid) { setPhotoError("No pudimos subir la foto, intenta de nuevo."); setUploadingPhoto(false); return; }
+
+    const path = `${uid}/${workoutLogId}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from("food-photos").upload(path, file, { contentType: file.type, upsert: true });
+    if (uploadError) { setPhotoError("No pudimos subir la foto, intenta de nuevo."); setUploadingPhoto(false); return; }
+
     const { data: pub } = supabase.storage.from("food-photos").getPublicUrl(path);
-    await supabase.from("workout_logs").update({ photo_url: pub.publicUrl }).eq("id", workoutLogId);
+    const { error: saveError } = await supabase.from("workout_logs")
+      .update({ photo_url: pub.publicUrl }).eq("id", workoutLogId);
+    if (saveError) { setPhotoError("La foto subió pero no quedó guardada en el entreno."); setUploadingPhoto(false); return; }
+
     setPhotoUrl(pub.publicUrl);
     setUploadingPhoto(false);
+  }
+
+  async function saveDetails() {
+    if (savingDetails) return;
+    setSavingDetails(true);
+    setDetailsError(null);
+
+    const total = Math.max(0, hours) * 3600 + Math.max(0, minutes) * 60;
+    const { error } = await supabase.from("workout_logs")
+      .update({ notes: notes.trim() || null, duration_sec: total })
+      .eq("id", workoutLogId);
+
+    if (error) {
+      setDetailsError("No pudimos guardarlo, intenta de nuevo.");
+      setSavingDetails(false);
+      return;
+    }
+
+    setEditedDurationSec(total);
+    setDetailsSaved(true);
+    setSavingDetails(false);
   }
 
   async function saveAsRoutine() {
@@ -168,6 +211,7 @@ export default function WorkoutSummary({
             <Camera size={14} /> {uploadingPhoto ? "Subiendo..." : "Agregar foto (opcional)"}
           </button>
         )}
+        {photoError && <p style={{ fontSize: 11.5, color: "#f87171", marginTop: -12, marginBottom: 14 }}>{photoError}</p>}
 
         <div style={{ fontSize: 38, fontWeight: 900, lineHeight: 1 }}>{volume.toLocaleString("es-CO")}</div>
         <div style={{ fontSize: 13, color: palette.inkDim, marginBottom: 18 }}>kg de volumen total</div>
@@ -179,7 +223,7 @@ export default function WorkoutSummary({
 
         <div style={{ display: "flex", justifyContent: "center", gap: 24 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>{formatDurationLabel(durationSec)}</div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{formatDurationLabel(editedDurationSec)}</div>
             <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Duración</div>
           </div>
           <div>
@@ -216,6 +260,59 @@ export default function WorkoutSummary({
             </div>
           ))}
         </div>
+      </div>
+
+      <div style={{ ...palette.glassPanel, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+          <NotebookPen size={14} /> Notas del entrenamiento
+        </div>
+        <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 12, lineHeight: 1.5 }}>
+          Opcional. Cómo te sentiste, qué te costó, qué ajustarías la próxima vez.
+        </p>
+
+        <textarea
+          value={notes}
+          onChange={(e) => { setNotes(e.target.value); setDetailsSaved(false); }}
+          rows={3}
+          placeholder="Hoy pesado, el hombro molestó en press. Bajar el peso la próxima."
+          style={{
+            width: "100%", padding: "10px 12px", borderRadius: 11, resize: "vertical",
+            border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
+            fontSize: 13.5, fontFamily: "inherit", lineHeight: 1.5, marginBottom: 14,
+          }}
+        />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+          <Clock size={14} /> Duración
+        </div>
+        <p style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 10, lineHeight: 1.5 }}>
+          Si se te quedó la sesión abierta, corrígela aquí.
+        </p>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <DurationField value={hours} onChange={(v) => { setHours(v); setDetailsSaved(false); }} suffix="h" max={23} palette={palette} />
+          <DurationField value={minutes} onChange={(v) => { setMinutes(v); setDetailsSaved(false); }} suffix="min" max={59} palette={palette} />
+          <span style={{ fontSize: 11.5, color: palette.inkDim }}>
+            {formatDurationLabel(Math.max(0, hours) * 3600 + Math.max(0, minutes) * 60)}
+          </span>
+        </div>
+
+        {detailsError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{detailsError}</p>}
+
+        <button
+          onClick={saveDetails}
+          disabled={savingDetails || detailsSaved}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%",
+            padding: 12, borderRadius: 11, border: `1px solid ${palette.accent}55`,
+            background: detailsSaved ? "transparent" : `${palette.accent}18`,
+            color: detailsSaved ? palette.inkDim : palette.accent,
+            fontWeight: 700, fontSize: 13, cursor: detailsSaved ? "default" : "pointer",
+            opacity: savingDetails ? 0.6 : 1,
+          }}
+        >
+          {detailsSaved ? <><Check size={15} /> Guardado</> : savingDetails ? "Guardando..." : "Guardar notas y duración"}
+        </button>
       </div>
 
       <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
@@ -261,6 +358,36 @@ export default function WorkoutSummary({
       <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>
         Volver a Inicio
       </button>
+    </div>
+  );
+}
+
+/** Campo de horas/minutos. Sin cero anclado: se puede dejar vacío y escribir directo. */
+function DurationField({
+  value, onChange, suffix, max, palette,
+}: { value: number; onChange: (v: number) => void; suffix: string; max: number; palette: ReturnType<typeof usePalette> }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5, padding: "9px 12px", borderRadius: 11,
+      border: `1px solid ${palette.panelBorder}`, background: palette.inputBg,
+    }}>
+      <input
+        type="number" inputMode="numeric" min={0} max={max}
+        value={value === 0 ? "" : String(value)}
+        placeholder="0"
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") return onChange(0);
+          const n = parseInt(raw, 10);
+          if (Number.isNaN(n)) return;
+          onChange(Math.max(0, Math.min(max, n)));
+        }}
+        style={{
+          width: 40, border: "none", background: "none", color: palette.ink,
+          fontSize: 15, fontWeight: 700, fontFamily: "inherit", textAlign: "right", padding: 0, outline: "none",
+        }}
+      />
+      <span style={{ fontSize: 12, color: palette.inkDim }}>{suffix}</span>
     </div>
   );
 }

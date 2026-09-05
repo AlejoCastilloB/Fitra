@@ -9,7 +9,7 @@
 export async function buildWorkoutLogView(db: any, logId: string) {
   const { data: log } = await db
     .from("workout_logs")
-    .select("id, client_id, date, duration_sec, total_volume, routine_id, routines(name)")
+    .select("id, client_id, date, duration_sec, total_volume, routine_id, notes, photo_url, routines(name)")
     .eq("id", logId)
     .maybeSingle();
 
@@ -67,6 +67,8 @@ export async function buildWorkoutLogView(db: any, logId: string) {
     routineName: (log as any).routines?.name || "Entreno libre",
     date: log.date as string,
     durationSec: (log.duration_sec ?? 0) as number,
+    notes: (log.notes ?? null) as string | null,
+    photoUrl: (log.photo_url ?? null) as string | null,
     totalVolume: (log.total_volume ?? 0) as number,
     totalSets,
     muscleDistribution,
