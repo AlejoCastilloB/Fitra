@@ -141,7 +141,7 @@ export default function EmptyWorkoutPage() {
           {session.exercises.map((ex, exIdx) => {
             const showRestHere = session.restForExIdx === exIdx && restLeft > 0;
             return (
-              <div key={ex.id} style={{ ...palette.glassPanel, padding: 16, marginBottom: 14 }}>
+              <div key={ex.uid} style={{ ...palette.glassPanel, padding: 16, marginBottom: 14 }}>
                 {/* Tocar la imagen o el nombre abre la ficha del ejercicio; el bote lo saca
                     del entreno. */}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -262,7 +262,7 @@ export default function EmptyWorkoutPage() {
 
       {showPicker && (
         <ExercisePicker
-          alreadyAddedIds={session.exercises.map((ex) => ex.id)}
+          addedCounts={session.exercises.reduce<Record<string, number>>((acc, ex) => ({ ...acc, [ex.id]: (acc[ex.id] ?? 0) + 1 }), {})}
           onClose={() => setShowPicker(false)}
           onPick={(ex) => {
             addExercise({

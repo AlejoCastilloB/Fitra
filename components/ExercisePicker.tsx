@@ -16,11 +16,12 @@ export type PickableExercise = FoundExercise;
  * combinables entre sí. Solo consulta la tabla `exercises`.
  */
 export default function ExercisePicker({
-  onPick, onClose, alreadyAddedIds = [],
+  onPick, onClose, addedCounts = {},
 }: {
   onPick: (exercise: PickableExercise) => void;
   onClose: () => void;
-  alreadyAddedIds?: string[];
+  /** Cuántas veces está ya cada ejercicio. Solo informa: repetir está permitido. */
+  addedCounts?: Record<string, number>;
 }) {
   const palette = usePalette();
   const [search, setSearch] = useState("");
@@ -108,15 +109,14 @@ export default function ExercisePicker({
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
         {results.map((r) => {
-          const already = alreadyAddedIds.includes(r.id);
+          const veces = addedCounts[r.id] ?? 0;
           return (
             <button
-              key={r.id} onClick={() => { if (!already) onPick(r); }} disabled={already}
+              key={r.id} onClick={() => onPick(r)}
               style={{
                 display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px",
-                borderRadius: 14, background: already ? `${palette.accent}18` : palette.inputBg,
-                border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: already ? "default" : "pointer",
-                opacity: already ? 0.5 : 1,
+                borderRadius: 14, background: veces > 0 ? `${palette.accent}18` : palette.inputBg,
+                border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: "pointer",
               }}
             >
               <GifThumb src={r.media_url} size={44} />
@@ -126,7 +126,13 @@ export default function ExercisePicker({
                   {[r.muscle_group ? muscleLabel(r.muscle_group) : null, r.equipment ? equipmentLabel(r.equipment) : null].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              {!already && <Plus size={17} color={palette.accent} style={{ flexShrink: 0 }} />}
+              {veces > 0 && (
+                <span style={{
+                  flexShrink: 0, fontSize: 11, fontWeight: 700, color: palette.accent,
+                  background: `${palette.accent}22`, borderRadius: 999, padding: "2px 8px",
+                }}>×{veces}</span>
+              )}
+              <Plus size={17} color={palette.accent} style={{ flexShrink: 0 }} />
             </button>
           );
         })}

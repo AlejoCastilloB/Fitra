@@ -59,25 +59,33 @@ export async function finishWorkoutSession({
       if (setLogsError) throw setLogsError;
     }
 
-    let prHit: string | null = null;
-    if (bestWeight > 0) {
-      const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", ex.id).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
-      if (!prevPr || bestWeight > prevPr.value) {
-        const { error: prError } = await supabase.from("personal_records").insert({ client_id: uid, exercise_id: ex.id, type: "1rm", value: bestWeight, workout_log_id: workoutLog.id });
-        if (prError) throw prError;
-        prHit = ex.name;
-      }
-    }
+    return { volume: exVolume, breakdown: localBreakdown, exerciseId: ex.id, exerciseName: ex.name, bestWeight };
+  }));
 
-    return { volume: exVolume, breakdown: localBreakdown, prHit };
+  // Los récords se revisan una sola vez por ejercicio del catálogo. Un mismo ejercicio
+  // puede aparecer varias veces en la rutina (pesado al principio, ligero al final), y
+  // haciéndolo dentro del bucle de arriba las dos apariciones competían entre sí en
+  // paralelo y podían insertar dos récords para el mismo levantamiento.
+  const bestByExercise = new Map<string, { name: string; weight: number }>();
+  for (const r of results) {
+    if (r.bestWeight <= 0) continue;
+    const current = bestByExercise.get(r.exerciseId);
+    if (!current || r.bestWeight > current.weight) bestByExercise.set(r.exerciseId, { name: r.exerciseName, weight: r.bestWeight });
+  }
+
+  const prHits = await Promise.all([...bestByExercise.entries()].map(async ([exerciseId, { name, weight }]) => {
+    const { data: prevPr } = await supabase.from("personal_records").select("value").eq("client_id", uid).eq("exercise_id", exerciseId).eq("type", "1rm").order("value", { ascending: false }).limit(1).single();
+    if (prevPr && weight <= prevPr.value) return null;
+    const { error: prError } = await supabase.from("personal_records").insert({ client_id: uid, exercise_id: exerciseId, type: "1rm", value: weight, workout_log_id: workoutLog.id });
+    if (prError) throw prError;
+    return name;
   }));
 
   let totalVolume = 0;
-  const prsHit: string[] = [];
+  const prsHit: string[] = prHits.filter((n): n is string => !!n);
   const breakdown: Record<string, number> = { normal: 0, warmup: 0, dropset: 0, failure: 0 };
   for (const r of results) {
     totalVolume += r.volume;
-    if (r.prHit) prsHit.push(r.prHit);
     for (const [k, v] of Object.entries(r.breakdown)) breakdown[k] = (breakdown[k] ?? 0) + v;
   }
 
