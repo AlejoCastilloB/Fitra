@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import Link from "next/link";
-import { Pencil, Sparkles, ChevronRight } from "lucide-react";
+import { Pencil, Sparkles, Zap, ChevronRight } from "lucide-react";
 
 export default function RoutinesContent() {
   const palette = usePalette();
@@ -30,23 +30,24 @@ export default function RoutinesContent() {
 
   return (
     <div>
-      <Link href="/app/routines/new" style={{
-        display: "flex", alignItems: "center", gap: 14, padding: 18, borderRadius: 18, marginBottom: 20,
-        background: `linear-gradient(135deg, ${palette.accent}22, ${palette.accentDeep}22)`,
-        border: `1px solid ${palette.accent}44`, textDecoration: "none", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          width: 46, height: 46, borderRadius: 14, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`,
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>
-          <Sparkles size={21} color={palette.bg} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: palette.ink }}>Nueva rutina</div>
-          <div style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 1 }}>Arma la tuya ejercicio por ejercicio</div>
-        </div>
-        <ChevronRight size={18} color={palette.inkDim} />
-      </Link>
+      {/* Las dos formas de arrancar algo nuevo, juntas: armar una rutina para repetirla,
+          o entrenar sobre la marcha. El entreno vacío vivía en el botón flotante, donde
+          costaba encontrarlo y no se leía como hermano de "nueva rutina". */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+        <StartCard
+          href="/app/routines/new"
+          icon={<Sparkles size={20} color={palette.bg} />}
+          title="Nueva rutina"
+          subtitle="Ármala ejercicio por ejercicio"
+          highlighted
+        />
+        <StartCard
+          href="/app/workout/empty"
+          icon={<Zap size={20} color={palette.accent} />}
+          title="Entreno vacío"
+          subtitle="Empieza y ve agregando"
+        />
+      </div>
 
       {loading ? (
         <p style={{ fontSize: 13, color: palette.inkDim, textAlign: "center", padding: 20 }}>Cargando...</p>
@@ -82,5 +83,36 @@ export default function RoutinesContent() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Tarjeta de "empezar algo": rutina nueva o entreno vacío. */
+function StartCard({
+  href, icon, title, subtitle, highlighted,
+}: { href: string; icon: React.ReactNode; title: string; subtitle: string; highlighted?: boolean }) {
+  const palette = usePalette();
+  return (
+    <Link href={href} style={{
+      display: "flex", flexDirection: "column", gap: 8, padding: 16, borderRadius: 18,
+      textDecoration: "none",
+      background: highlighted
+        ? `linear-gradient(135deg, ${palette.accent}22, ${palette.accentDeep}22)`
+        : palette.inputBg,
+      border: `1px solid ${highlighted ? `${palette.accent}44` : palette.panelBorder}`,
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 13, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: highlighted
+          ? `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`
+          : `${palette.accent}1F`,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: palette.ink }}>{title}</div>
+        <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2, lineHeight: 1.35 }}>{subtitle}</div>
+      </div>
+    </Link>
   );
 }
