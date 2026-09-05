@@ -12,6 +12,9 @@ export type LiveSet = {
   target?: SetTarget;
 };
 export type LiveExercise = {
+  /** Id de ESTA fila del entreno. El mismo ejercicio puede estar varias veces en una
+   *  rutina, así que `id` (el del catálogo) no sirve para distinguirlas. */
+  uid: string;
   id: string; name: string; media_url?: string; measurement_type: string; notes?: string;
   description?: string; equipment?: string; muscle_group?: string; instructions?: string[];
   restSeconds?: number; supersetGroup?: number;
@@ -28,7 +31,7 @@ type Ctx = {
   /** false hasta que se leyó la sesión persistida en localStorage. */
   hydrated: boolean;
   startSession: (routineId: string, routineName: string, exercises: LiveExercise[]) => void;
-  addExercise: (exercise: Omit<LiveExercise, "sets"> & { sets?: LiveSet[] }) => void;
+  addExercise: (exercise: Omit<LiveExercise, "sets" | "uid"> & { sets?: LiveSet[] }) => void;
   removeExercise: (exIdx: number) => void;
   toggleSetDone: (exIdx: number, setIdx: number, restSeconds: number) => void;
   updateSet: (exIdx: number, setIdx: number, field: string, value: any) => void;
@@ -43,6 +46,9 @@ type Ctx = {
 
 const WorkoutSessionContext = createContext<Ctx | null>(null);
 const STORAGE_KEY = "fittrack_active_workout";
+
+let exerciseUidCounter = 0;
+export function newExerciseUid() { return `ex_${Date.now().toString(36)}_${exerciseUidCounter++}`; }
 
 // Las series nuevas nacen SIN valores: el número sugerido va en `target`, que se pinta en
 // gris dentro del campo. Así el campo se puede dejar en blanco y escribir directo, en vez
@@ -80,6 +86,9 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
       try {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.restForExIdx === undefined) parsed.restForExIdx = null;
+        // Una sesión guardada antes de que existieran los uid no los trae; sin esto la
+        // pantalla se quedaría sin keys al retomarla.
+        if (parsed?.exercises) parsed.exercises = parsed.exercises.map((e: any) => ({ ...e, uid: e.uid || newExerciseUid() }));
         setSession(parsed);
       } catch {}
     }
@@ -102,17 +111,17 @@ export function WorkoutSessionProvider({ children }: { children: React.ReactNode
   const startSession = useCallback((routineId: string, routineName: string, exercises: LiveExercise[]) => {
     setSession({
       routineId, routineName,
-      exercises: exercises.map((e) => ({ restSeconds: 90, ...e })),
+      exercises: exercises.map((e) => ({ restSeconds: 90, ...e, uid: e.uid || newExerciseUid() })),
       startedAt: Date.now(), restEndAt: null, restForExIdx: null,
     });
   }, []);
 
   // Agrega un ejercicio a la sesión en curso (entrenamiento vacío / sobre la marcha).
-  const addExercise = useCallback((exercise: Omit<LiveExercise, "sets"> & { sets?: LiveSet[] }) => {
+  // Sin comprobar duplicados: repetir un ejercicio en el mismo entreno es normal.
+  const addExercise = useCallback((exercise: Omit<LiveExercise, "sets" | "uid"> & { sets?: LiveSet[] }) => {
     setSession((prev) => {
       if (!prev) return prev;
-      if (prev.exercises.some((e) => e.id === exercise.id)) return prev;
-      const next: LiveExercise = { restSeconds: 90, ...exercise, sets: exercise.sets ?? [] };
+      const next: LiveExercise = { restSeconds: 90, ...exercise, uid: newExerciseUid(), sets: exercise.sets ?? [] };
       if (next.sets.length === 0) next.sets = [emptySetFor(next)];
       return { ...prev, exercises: [...prev.exercises, next] };
     });

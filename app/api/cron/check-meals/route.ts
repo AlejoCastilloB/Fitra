@@ -84,22 +84,34 @@ export async function GET(req: Request) {
 
   const now = new Date();
   const { users, hasConfigColumn } = await loadUsers(admin);
-  if (users.length === 0) return NextResponse.json({ ok: true, sent: 0, hasConfigColumn });
+  if (users.length === 0) {
+    // Sin zona horaria guardada no se puede saber qué hora es para esa persona. La app la
+    // guarda sola al entrar (TimezoneSync), así que esto solo pasa con cuentas que nunca
+    // abrieron la app después de que existiera esa columna.
+    return NextResponse.json({ ok: true, sent: 0, hasConfigColumn, aviso: "ningún usuario tiene zona horaria guardada" });
+  }
 
   let sent = 0;
   const problems: { slot: string; error: string }[] = [];
+
+  // Recuento agregado de por qué NO se mandó cada aviso. Sin esto, un día sin
+  // notificaciones es indistinguible de un fallo: no se sabe si es que no tocaba, si ya
+  // se había enviado, si la comida ya estaba registrada o si no hay ningún dispositivo
+  // suscrito. Son números, no datos de nadie.
+  const skipped = { sinAvisoAEstaHora: 0, yaEnviado: 0, yaRegistrado: 0, sinSuscripciones: 0, zonaHorariaInvalida: 0 };
 
   for (const u of users as any[]) {
     let local;
     try {
       local = localParts(u.timezone, now);
     } catch {
+      skipped.zonaHorariaInvalida++;
       continue;
     }
 
     const slots = hasConfigColumn ? parseMealSlots(u.meal_reminders) : DEFAULT_MEAL_SLOTS;
     const due = dueReminder(slots, local.hour * 60 + local.minute);
-    if (!due) continue;
+    if (!due) { skipped.sinAvisoAEstaHora++; continue; }
 
     // Reservar el aviso ANTES de mandarlo, y solo mandarlo si la reserva se guardó.
     // Antes esto era un upsert cuyo error se ignoraba: si la escritura fallaba, el aviso
@@ -109,11 +121,12 @@ export async function GET(req: Request) {
     const claim = await claimReminder(admin, u.id, local.dateKey, due.dedupeKey);
     if (!claim.claimed) {
       if (claim.error) problems.push({ slot: due.dedupeKey, error: claim.error });
+      else skipped.yaEnviado++;
       continue;
     }
 
     const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", u.id);
-    if (!subs || subs.length === 0) continue;
+    if (!subs || subs.length === 0) { skipped.sinSuscripciones++; continue; }
 
     // Si ya registró algo en la franja que cubre esta comida, no hace falta recordárselo.
     const window = logWindowFor(slots, due.slot.key);
@@ -130,7 +143,7 @@ export async function GET(req: Request) {
       const minutes = l.hour * 60 + l.minute;
       return minutes >= window.startMin && minutes < window.endMin;
     });
-    if (alreadyLogged) continue;
+    if (alreadyLogged) { skipped.yaRegistrado++; continue; }
 
     for (const sub of subs) {
       try {
@@ -147,7 +160,10 @@ export async function GET(req: Request) {
     }
   }
 
-  // `problems` sale en la respuesta a propósito: si la reserva falla, los avisos se
-  // paran (mejor silencio que spam) y el motivo queda a la vista al abrir la URL del cron.
-  return NextResponse.json({ ok: true, sent, hasConfigColumn, problems });
+  // Todo esto sale en la respuesta a propósito: abriendo la URL del cron se ve de un
+  // vistazo si hubo un fallo (`problems`) o simplemente no tocaba mandar nada (`skipped`).
+  return NextResponse.json({
+    ok: true, sent, revisados: users.length, hasConfigColumn, problems, skipped,
+    ahora: now.toISOString(),
+  });
 }

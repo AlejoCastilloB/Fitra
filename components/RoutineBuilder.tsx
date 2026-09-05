@@ -17,7 +17,20 @@ import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 
 type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
-type PickedExercise = { id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number; restSeconds?: number };
+/** Un ejercicio dentro de la rutina.
+ *
+ *  `id` es el del catálogo y `uid` el de ESTA fila. Hacen falta los dos porque el mismo
+ *  ejercicio puede aparecer varias veces en una rutina (press de banca al principio y otra
+ *  vez al final, por ejemplo). Antes todo se identificaba por `id`, así que repetirlo hacía
+ *  que las dos filas compartieran series, notas y descanso, y React las mezclaba al
+ *  reordenar por tener la misma key. */
+type PickedExercise = { uid: string; id: string; name: string; media_url?: string; measurement_type: string; sets: SetRow[]; notes?: string; supersetGroup?: number; restSeconds?: number };
+
+/** Como llega desde la base de datos, todavía sin id de fila. */
+type IncomingExercise = Omit<PickedExercise, "uid">;
+
+let uidCounter = 0;
+function newUid() { return `row_${Date.now().toString(36)}_${uidCounter++}`; }
 
 export const DEFAULT_REST_SECONDS = 90;
 
@@ -42,7 +55,7 @@ export default function RoutineBuilder({
   initialName?: string;
   initialClientId?: string;
   initialNotes?: string;
-  initialExercises?: PickedExercise[];
+  initialExercises?: IncomingExercise[];
   initialDays?: number[];
   role?: "trainer" | "client";
   clients?: { user_id: string; display_name: string | null; email: string | null }[];
@@ -61,7 +74,7 @@ export default function RoutineBuilder({
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
   const [equipmentFilter, setEquipmentFilter] = useState("");
-  const [picked, setPicked] = useState<PickedExercise[]>(initialExercises);
+  const [picked, setPicked] = useState<PickedExercise[]>(() => initialExercises.map((e) => ({ ...e, uid: newUid() })));
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,27 +97,28 @@ export default function RoutineBuilder({
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
 
   function addExercise(ex: any) {
-    if (picked.some((p) => p.id === ex.id)) return;
-    setPicked([...picked, { id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)], notes: "", restSeconds: DEFAULT_REST_SECONDS }]);
+    // A propósito sin comprobar duplicados: repetir un ejercicio en la misma rutina es
+    // algo que se hace a menudo (una serie pesada al principio y otra ligera al final).
+    setPicked([...picked, { uid: newUid(), id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)], notes: "", restSeconds: DEFAULT_REST_SECONDS }]);
   }
 
   function removeExercise(id: string) {
-    setPicked(picked.filter((p) => p.id !== id));
+    setPicked(picked.filter((p) => p.uid !== id));
   }
 
   function updateExerciseNotes(id: string, notes: string) {
-    setPicked(picked.map((p) => p.id === id ? { ...p, notes } : p));
+    setPicked(picked.map((p) => p.uid === id ? { ...p, notes } : p));
   }
 
   function toggleSupersetMember(exId: string, otherId: string) {
     setPicked((prev) => {
-      const ex = prev.find((p) => p.id === exId)!;
-      const other = prev.find((p) => p.id === otherId)!;
+      const ex = prev.find((p) => p.uid === exId)!;
+      const other = prev.find((p) => p.uid === otherId)!;
       const linked = ex.supersetGroup != null && ex.supersetGroup === other.supersetGroup;
 
       if (linked) {
         const groupId = ex.supersetGroup;
-        const afterUnlink = prev.map((p) => p.id === otherId ? { ...p, supersetGroup: undefined } : p);
+        const afterUnlink = prev.map((p) => p.uid === otherId ? { ...p, supersetGroup: undefined } : p);
         const remaining = afterUnlink.filter((p) => p.supersetGroup === groupId);
         if (remaining.length <= 1) {
           return afterUnlink.map((p) => p.supersetGroup === groupId ? { ...p, supersetGroup: undefined } : p);
@@ -113,25 +127,25 @@ export default function RoutineBuilder({
       } else {
         const usedGroups = prev.map((p) => p.supersetGroup).filter((g): g is number => g != null);
         const newGroup = ex.supersetGroup ?? other.supersetGroup ?? (usedGroups.length ? Math.max(...usedGroups) + 1 : 1);
-        return prev.map((p) => (p.id === exId || p.id === otherId) ? { ...p, supersetGroup: newGroup } : p);
+        return prev.map((p) => (p.uid === exId || p.uid === otherId) ? { ...p, supersetGroup: newGroup } : p);
       }
     });
   }
 
   function updateExerciseRest(exId: string, seconds: number) {
-    setPicked((prev) => prev.map((p) => p.id === exId ? { ...p, restSeconds: Math.max(0, seconds) } : p));
+    setPicked((prev) => prev.map((p) => p.uid === exId ? { ...p, restSeconds: Math.max(0, seconds) } : p));
   }
 
   function addSet(exId: string) {
-    setPicked(picked.map((p) => p.id === exId ? { ...p, sets: [...p.sets, emptySet(p.measurement_type)] } : p));
+    setPicked(picked.map((p) => p.uid === exId ? { ...p, sets: [...p.sets, emptySet(p.measurement_type)] } : p));
   }
 
   function removeSet(exId: string, idx: number) {
-    setPicked(picked.map((p) => p.id === exId ? { ...p, sets: p.sets.filter((_, i) => i !== idx) } : p));
+    setPicked(picked.map((p) => p.uid === exId ? { ...p, sets: p.sets.filter((_, i) => i !== idx) } : p));
   }
 
   function updateSet(exId: string, idx: number, field: string, value: any) {
-    setPicked(picked.map((p) => p.id === exId ? { ...p, sets: p.sets.map((s, i) => i === idx ? { ...s, [field]: value } : s) } : p));
+    setPicked(picked.map((p) => p.uid === exId ? { ...p, sets: p.sets.map((s, i) => i === idx ? { ...s, [field]: value } : s) } : p));
   }
 
   function handleDragStart(idx: number) { setDragIndex(idx); }
@@ -280,13 +294,15 @@ export default function RoutineBuilder({
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
             {results.map((r) => {
-              const already = picked.some((p) => p.id === r.id);
+              // Se puede añadir el mismo ejercicio más de una vez, así que ya no se
+              // deshabilita: el contador dice cuántas veces está puesto.
+              const veces = picked.filter((p) => p.id === r.id).length;
               return (
-                <button key={r.id} onClick={() => addExercise(r)} disabled={already} style={{
+                <button key={r.id} onClick={() => addExercise(r)} style={{
                   display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px",
-                  borderRadius: 10, background: already ? `${palette.accent}18` : palette.inputBg,
-                  border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: already ? "default" : "pointer",
-                  fontSize: 12.5, opacity: already ? 0.5 : 1,
+                  borderRadius: 10, background: veces > 0 ? `${palette.accent}18` : palette.inputBg,
+                  border: `1px solid ${palette.panelBorder}`, color: palette.ink, cursor: "pointer",
+                  fontSize: 12.5,
                 }}>
                   <GifThumb src={r.media_url} size={30} />
                   <span style={{ flex: 1, minWidth: 0 }}>
@@ -295,7 +311,13 @@ export default function RoutineBuilder({
                       {[r.muscle_group ? muscleLabel(r.muscle_group) : null, r.equipment ? equipmentLabel(r.equipment) : null].filter(Boolean).join(" · ")}
                     </span>
                   </span>
-                  {!already && <Plus size={13} color={palette.accent} style={{ flexShrink: 0 }} />}
+                  {veces > 0 && (
+                    <span style={{
+                      flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: palette.accent,
+                      background: `${palette.accent}22`, borderRadius: 999, padding: "2px 7px",
+                    }}>×{veces}</span>
+                  )}
+                  <Plus size={13} color={palette.accent} style={{ flexShrink: 0 }} />
                 </button>
               );
             })}
@@ -355,9 +377,9 @@ export default function RoutineBuilder({
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
           {picked.map((ex, idx) => {
             const groupColor = ex.supersetGroup ? supersetColor(ex.supersetGroup) : null;
-            const groupMates = ex.supersetGroup ? picked.filter((p) => p.supersetGroup === ex.supersetGroup && p.id !== ex.id) : [];
+            const groupMates = ex.supersetGroup ? picked.filter((p) => p.supersetGroup === ex.supersetGroup && p.uid !== ex.uid) : [];
             return (
-              <div key={ex.id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
+              <div key={ex.uid} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
                 style={{
                   ...palette.glassPanel, padding: 14, opacity: dragIndex === idx ? 0.4 : 1, cursor: "grab",
                   borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
@@ -382,14 +404,14 @@ export default function RoutineBuilder({
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     {role === "client" && (
-                      <button onClick={() => setOpenNotesFor(openNotesFor === ex.id ? null : ex.id)} style={{
+                      <button onClick={() => setOpenNotesFor(openNotesFor === ex.uid ? null : ex.uid)} style={{
                         background: "none", border: "none", cursor: "pointer",
                         color: ex.notes ? palette.accent : palette.inkDim, fontSize: 11, fontWeight: 700,
                       }}>
                         {ex.notes ? "Nota ✓" : "+ Nota"}
                       </button>
                     )}
-                    <button onClick={() => removeExercise(ex.id)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
+                    <button onClick={() => removeExercise(ex.uid)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <X size={16} />
                     </button>
                   </div>
@@ -397,7 +419,7 @@ export default function RoutineBuilder({
 
                 {picked.length > 1 && (
                   <button
-                    onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setSupersetPopoverFor({ exId: ex.id, x: r.left, y: r.bottom }); }}
+                    onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setSupersetPopoverFor({ exId: ex.uid, x: r.left, y: r.bottom }); }}
                     style={{
                       display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, fontWeight: 700, padding: "4px 9px",
                       borderRadius: 999, cursor: "pointer", marginBottom: 10,
@@ -414,16 +436,16 @@ export default function RoutineBuilder({
                 {role === "trainer" && (
                   <textarea
                     value={ex.notes}
-                    onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
+                    onChange={(e) => updateExerciseNotes(ex.uid, e.target.value)}
                     placeholder="Notas para el cliente: técnica, tempo, foco..."
                     style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical", fontSize: 12.5, marginBottom: 10 }}
                   />
                 )}
 
-                {role === "client" && openNotesFor === ex.id && (
+                {role === "client" && openNotesFor === ex.uid && (
                   <textarea
                     value={ex.notes}
-                    onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
+                    onChange={(e) => updateExerciseNotes(ex.uid, e.target.value)}
                     placeholder="Ej: mantener espalda recta, tempo 2-1-2, foco en la fase excéntrica..."
                     style={{ ...inputStyle(palette), minHeight: 50, resize: "vertical", fontSize: 12.5, marginBottom: 10 }}
                   />
@@ -437,7 +459,7 @@ export default function RoutineBuilder({
                   <input
                     type="number" inputMode="numeric" min={0} step={15}
                     value={ex.restSeconds ?? DEFAULT_REST_SECONDS}
-                    onChange={(e) => updateExerciseRest(ex.id, +e.target.value || 0)}
+                    onChange={(e) => updateExerciseRest(ex.uid, +e.target.value || 0)}
                     onKeyDown={(e) => { if (e.key === "-" || e.key === "+" || e.key === "e") e.preventDefault(); }}
                     style={{
                       width: 62, padding: "5px 8px", borderRadius: 8, textAlign: "center",
@@ -467,30 +489,30 @@ export default function RoutineBuilder({
                   const badge = getSetBadge(ex.sets, i, palette.accent);
                   return (
                   <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-                    <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exId: ex.id, setIdx: i, x: r.left, y: r.bottom }); }} style={{
+                    <button onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setEditingType({ exId: ex.uid, setIdx: i, x: r.left, y: r.bottom }); }} style={{
                       width: 26, height: 26, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11,
                       color: badge.color, background: `${badge.color}22`, flexShrink: 0,
                     }}>{badge.text}</button>
                     {ex.measurement_type === "reps_weight" && (
                       <>
-                        <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.id, i, "reps", +e.target.value)} placeholder="reps" style={smallInput(palette)} />
-                        <input type="number" value={s.weight ?? ""} onChange={(e) => updateSet(ex.id, i, "weight", +e.target.value)} placeholder="kg" style={smallInput(palette)} />
+                        <input type="number" value={s.reps ?? ""} onChange={(e) => updateSet(ex.uid, i, "reps", +e.target.value)} placeholder="reps" style={smallInput(palette)} />
+                        <input type="number" value={s.weight ?? ""} onChange={(e) => updateSet(ex.uid, i, "weight", +e.target.value)} placeholder="kg" style={smallInput(palette)} />
                       </>
                     )}
                     {(ex.measurement_type === "time" || ex.measurement_type === "time_distance") && (
-                      <input type="number" value={s.time_sec ?? ""} onChange={(e) => updateSet(ex.id, i, "time_sec", +e.target.value)} placeholder="seg" style={smallInput(palette)} />
+                      <input type="number" value={s.time_sec ?? ""} onChange={(e) => updateSet(ex.uid, i, "time_sec", +e.target.value)} placeholder="seg" style={smallInput(palette)} />
                     )}
                     {(ex.measurement_type === "distance" || ex.measurement_type === "time_distance") && (
-                      <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.id, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput(palette)} />
+                      <input type="number" value={s.distance_m ?? ""} onChange={(e) => updateSet(ex.uid, i, "distance_m", +e.target.value)} placeholder="m" style={smallInput(palette)} />
                     )}
-                    <button onClick={() => removeSet(ex.id, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
+                    <button onClick={() => removeSet(ex.uid, i)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
                   );
                 })}
 
-                <button onClick={() => addSet(ex.id)} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: palette.accent, fontSize: 12, cursor: "pointer", marginTop: 4, padding: 0 }}>
+                <button onClick={() => addSet(ex.uid)} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: palette.accent, fontSize: 12, cursor: "pointer", marginTop: 4, padding: 0 }}>
                   <Plus size={12} /> Agregar serie
                 </button>
               </div>
@@ -550,7 +572,7 @@ export default function RoutineBuilder({
 
       {editingType && (
         <SetTypePopover
-          current={picked.find((p) => p.id === editingType.exId)!.sets[editingType.setIdx].set_type}
+          current={picked.find((p) => p.uid === editingType.exId)!.sets[editingType.setIdx].set_type}
           x={editingType.x} y={editingType.y}
           onSelect={(type) => updateSet(editingType.exId, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
@@ -560,10 +582,10 @@ export default function RoutineBuilder({
       {supersetPopoverFor && (
         <SupersetPopover
           x={supersetPopoverFor.x} y={supersetPopoverFor.y}
-          options={picked.filter((p) => p.id !== supersetPopoverFor.exId).map((p) => ({
-            id: p.id, name: p.name,
-            linked: !!(picked.find((e) => e.id === supersetPopoverFor.exId)?.supersetGroup != null &&
-              picked.find((e) => e.id === supersetPopoverFor.exId)?.supersetGroup === p.supersetGroup),
+          options={picked.filter((p) => p.uid !== supersetPopoverFor.exId).map((p) => ({
+            id: p.uid, name: p.name,
+            linked: !!(picked.find((e) => e.uid === supersetPopoverFor.exId)?.supersetGroup != null &&
+              picked.find((e) => e.uid === supersetPopoverFor.exId)?.supersetGroup === p.supersetGroup),
           }))}
           onToggle={(otherId) => toggleSupersetMember(supersetPopoverFor.exId, otherId)}
           onClose={() => setSupersetPopoverFor(null)}

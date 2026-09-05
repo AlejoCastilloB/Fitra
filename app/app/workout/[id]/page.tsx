@@ -8,7 +8,7 @@ import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { supersetColor } from "@/lib/supersetColors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
-import { useWorkoutSession, LiveExercise } from "@/lib/workoutSession";
+import { useWorkoutSession, newExerciseUid, LiveExercise } from "@/lib/workoutSession";
 import { finishWorkoutSession, type FinishedWorkout } from "@/lib/finishWorkout";
 import { X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
@@ -101,7 +101,10 @@ export default function WorkoutPage() {
       (videoRows ?? []).forEach((r: any) => { videoMap[r.exercise_id] = r.video_url; });
       setVideoLinkMap(videoMap);
 
+      // Cada fila de la rutina lleva su propio uid: el mismo ejercicio puede estar
+      // repetido y hay que poder distinguir una fila de la otra.
       const built: LiveExercise[] = (re ?? []).map((r: any) => ({
+        uid: newExerciseUid(),
         id: r.exercises.id, name: r.exercises.name, media_url: r.exercises.media_url,
         measurement_type: r.exercises.measurement_type, notes: r.notes,
         description: r.exercises.description, equipment: r.exercises.equipment,
@@ -177,9 +180,9 @@ export default function WorkoutPage() {
         .filter((i) => i >= 0);
       const posInGroup = groupIndices.indexOf(exIdx);
       if (posInGroup < groupIndices.length - 1) {
-        const nextExId = session!.exercises[groupIndices[posInGroup + 1]].id;
+        const nextExUid = session!.exercises[groupIndices[posInGroup + 1]].uid;
         setTimeout(() => {
-          document.getElementById(`ex-${nextExId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          document.getElementById(`ex-${nextExUid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 150);
       }
     }
@@ -314,7 +317,7 @@ export default function WorkoutPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
             {preview!.exercises.map((ex) => (
               <button
-                key={ex.id} onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
+                key={ex.uid} onClick={() => setDetailFor({ id: ex.id, name: ex.name })}
                 style={{
                   ...palette.glassPanel, padding: 14, display: "flex", alignItems: "center", gap: 12,
                   width: "100%", textAlign: "left", cursor: "pointer", color: palette.ink,
@@ -412,12 +415,12 @@ export default function WorkoutPage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", marginBottom: 24 }}>
           {session!.exercises.map((ex, exIdx) => {
-            const isOpen = expandedId === ex.id;
+            const isOpen = expandedId === ex.uid;
             const doneInEx = ex.sets.filter((s) => s.done).length;
             const groupColor = ex.supersetGroup != null ? supersetColor(ex.supersetGroup) : null;
             const showRestHere = session!.restForExIdx === exIdx && restLeft > 0;
             return (
-              <div key={ex.id} id={`ex-${ex.id}`} style={{
+              <div key={ex.uid} id={`ex-${ex.uid}`} style={{
                 ...palette.glassPanel, padding: 16, marginBottom: 14,
                 borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
               }}>
@@ -461,7 +464,7 @@ export default function WorkoutPage() {
                   </button>
 
                   <button
-                    onClick={() => setExpandedId(isOpen ? null : ex.id)}
+                    onClick={() => setExpandedId(isOpen ? null : ex.uid)}
                     aria-label={isOpen ? "Ocultar la técnica" : "Ver la técnica"}
                     style={{ background: "none", border: "none", padding: 4, cursor: "pointer", display: "flex", flexShrink: 0 }}
                   >
@@ -601,7 +604,7 @@ export default function WorkoutPage() {
 
       {showPicker && (
         <ExercisePicker
-          alreadyAddedIds={session!.exercises.map((ex) => ex.id)}
+          addedCounts={session!.exercises.reduce<Record<string, number>>((acc, ex) => ({ ...acc, [ex.id]: (acc[ex.id] ?? 0) + 1 }), {})}
           onClose={() => setShowPicker(false)}
           onPick={(ex) => {
             addExercise({
