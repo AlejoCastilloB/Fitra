@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ClientDetailContent from "@/components/ClientDetailContent";
+import { getClientTrainingPanel } from "@/lib/coachClientWorkouts";
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
@@ -21,10 +22,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   if (!client) redirect("/coach/clients");
 
-  const { data: sports } = await supabase
-    .from("client_sports")
-    .select("sport, level, experience, include_in_plan")
-    .eq("client_id", params.id);
+  const [{ data: sports }, training] = await Promise.all([
+    supabase
+      .from("client_sports")
+      .select("sport, level, experience, include_in_plan")
+      .eq("client_id", params.id),
+    getClientTrainingPanel(user.id, params.id),
+  ]);
 
   const users = client.users as unknown as { display_name: string | null; email: string | null };
 
@@ -43,6 +47,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       trainerNotes={client.trainer_notes ?? ""}
       clientId={client.user_id}
       sports={sports ?? []}
+      training={training}
     />
   );
 }

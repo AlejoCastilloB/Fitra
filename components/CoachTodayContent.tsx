@@ -5,14 +5,20 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { localDateKey, toLocalDateKey } from "@/lib/localDate";
-import { BellRing, Check, Clock } from "lucide-react";
+import { BellRing, Check, ChevronRight, Clock, Dumbbell, Weight } from "lucide-react";
 import Link from "next/link";
+import { formatDurationLabel } from "@/lib/formatDuration";
+import type { CoachWorkoutRow } from "@/lib/coachClientWorkouts";
 
 type ClientRow = { user_id: string; status: string; email: string | undefined };
 type ReminderRow = { id: string; note: string; remind_at: string; clientName: string | null };
 
-export default function CoachTodayContent({ clients, activeCount, total, reminders }: {
+export default function CoachTodayContent({
+  clients, activeCount, total, reminders,
+  recentWorkouts, weekWorkouts, weekSeconds, weekActiveClients,
+}: {
   clients: ClientRow[]; activeCount: number; total: number; reminders: ReminderRow[];
+  recentWorkouts: CoachWorkoutRow[]; weekWorkouts: number; weekSeconds: number; weekActiveClients: number;
 }) {
   const palette = usePalette();
   const router = useRouter();
@@ -59,8 +65,8 @@ export default function CoachTodayContent({ clients, activeCount, total, reminde
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
         <StatCard label="Clientes activos" value={activeCount} />
         <StatCard label="Total de clientes" value={total} />
-        <StatCard label="Adherencia semanal" value="—" hint="próximamente" />
-        <StatCard label="Alertas" value="—" hint="próximamente" />
+        <StatCard label="Entrenos (7 días)" value={weekWorkouts} hint={weekActiveClients > 0 ? `${weekActiveClients} ${weekActiveClients === 1 ? "cliente entrenó" : "clientes entrenaron"}` : undefined} />
+        <StatCard label="Tiempo entrenado" value={weekSeconds > 0 ? formatDurationLabel(weekSeconds) : "—"} hint="últimos 7 días" />
       </div>
 
       {dueReminders.length > 0 && (
@@ -118,6 +124,40 @@ export default function CoachTodayContent({ clients, activeCount, total, reminde
         </Section>
       )}
 
+      <Section title="Últimos entrenamientos">
+        {recentWorkouts.length === 0 ? (
+          <EmptyState text="Todavía nadie ha registrado un entrenamiento. En cuanto lo hagan aparecerán aquí, con su duración y su volumen." />
+        ) : (
+          recentWorkouts.map((w) => (
+            <Link
+              key={w.id}
+              href={`/coach/clients/${w.clientId}/workouts/${w.id}`}
+              style={{
+                display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: palette.ink,
+                padding: "13px 16px", borderRadius: 12, border: `1px solid ${palette.panelBorder}`,
+                background: palette.panel, marginBottom: 8,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 2 }}>{w.clientName}</div>
+                <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 5 }}>
+                  {w.routineName} · {formatWorkoutDay(w.date)}
+                </div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11.5, color: palette.inkDim }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Clock size={11} /> {formatDurationLabel(w.durationSec)}
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Weight size={11} /> {Math.round(w.totalVolume).toLocaleString("es-CO")} kg
+                  </span>
+                </div>
+              </div>
+              <ChevronRight size={17} color={palette.inkDim} style={{ flexShrink: 0 }} />
+            </Link>
+          ))
+        )}
+      </Section>
+
       <Section title="Necesitan atención">
         <EmptyState text="Todavía no hay datos de adherencia para mostrar alertas." />
       </Section>
@@ -128,12 +168,28 @@ export default function CoachTodayContent({ clients, activeCount, total, reminde
         ) : (
           clients.map((c) => (
             <div key={c.user_id} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "14px 18px", borderRadius: 12, border: `1px solid ${palette.panelBorder}`,
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "12px 14px 12px 18px", borderRadius: 12, border: `1px solid ${palette.panelBorder}`,
               background: palette.panel, marginBottom: 10,
             }}>
-              <span>{c.email}</span>
-              <span style={{ fontSize: 12, color: palette.inkDim }}>{c.status}</span>
+              <Link
+                href={`/coach/clients/${c.user_id}`}
+                style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: palette.ink }}
+              >
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.email}</span>
+                <span style={{ fontSize: 12, color: palette.inkDim, flexShrink: 0 }}>{c.status}</span>
+              </Link>
+              <Link
+                href={`/coach/clients/${c.user_id}/workouts`}
+                title="Ver sus entrenamientos"
+                style={{
+                  flexShrink: 0, width: 32, height: 32, borderRadius: 9,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
+                }}
+              >
+                <Dumbbell size={14} />
+              </Link>
             </div>
           ))
         )}
@@ -170,6 +226,15 @@ function EmptyState({ text }: { text: string }) {
       {text}
     </div>
   );
+}
+
+function formatWorkoutDay(iso: string): string {
+  const key = toLocalDateKey(iso);
+  const today = localDateKey();
+  const yesterday = localDateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  if (key === today) return "hoy";
+  if (key === yesterday) return "ayer";
+  return new Date(iso).toLocaleDateString("es-CO", { weekday: "short", day: "numeric", month: "short" });
 }
 
 function formatDay(iso: string): string {

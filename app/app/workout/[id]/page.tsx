@@ -22,6 +22,7 @@ import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 import WorkoutSummary from "@/components/WorkoutSummary";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import Overlay from "@/components/Overlay";
+import { formatClockFromMs } from "@/lib/formatDuration";
 
 export default function WorkoutPage() {
   const palette = usePalette();
@@ -401,7 +402,7 @@ export default function WorkoutPage() {
         {hasExercises && (
           <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 10, borderTop: `1px solid ${palette.panelBorder}` }}>
             <SessionStat label="Series" value={`${session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done).length, 0)}`} />
-            <SessionStat label="Tiempo" value={formatElapsed(now - session!.startedAt)} />
+            <SessionStat label="Tiempo" value={formatClockFromMs(now - session!.startedAt)} />
             <SessionStat label="Volumen" value={`${Math.round(session!.exercises.reduce((s, ex) => s + ex.sets.filter((s2) => s2.done && s2.set_type !== "warmup" && s2.weight && s2.reps).reduce((s3, s2) => s3 + s2.weight! * s2.reps!, 0), 0)).toLocaleString("es-CO")} kg`} />
           </div>
         )}
@@ -676,13 +677,6 @@ export default function WorkoutPage() {
       )}
     </div>
   );
-}
-
-function formatElapsed(ms: number) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function SessionStat({ label, value }: { label: string; value: string }) {

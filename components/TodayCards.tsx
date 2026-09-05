@@ -8,6 +8,7 @@ import { muscleLabel } from "@/lib/muscleLabels";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { startOfLocalDay } from "@/lib/localDate";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
+import { formatDurationLabel } from "@/lib/formatDuration";
 import { Dumbbell } from "lucide-react";
 
 function MacroChip({ letter, value, color, palette }: { letter: string; value: number; color: string; palette: Palette }) {
@@ -58,7 +59,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
   const [done, setDone] = useState(false);
   const [totalSets, setTotalSets] = useState(0);
   const [predictedVolume, setPredictedVolume] = useState(0);
-  const [predictedMinutes, setPredictedMinutes] = useState(0);
+  const [predictedSeconds, setPredictedSeconds] = useState(0);
   const [topMuscle, setTopMuscle] = useState<string | null>(null);
   const [goals, setGoals] = useState(DAILY_GOALS);
 
@@ -107,7 +108,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         });
         setTotalSets(sets);
         setPredictedVolume(volume);
-        setPredictedMinutes(Math.round(sets * 2.5));
+        setPredictedSeconds(Math.round(sets * 2.5 * 60));
         const top = Object.entries(muscleCounts).sort((a, b) => b[1] - a[1])[0];
         setTopMuscle(top ? top[0] : null);
       }
@@ -160,7 +161,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
           </div>
           {todaysRoutine && (
             <div style={{ fontSize: 10.5, color: palette.inkDim, marginTop: 3 }}>
-              {totalSets} series{topMuscle ? ` · ${muscleLabel(topMuscle)}` : ""} · {Math.round(predictedVolume).toLocaleString("es-CO")} kg · ~{predictedMinutes} min
+              {totalSets} series{topMuscle ? ` · ${muscleLabel(topMuscle)}` : ""} · {Math.round(predictedVolume).toLocaleString("es-CO")} kg · ~{formatDurationLabel(predictedSeconds)}
             </div>
           )}
         </div>

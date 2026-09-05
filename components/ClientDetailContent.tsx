@@ -4,21 +4,29 @@ import Link from "next/link";
 import { usePalette, type Palette } from "@/lib/theme";
 import { goalLabel } from "@/lib/goals";
 import { describeCycle, type MenstrualCycleAnswers } from "@/lib/menstrualCycle";
-import { ChevronLeft, Sparkles, ClipboardList, Dumbbell } from "lucide-react";
+import { ChevronLeft, Sparkles, ClipboardList, Dumbbell, ChevronRight, Clock, Weight } from "lucide-react";
+import { formatDurationLabel } from "@/lib/formatDuration";
+import type { CoachWorkoutRow } from "@/lib/coachClientWorkouts";
 import TrainerNotesEditor from "@/components/TrainerNotesEditor";
 import CopyButton from "@/components/CopyButton";
 
 type SportRow = { sport: string; level: string | null; experience: string | null; include_in_plan: boolean };
 
+type TrainingPanel = {
+  totalWorkouts: number; totalSeconds: number; totalVolume: number;
+  averageSeconds: number; lastWorkoutAt: string | null; recent: CoachWorkoutRow[];
+};
+
 export default function ClientDetailContent({
   displayName, email, status, createdAt, lifestyle, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
-  aiContext, trainerNotes, clientId, sports,
+  aiContext, trainerNotes, clientId, sports, training,
 }: {
   displayName: string | null; email: string | null; status: string; createdAt: string | null;
   lifestyle: { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number; menstrual_cycle?: MenstrualCycleAnswers };
   injuries: { notes?: string };
   medicalNotes: string | null; dietaryRestrictions: string | null; kitchenEquipment: string[];
   aiContext: string | null; trainerNotes: string; clientId: string; sports: SportRow[];
+  training: TrainingPanel | null;
 }) {
   const palette = usePalette();
   const secondaryGoals = lifestyle.secondary_goals ?? [];
@@ -45,6 +53,57 @@ export default function ClientDetailContent({
           {memberSince && <div style={{ fontSize: 12, color: palette.inkDim, marginTop: 2 }}>Cliente desde {memberSince}</div>}
         </div>
       </div>
+
+      {training && (
+        <Section title="Entrenamientos" icon={<Dumbbell size={15} />} palette={palette}>
+          {training.totalWorkouts === 0 ? (
+            <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6 }}>
+              Todavía no ha registrado ningún entrenamiento.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))", gap: 10, marginBottom: 16 }}>
+                <Metric label="Sesiones" value={String(training.totalWorkouts)} palette={palette} />
+                <Metric label="Tiempo total" value={formatDurationLabel(training.totalSeconds)} palette={palette} />
+                <Metric label="Promedio" value={formatDurationLabel(training.averageSeconds)} palette={palette} />
+                <Metric label="Volumen" value={`${Math.round(training.totalVolume).toLocaleString("es-CO")} kg`} palette={palette} />
+              </div>
+
+              {training.recent.map((w) => (
+                <Link
+                  key={w.id}
+                  href={`/coach/clients/${clientId}/workouts/${w.id}`}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: palette.ink,
+                    padding: "11px 0", borderTop: `1px solid ${palette.panelBorder}`,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>{w.routineName}</div>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11.5, color: palette.inkDim }}>
+                      <span>{new Date(w.date).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Clock size={11} /> {formatDurationLabel(w.durationSec)}
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Weight size={11} /> {Math.round(w.totalVolume).toLocaleString("es-CO")} kg
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} color={palette.inkDim} style={{ flexShrink: 0 }} />
+                </Link>
+              ))}
+
+              <Link
+                href={`/coach/clients/${clientId}/workouts`}
+                style={{ display: "inline-block", marginTop: 14, fontSize: 12.5, color: palette.accent, fontWeight: 600, textDecoration: "none" }}
+              >
+                Ver todos sus entrenamientos →
+              </Link>
+            </>
+          )}
+        </Section>
+      )}
 
       <Section title="Anamnesis completa" icon={<ClipboardList size={15} />} palette={palette}>
         <Field label="Objetivo principal" value={goalLabel(lifestyle.goal)} palette={palette} />
@@ -104,6 +163,15 @@ function Section({ title, icon, children, palette }: { title: string; icon: Reac
         {icon} {title}
       </div>
       {children}
+    </div>
+  );
+}
+
+function Metric({ label, value, palette }: { label: string; value: string; palette: Palette }) {
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.panel }}>
+      <div style={{ fontSize: 14.5, fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 10.5, color: palette.inkDim, marginTop: 2 }}>{label}</div>
     </div>
   );
 }

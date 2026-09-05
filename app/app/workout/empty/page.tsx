@@ -18,6 +18,7 @@ import ExercisePicker from "@/components/ExercisePicker";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import WorkoutSummary from "@/components/WorkoutSummary";
 import Overlay from "@/components/Overlay";
+import { formatClockFromMs } from "@/lib/formatDuration";
 
 const EMPTY_ROUTINE_ID = "empty";
 const EMPTY_WORKOUT_NAME = "Entreno libre";
@@ -123,7 +124,7 @@ export default function EmptyWorkoutPage() {
         {session.exercises.length > 0 && (
           <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 10, borderTop: `1px solid ${palette.panelBorder}` }}>
             <SessionStat label="Series" value={`${doneSets}`} />
-            <SessionStat label="Tiempo" value={formatElapsed(now - session.startedAt)} />
+            <SessionStat label="Tiempo" value={formatClockFromMs(now - session.startedAt)} />
             <SessionStat label="Volumen" value={`${Math.round(volume).toLocaleString("es-CO")} kg`} />
           </div>
         )}
@@ -317,13 +318,6 @@ export default function EmptyWorkoutPage() {
       )}
     </div>
   );
-}
-
-function formatElapsed(ms: number) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function SessionStat({ label, value }: { label: string; value: string }) {

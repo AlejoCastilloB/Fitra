@@ -11,6 +11,7 @@ import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler, Chevro
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import { formatDurationLabel } from "@/lib/formatDuration";
 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -108,7 +109,7 @@ export default function ProfilePage() {
       setActiveDays(days);
 
       const combined = [
-        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString("es-CO")} kg · ${Math.round((w.duration_sec ?? 0) / 60)} min` })),
+        ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString("es-CO")} kg · ${formatDurationLabel(w.duration_sec)}` })),
         ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
       setHistory(combined);

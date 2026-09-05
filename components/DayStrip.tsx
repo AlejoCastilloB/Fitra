@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { localDateKey, toLocalDateKey, startOfLocalWeek } from "@/lib/localDate";
 import Modal from "@/components/Modal";
 import { Dumbbell, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatDurationLabel } from "@/lib/formatDuration";
 
 const DOW_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
 const DAILY_KCAL_GOAL = 2200;
@@ -155,7 +156,7 @@ export default function DayStrip() {
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{selectedDay.workout.name}</div>
               <div style={{ fontSize: 12, color: palette.inkDim }}>
                 {new Date(selectedDay.workout.time).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })} ·{" "}
-                {Math.round(selectedDay.workout.duration_sec / 60)} min · {Math.round(selectedDay.workout.total_volume).toLocaleString("es-CO")} kg
+                {formatDurationLabel(selectedDay.workout.duration_sec)} · {Math.round(selectedDay.workout.total_volume).toLocaleString("es-CO")} kg
               </div>
             </div>
           )}
