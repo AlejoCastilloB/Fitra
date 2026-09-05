@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
 import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 
+// Obligatorio. La comprobación del secreto vive en lib/cronAuth, así que Next ya no ve
+// que esta ruta lee la cabecera y la considera estática: cachearía la respuesta del build
+// y ni ejecutaría la autorización. Con esto se evalúa en cada petición.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
-  if (process.env.CRON_SECRET) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "no autorizado" }, { status: 401 });
-    }
+  if (!isCronAuthorized(req)) {
+    return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
 
   if (!ensureVapidConfigured()) {

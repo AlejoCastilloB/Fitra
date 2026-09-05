@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cronAuth";
 import { GET as checkMeals } from "../check-meals/route";
 import { GET as checkRests } from "../check-rests/route";
 import { GET as checkProgress } from "../check-progress/route";
@@ -20,12 +21,14 @@ export const maxDuration = 60;
  * GitHub Actions, pg_cron de Supabase) puede pegarle a /api/cron/tick con la cabecera
  * `Authorization: Bearer $CRON_SECRET`.
  */
+// Obligatorio. La comprobación del secreto vive en lib/cronAuth, así que Next ya no ve
+// que esta ruta lee la cabecera y la considera estática: cachearía la respuesta del build
+// y ni ejecutaría la autorización. Con esto se evalúa en cada petición.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
-  if (process.env.CRON_SECRET) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "no autorizado" }, { status: 401 });
-    }
+  if (!isCronAuthorized(req)) {
+    return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
 
   const checks: [string, (r: Request) => Promise<Response>][] = [

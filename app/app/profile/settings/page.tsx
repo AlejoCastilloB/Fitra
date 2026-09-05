@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { requestPushPermissionAndSubscribe, unsubscribeFromPush } from "@/lib/push";
+import MealRemindersEditor, { mealRemindersSummary } from "@/components/MealRemindersEditor";
+import { DEFAULT_MEAL_SLOTS, parseMealSlots, serializeMealSlots, type MealSlot } from "@/lib/mealReminders";
 import { usePalette, useTheme } from "@/lib/theme";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -73,6 +75,8 @@ export default function ProfileSettingsPage() {
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [showPhysicalEdit, setShowPhysicalEdit] = useState(false);
   const [showDietEdit, setShowDietEdit] = useState(false);
+  const [mealSlots, setMealSlots] = useState<MealSlot[]>(DEFAULT_MEAL_SLOTS);
+  const [showMealEdit, setShowMealEdit] = useState(false);
   const [showProgressEdit, setShowProgressEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -100,6 +104,10 @@ export default function ProfileSettingsPage() {
         setProgressReminderDays(userRow.progress_reminder_days ?? null);
         setPhysicalReminderDays(userRow.physical_reminder_days ?? null);
         setNutritionReminderTime(userRow.nutrition_reminder_time ?? null);
+        // Consulta aparte: meal_reminders es una columna nueva y, si la migración aún no
+        // corrió, pedirla junto al resto tumbaría la carga completa de los ajustes.
+        supabase.from("users").select("meal_reminders").eq("id", id).single()
+          .then(({ data }) => { if (data) setMealSlots(parseMealSlots((data as any).meal_reminders)); });
       }
 
       if (clientRow) {
@@ -190,6 +198,11 @@ export default function ProfileSettingsPage() {
       supabase.from("users").update({ physical_reminder_days: next.reminderDays }).eq("id", uid),
     ]);
     setShowPhysicalEdit(false);
+  }
+
+  async function saveMealSlots(slots: MealSlot[]) {
+    setMealSlots(slots);
+    await supabase.from("users").update({ meal_reminders: serializeMealSlots(slots) }).eq("id", uid);
   }
 
   async function updateNutritionReminderTime(time: string | null) {
@@ -283,6 +296,12 @@ export default function ProfileSettingsPage() {
           onClick={() => setShowDietEdit(true)}
         />
         <ListRow
+          label="Recordatorios de comida"
+          sublabel={mealRemindersSummary(mealSlots)}
+          showChevron
+          onClick={() => setShowMealEdit(true)}
+        />
+        <ListRow
           label="Recordatorio para cerrar el día"
           sublabel="Te avisamos para que cuentes o grabes todo lo que comiste"
           right={
@@ -356,6 +375,14 @@ export default function ProfileSettingsPage() {
             onSave={savePhysicalProfile}
           />
         </Modal>
+      )}
+
+      {showMealEdit && (
+        <MealRemindersEditor
+          initial={mealSlots}
+          onClose={() => setShowMealEdit(false)}
+          onSave={saveMealSlots}
+        />
       )}
 
       {showDietEdit && (

@@ -1,26 +1,9 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
-
-const MEAL_SLOTS = [
-  {
-    key: "breakfast", hour: 7, minute: 0, windowStart: 5, windowEnd: 10,
-    title: "¿Qué vas a desayunar hoy?", body: "Registra tu desayuno para arrancar bien el día.",
-  },
-  {
-    key: "morning_snack", hour: 11, minute: 30, windowStart: 10, windowEnd: 13,
-    title: "¿Piensas comer algún snack?", body: "Regístralo y sigue sumando a tu progreso.",
-  },
-  {
-    key: "afternoon_snack", hour: 15, minute: 30, windowStart: 13, windowEnd: 17,
-    title: "¿Merienda a la vista?", body: "Regístrala y sigue sumando a tu progreso.",
-  },
-  {
-    key: "dinner", hour: 18, minute: 30, windowStart: 17, windowEnd: 22,
-    title: "¿Qué vas a cenar?", body: "Registra tu cena para cerrar el día con tus macros completos.",
-  },
-] as const;
+import { parseMealSlots, dueMeal, logWindowFor, MEAL_COPY, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
 
 function localParts(timeZone: string, date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -35,12 +18,37 @@ function localParts(timeZone: string, date: Date) {
   };
 }
 
+/**
+ * Lee los usuarios con su configuración de comidas.
+ *
+ * `meal_reminders` es una columna nueva. Si la migración todavía no corrió, la consulta
+ * entera falla y NADIE recibiría avisos, así que en ese caso se reintenta sin la columna y
+ * todo el mundo se queda con los horarios por defecto.
+ */
+async function loadUsers(admin: any) {
+  const withConfig = await admin
+    .from("users")
+    .select("id, timezone, meal_reminders")
+    .not("timezone", "is", null);
+
+  if (!withConfig.error) return { users: withConfig.data ?? [], hasConfigColumn: true };
+
+  const fallback = await admin
+    .from("users")
+    .select("id, timezone")
+    .not("timezone", "is", null);
+
+  return { users: fallback.data ?? [], hasConfigColumn: false };
+}
+
+// Obligatorio. La comprobación del secreto vive en lib/cronAuth, así que Next ya no ve
+// que esta ruta lee la cabecera y la considera estática: cachearía la respuesta del build
+// y ni ejecutaría la autorización. Con esto se evalúa en cada petición.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
-  if (process.env.CRON_SECRET) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "no autorizado" }, { status: 401 });
-    }
+  if (!isCronAuthorized(req)) {
+    return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
 
   if (!ensureVapidConfigured()) {
@@ -53,12 +61,12 @@ export async function GET(req: Request) {
   );
 
   const now = new Date();
-  const { data: users } = await admin.from("users").select("id, timezone").not("timezone", "is", null);
-  if (!users || users.length === 0) return NextResponse.json({ ok: true, sent: 0 });
+  const { users, hasConfigColumn } = await loadUsers(admin);
+  if (users.length === 0) return NextResponse.json({ ok: true, sent: 0, hasConfigColumn });
 
   let sent = 0;
 
-  for (const u of users) {
+  for (const u of users as any[]) {
     let local;
     try {
       local = localParts(u.timezone, now);
@@ -66,17 +74,8 @@ export async function GET(req: Request) {
       continue;
     }
 
-    // La ventana era de 15 minutos, lo que obligaba a que el cron cayera justo dentro de
-    // ella. Ningún programador gratuito es tan puntual (GitHub Actions puede retrasarse
-    // bastante cuando hay cola), así que con 15 minutos el aviso simplemente no salía.
-    // Con una hora de margen, el primer pase después de la hora de la comida lo manda —y
-    // la fila en meal_reminders_sent garantiza que solo salga uno por franja y día—.
-    // Las franjas están separadas por 3 horas o más, así que no se pisan entre ellas.
-    const localTotalMin = local.hour * 60 + local.minute;
-    const slot = MEAL_SLOTS.find((s) => {
-      const diff = localTotalMin - (s.hour * 60 + s.minute);
-      return diff >= 0 && diff < 60;
-    });
+    const slots = hasConfigColumn ? parseMealSlots(u.meal_reminders) : DEFAULT_MEAL_SLOTS;
+    const slot = dueMeal(slots, local.hour * 60 + local.minute);
     if (!slot) continue;
 
     const { data: already } = await admin
@@ -94,6 +93,8 @@ export async function GET(req: Request) {
     const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", u.id);
     if (!subs || subs.length === 0) continue;
 
+    // Si ya registró algo en la franja que cubre esta comida, no hace falta recordárselo.
+    const window = logWindowFor(slots, slot.key);
     const sinceIso = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
     const { data: logs } = await admin
       .from("nutrition_logs")
@@ -101,17 +102,20 @@ export async function GET(req: Request) {
       .eq("client_id", u.id)
       .gte("date", sinceIso);
 
-    const alreadyLogged = (logs ?? []).some((log) => {
-      const logLocal = localParts(u.timezone, new Date(log.date));
-      return logLocal.dateKey === local!.dateKey && logLocal.hour >= slot.windowStart && logLocal.hour < slot.windowEnd;
+    const alreadyLogged = !!window && (logs ?? []).some((log) => {
+      const l = localParts(u.timezone, new Date(log.date));
+      if (l.dateKey !== local!.dateKey) return false;
+      const minutes = l.hour * 60 + l.minute;
+      return minutes >= window.startMin && minutes < window.endMin;
     });
     if (alreadyLogged) continue;
 
+    const copy = MEAL_COPY[slot.key];
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: slot.title, body: slot.body, url: "/app/nutrition" })
+          JSON.stringify({ title: copy.title, body: copy.body, url: "/app/nutrition" })
         );
         sent++;
       } catch (err: any) {
@@ -122,5 +126,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent });
+  return NextResponse.json({ ok: true, sent, hasConfigColumn });
 }

@@ -10,6 +10,10 @@
 #   CRON_SECRET    -> el mismo valor que la variable CRON_SECRET en Vercel
 #
 # Sin esos secretos el trabajo no falla: se salta y lo dice en el registro.
+#
+# El endpoint también acepta el secreto como `?key=<secreto>` en la URL, que es la forma
+# de configurarlo en programadores externos (cron-job.org y similares) donde añadir una
+# cabecera personalizada es engorroso. Aquí se usa la cabecera, que es más limpia.
 
 name: Recordatorios de Fitra
 
