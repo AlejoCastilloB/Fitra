@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { usePalette } from "@/lib/theme";
+import { useSwipeReveal } from "@/lib/useSwipeReveal";
 import { getSetBadge } from "@/lib/setBadges";
 import { LiveExercise, LiveSet } from "@/lib/workoutSession";
 import { Check, Trash2 } from "lucide-react";
@@ -34,47 +34,10 @@ export default function WorkoutSetRow({
   const palette = usePalette();
   const badge = getSetBadge(exercise.sets, index, palette.accent);
 
-  // Deslizar hacia la izquierda descubre "Eliminar". El arrastre solo se activa cuando el
-  // gesto es claramente horizontal, para no robarle el scroll vertical a la página ni
-  // interferir con los campos de número.
-  const [dx, setDx] = useState(0);
-  const start = useRef<{ x: number; y: number } | null>(null);
-  const axis = useRef<"none" | "x" | "y">("none");
-  const [dragging, setDragging] = useState(false);
+  // Deslizar hacia la izquierda descubre "Eliminar". El gesto (con su bloqueo de eje para
+  // no robarle el scroll vertical a la página) vive en useSwipeReveal.
+  const swipe = useSwipeReveal(DELETE_WIDTH);
 
-  function onTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    start.current = { x: t.clientX, y: t.clientY };
-    axis.current = "none";
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (!start.current) return;
-    const t = e.touches[0];
-    const deltaX = t.clientX - start.current.x;
-    const deltaY = t.clientY - start.current.y;
-
-    if (axis.current === "none") {
-      if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) return;
-      axis.current = Math.abs(deltaX) > Math.abs(deltaY) ? "x" : "y";
-      if (axis.current === "x") setDragging(true);
-    }
-    if (axis.current !== "x") return;
-
-    // Solo hacia la izquierda; un poco de resistencia al pasarse del tope.
-    const base = dx === -DELETE_WIDTH ? -DELETE_WIDTH : 0;
-    const next = Math.min(0, Math.max(-DELETE_WIDTH - 20, base + deltaX));
-    setDx(next);
-  }
-
-  function onTouchEnd() {
-    start.current = null;
-    setDragging(false);
-    if (axis.current === "x") setDx(dx < -DELETE_WIDTH / 2 ? -DELETE_WIDTH : 0);
-    axis.current = "none";
-  }
-
-  const open = dx !== 0;
   const inputs: React.ReactNode[] = [];
   if (exercise.measurement_type === "reps_weight") {
     inputs.push(
@@ -97,32 +60,21 @@ export default function WorkoutSetRow({
       position: "relative", overflow: "hidden",
     }}>
       <button
-        onClick={() => { setDx(0); onRemove(); }}
-        tabIndex={open ? 0 : -1}
-        aria-hidden={!open}
+        onClick={() => { swipe.close(); onRemove(); }}
+        tabIndex={swipe.open ? 0 : -1}
+        aria-hidden={!swipe.open}
         style={{
           position: "absolute", top: 0, right: 0, bottom: 0, width: DELETE_WIDTH,
           background: "#c0392b", color: "#fff", border: "none", cursor: "pointer",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-          opacity: Math.min(1, Math.abs(dx) / DELETE_WIDTH),
+          opacity: Math.min(1, Math.abs(swipe.dx) / DELETE_WIDTH),
         }}
       >
         <Trash2 size={15} />
         <span style={{ fontSize: 9.5, fontWeight: 700 }}>Eliminar</span>
       </button>
 
-      <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
-        style={{
-          position: "relative", background: palette.bg,
-          transform: `translateX(${dx}px)`,
-          transition: dragging ? "none" : "transform .25s cubic-bezier(.16,.8,.24,1)",
-          touchAction: "pan-y",
-        }}
-      >
+      <div {...swipe.handlers} style={{ ...swipe.style, position: "relative", background: palette.bg }}>
         <div style={{
           position: "relative", overflow: "hidden",
           display: "flex", alignItems: "center", gap: 8,
