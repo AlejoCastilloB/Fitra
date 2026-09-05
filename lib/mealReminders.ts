@@ -28,13 +28,19 @@ export const MIN_GAP_MINUTES = 60;
  *  es puntual al minuto, así que el primer pase dentro de la ventana lo manda. */
 export const MAX_WINDOW_MINUTES = 60;
 
-export const MEAL_COPY: Record<MealSlotKey, { title: string; body: string }> = {
-  breakfast: { title: "¿Qué vas a desayunar hoy?", body: "Registra tu desayuno para arrancar bien el día." },
-  morning_snack: { title: "¿Piensas comer algún snack?", body: "Regístralo y sigue sumando a tu progreso." },
-  lunch: { title: "¿Qué hay de almuerzo?", body: "Regístralo y mantén tus macros al día." },
-  afternoon_snack: { title: "¿Merienda a la vista?", body: "Regístrala y sigue sumando a tu progreso." },
-  dinner: { title: "¿Qué vas a cenar?", body: "Registra tu cena para cerrar el día con tus macros completos." },
+/** Cuánto después del aviso principal se manda el de seguimiento. */
+export const FOLLOWUP_DELAY_MINUTES = 60;
+
+export const MEAL_COPY: Record<MealSlotKey, { title: string; body: string; noun: string }> = {
+  breakfast: { title: "¿Qué vas a desayunar hoy?", body: "Registra tu desayuno para arrancar bien el día.", noun: "desayuno" },
+  morning_snack: { title: "¿Piensas comer algún snack?", body: "Regístralo y sigue sumando a tu progreso.", noun: "snack de media mañana" },
+  lunch: { title: "¿Qué hay de almuerzo?", body: "Regístralo y mantén tus macros al día.", noun: "almuerzo" },
+  afternoon_snack: { title: "¿Merienda a la vista?", body: "Regístrala y sigue sumando a tu progreso.", noun: "merienda" },
+  dinner: { title: "¿Qué vas a cenar?", body: "Registra tu cena para cerrar el día con tus macros completos.", noun: "cena" },
 };
+
+const FOLLOWUP_BODY =
+  "No pasa nada, dile a Fitra qué comiste en una nota de voz y sigue sumando tus macros del día.";
 
 export const DEFAULT_MEAL_SLOTS: MealSlot[] = [
   { key: "breakfast", label: "Desayuno", time: "07:00", enabled: true },
@@ -111,24 +117,74 @@ export function tooClosePairs(slots: MealSlot[]): { a: MealSlot; b: MealSlot; mi
   return pairs;
 }
 
+export type MealReminderKind = "first" | "followup";
+
+export type DueReminder = {
+  slot: MealSlot;
+  kind: MealReminderKind;
+  /** Con qué clave se deduplica en meal_reminders_sent. */
+  dedupeKey: string;
+  title: string;
+  body: string;
+  url: string;
+};
+
+function buildReminder(slot: MealSlot, kind: MealReminderKind): DueReminder {
+  const copy = MEAL_COPY[slot.key];
+  if (kind === "first") {
+    return { slot, kind, dedupeKey: slot.key, title: copy.title, body: copy.body, url: "/app/nutrition" };
+  }
+  return {
+    slot, kind,
+    // Sufijo propio para que el seguimiento se deduplique por su cuenta y no choque con la
+    // fila del aviso principal, que ya está guardada de una hora antes.
+    dedupeKey: `${slot.key}:followup`,
+    title: `¿Olvidaste tomarle foto a tu ${copy.noun}?`,
+    body: FOLLOWUP_BODY,
+    // Abre directo el panel de nota de voz, que es lo que propone el mensaje.
+    url: "/app/nutrition?closeDay=1",
+  };
+}
+
 /**
- * Qué comida toca avisar en este momento, o null.
+ * Qué aviso de comida toca en este momento, o null.
  *
- * La ventana de cada comida se recorta al hueco que hay hasta la siguiente activa: si
- * alguien pone el desayuno a las 7:00 y el snack a las 7:30, la del desayuno dura media
- * hora y no se come la del snack. Nunca baja de 10 minutos, para que ninguna comida quede
- * imposible de disparar; si dos coinciden a la misma hora solo sale la primera, y de eso
- * avisa la pantalla de ajustes.
+ * Cada comida activa genera dos: el principal a su hora, y uno de seguimiento una hora
+ * después por si no se registró nada. La ventana de ambos se recorta al hueco que hay
+ * hasta la siguiente comida activa, así que juntarlas no hace que una se coma el aviso de
+ * la otra. Nunca baja de 10 minutos, para que ninguna quede imposible de disparar.
  */
-export function dueMeal(slots: MealSlot[], minutesOfDay: number): MealSlot | null {
+export function dueReminder(slots: MealSlot[], minutesOfDay: number): DueReminder | null {
   const active = sortedEnabled(slots);
+
+  // Los principales van primero: si a este minuto le tocaran a la vez el seguimiento de
+  // una comida y el principal de la siguiente, gana el principal.
   for (let i = 0; i < active.length; i++) {
     const start = timeToMinutes(active[i].time)!;
     const next = active[i + 1] ? timeToMinutes(active[i + 1].time)! : Infinity;
     const window = Math.max(10, Math.min(MAX_WINDOW_MINUTES, next - start));
     const diff = minutesOfDay - start;
-    if (diff >= 0 && diff < window) return active[i];
+    if (diff >= 0 && diff < window) return buildReminder(active[i], "first");
   }
+
+  for (let i = 0; i < active.length; i++) {
+    const start = timeToMinutes(active[i].time)!;
+    const next = active[i + 1] ? timeToMinutes(active[i + 1].time)! : Infinity;
+
+    // Sin hueco suficiente no hay seguimiento: el aviso de la comida siguiente ya viene en
+    // camino y serían dos notificaciones pegadas.
+    if (next - start <= FOLLOWUP_DELAY_MINUTES) continue;
+
+    // Si el seguimiento se pasaría de medianoche tampoco se manda: la deduplicación es por
+    // día local y el aviso acabaría contando para el día equivocado.
+    const followupStart = start + FOLLOWUP_DELAY_MINUTES;
+    if (followupStart >= 1440) continue;
+
+    const window = Math.max(10, Math.min(MAX_WINDOW_MINUTES, next - followupStart));
+    const diff = minutesOfDay - followupStart;
+    if (diff >= 0 && diff < window) return buildReminder(active[i], "followup");
+  }
+
   return null;
 }
 

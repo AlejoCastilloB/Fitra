@@ -3,7 +3,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
-import { parseMealSlots, dueMeal, logWindowFor, MEAL_COPY, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
+import { parseMealSlots, dueReminder, logWindowFor, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
 
 function localParts(timeZone: string, date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -98,17 +98,17 @@ export async function GET(req: Request) {
     }
 
     const slots = hasConfigColumn ? parseMealSlots(u.meal_reminders) : DEFAULT_MEAL_SLOTS;
-    const slot = dueMeal(slots, local.hour * 60 + local.minute);
-    if (!slot) continue;
+    const due = dueReminder(slots, local.hour * 60 + local.minute);
+    if (!due) continue;
 
     // Reservar el aviso ANTES de mandarlo, y solo mandarlo si la reserva se guardó.
     // Antes esto era un upsert cuyo error se ignoraba: si la escritura fallaba, el aviso
     // salía igual y en la siguiente pasada volvía a salir, porque nunca quedaba constancia
     // de haberlo mandado. Con el cron cada 10 minutos y una ventana de una hora, eso son
     // seis notificaciones idénticas de la misma comida.
-    const claim = await claimReminder(admin, u.id, local.dateKey, slot.key);
+    const claim = await claimReminder(admin, u.id, local.dateKey, due.dedupeKey);
     if (!claim.claimed) {
-      if (claim.error) problems.push({ slot: slot.key, error: claim.error });
+      if (claim.error) problems.push({ slot: due.dedupeKey, error: claim.error });
       continue;
     }
 
@@ -116,7 +116,7 @@ export async function GET(req: Request) {
     if (!subs || subs.length === 0) continue;
 
     // Si ya registró algo en la franja que cubre esta comida, no hace falta recordárselo.
-    const window = logWindowFor(slots, slot.key);
+    const window = logWindowFor(slots, due.slot.key);
     const sinceIso = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
     const { data: logs } = await admin
       .from("nutrition_logs")
@@ -132,12 +132,11 @@ export async function GET(req: Request) {
     });
     if (alreadyLogged) continue;
 
-    const copy = MEAL_COPY[slot.key];
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: copy.title, body: copy.body, url: "/app/nutrition" })
+          JSON.stringify({ title: due.title, body: due.body, url: due.url })
         );
         sent++;
       } catch (err: any) {
