@@ -142,7 +142,7 @@ function buildReminder(slot: MealSlot, kind: MealReminderKind): DueReminder {
     title: `¿Olvidaste tomarle foto a tu ${copy.noun}?`,
     body: FOLLOWUP_BODY,
     // Abre directo el panel de nota de voz, que es lo que propone el mensaje.
-    url: "/app/nutrition?closeDay=1",
+    url: "/app/nutrition?voice=1",
   };
 }
 
