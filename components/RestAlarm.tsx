@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { createClient } from "@/lib/supabase/client";
 import { ensurePushSubscribed } from "@/lib/push";
 import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
+import { dueOpenWorkoutReminder, reminderText, FIRST_REMINDER_MINUTES, SECOND_REMINDER_MINUTES, type ReminderStage } from "@/lib/openWorkoutReminders";
 
 const SOUNDS: Record<string, { freq: number; pattern: number[] }> = {
   clasico: { freq: 880, pattern: [0.35] },
@@ -20,7 +21,9 @@ export default function RestAlarm() {
   const uid = useCurrentUser();
   const soundRef = useRef("clasico");
   const alarmedForRef = useRef<number | null>(null);
-  const lastReminderRef = useRef<number>(0);
+  // Qué avisos de "entreno abierto" ya salieron, y para cuál serie. Si cambia la serie,
+  // es una pausa nueva y los dos vuelven a estar disponibles.
+  const openWarnedRef = useRef<{ setAt: number | null; first: boolean; second: boolean }>({ setAt: null, first: false, second: false });
 
   useEffect(() => {
     if (!uid) return;
@@ -110,20 +113,46 @@ export default function RestAlarm() {
     }
   }, [now, session?.restEndAt]);
 
+  // Aviso de entrenamiento abierto, la mitad que corre en el teléfono. La otra mitad la
+  // manda el servidor (app/api/cron/check-workouts) para cuando la app está cerrada; las
+  // dos siguen el mismo horario —a los 10 minutos de la última serie y a la hora, y nada
+  // más— y llevan el mismo `tag`, así que la que llegue segunda reemplaza a la primera en
+  // vez de apilarse. Al marcar otra serie el reloj vuelve a cero y los dos se rearman.
   useEffect(() => {
-    if (!session) { lastReminderRef.current = 0; return; }
-    const referencePoint = session.restEndAt ?? session.startedAt;
-    const idleMs = now - referencePoint;
-    if (idleMs > 5 * 60 * 1000 && now - lastReminderRef.current > 5 * 60 * 1000) {
-      lastReminderRef.current = now;
-      playBeeps(1);
-      if ("Notification" in window && Notification.permission === "granted") {
-        try {
-          new Notification("Tu entrenamiento sigue en pausa", {
-            body: `${session.routineName} — volvé a la app para continuar o terminarlo.`,
-          });
-        } catch {}
-      }
+    if (!session) { openWarnedRef.current = { setAt: null, first: false, second: false }; return; }
+
+    if (openWarnedRef.current.setAt !== session.lastSetAt) {
+      // Al abrir la app sobre una pausa que ya venía corrida, los avisos cuyo momento ya
+      // pasó se dan por dados: el servidor los mandó estando la app cerrada, y saltarlos
+      // en pantalla justo cuando la persona acaba de volver no le dice nada nuevo.
+      const primeraVez = openWarnedRef.current.setAt === null;
+      const idleMin = (now - session.lastSetAt) / 60000;
+      openWarnedRef.current = primeraVez
+        ? { setAt: session.lastSetAt, first: idleMin >= FIRST_REMINDER_MINUTES, second: idleMin >= SECOND_REMINDER_MINUTES }
+        // Serie nueva con la app abierta: pausa nueva, los dos avisos se rearman.
+        : { setAt: session.lastSetAt, first: false, second: false };
+    }
+
+    const stage: ReminderStage | null = dueOpenWorkoutReminder(
+      { lastActivityAt: session.lastSetAt, remindedFirst: openWarnedRef.current.first, remindedSecond: openWarnedRef.current.second },
+      now,
+    );
+    if (!stage) return;
+
+    if (stage === "second") openWarnedRef.current = { setAt: session.lastSetAt, first: true, second: true };
+    else openWarnedRef.current = { ...openWarnedRef.current, first: true };
+
+    // Un pitido solo en el primero: el de la hora ya no busca sacar a nadie de la serie.
+    if (stage === "first") playBeeps(1);
+
+    const { title, body } = reminderText(stage, session.routineName);
+    if ("Notification" in window && Notification.permission === "granted") {
+      navigator.serviceWorker.ready
+        .then((registration) => registration.showNotification(title, {
+          body, icon: "/icon-192.png", badge: "/icon-192.png",
+          tag: "entreno-abierto", data: { url: "/app" },
+        }))
+        .catch(() => {});
     }
   }, [now, session]);
 

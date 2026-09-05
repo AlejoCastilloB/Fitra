@@ -3,6 +3,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { GET as checkMeals } from "../check-meals/route";
 import { GET as checkRests } from "../check-rests/route";
 import { GET as checkProgress } from "../check-progress/route";
+import { GET as checkWorkouts } from "../check-workouts/route";
 
 export const maxDuration = 60;
 
@@ -35,6 +36,7 @@ export async function GET(req: Request) {
     ["meals", checkMeals],
     ["rests", checkRests],
     ["progress", checkProgress],
+    ["workouts", checkWorkouts],
   ];
 
   const results: Record<string, unknown> = {};

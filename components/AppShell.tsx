@@ -8,6 +8,7 @@ import ActiveWorkoutPill from "@/components/ActiveWorkoutPill";
 import AchievementChecker from "@/components/AchievementChecker";
 import HomeFab from "@/components/HomeFab";
 import RestAlarm from "@/components/RestAlarm";
+import OpenWorkoutBeacon from "@/components/OpenWorkoutBeacon";
 import TimezoneSync from "@/components/TimezoneSync";
 import InviteBanner from "@/components/InviteBanner";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
@@ -54,6 +55,7 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <ActiveWorkoutPill />
       <AchievementChecker />
       <RestAlarm />
+      <OpenWorkoutBeacon />
       <TimezoneSync />
       <SessionKeepAlive />
       <PrecacheWarmup routes={WARMUP_ROUTES} />
