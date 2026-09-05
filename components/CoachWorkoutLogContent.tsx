@@ -1,25 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { usePalette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
-import Link from "next/link";
-import { ChevronLeft, Clock, Weight, Layers } from "lucide-react";
-import WorkoutLogMenu from "@/components/WorkoutLogMenu";
 import { formatDurationLabel } from "@/lib/formatDuration";
+import { ChevronLeft, Clock, Weight, Layers } from "lucide-react";
 
 const MUSCLE_COLORS = ["#B9C2CE", "#C77DFF", "#7DD8C6", "#F5A97F", "#7DC4E8", "#F2B8D4"];
 
 type SetRow = { weight: number | null; reps: number | null; time_sec: number | null; distance_m: number | null; set_type: string };
-type ExerciseGroup = { id: string; name: string; measurement_type: string; sets: SetRow[] };
-type MuscleDistItem = { muscle: string; pct: number };
 
-export default function WorkoutLogDetail({
-  workoutLogId, routineName, date, durationSec, totalVolume, totalSets, muscleDistribution, exercises, exercisesForMenu,
-}: {
-  workoutLogId: string; routineName: string; date: string; durationSec: number; totalVolume: number; totalSets: number;
-  muscleDistribution: MuscleDistItem[]; exercises: ExerciseGroup[];
-  exercisesForMenu: { exercise_id: string; name: string; measurement_type: string; sets: SetRow[] }[];
-}) {
+export type CoachWorkoutLogView = {
+  id: string;
+  clientId: string;
+  routineName: string;
+  date: string;
+  durationSec: number;
+  totalVolume: number;
+  totalSets: number;
+  muscleDistribution: { muscle: string; pct: number }[];
+  exercises: { id: string; name: string; measurement_type: string; sets: SetRow[] }[];
+};
+
+/**
+ * El mismo detalle de un entrenamiento que ve el cliente, pero de solo lectura: aquí no
+ * va el menú de editar/borrar, porque el entrenador mira el registro, no lo cambia.
+ */
+export default function CoachWorkoutLogContent({
+  clientId, clientName, view,
+}: { clientId: string; clientName: string; view: CoachWorkoutLogView }) {
   const palette = usePalette();
   const sectionLabel: React.CSSProperties = {
     fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase",
@@ -27,31 +36,31 @@ export default function WorkoutLogDetail({
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <Link href="/app/profile" style={{ color: palette.inkDim, display: "flex" }}><ChevronLeft size={22} /></Link>
-        <div style={{ position: "relative" }}>
-          <WorkoutLogMenu workoutLogId={workoutLogId} routineName={routineName} exercises={exercisesForMenu} />
-        </div>
-      </div>
+    <div style={{ maxWidth: 720 }}>
+      <Link
+        href={`/coach/clients/${clientId}/workouts`}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, color: palette.inkDim, textDecoration: "none", fontSize: 13.5, marginBottom: 18 }}
+      >
+        <ChevronLeft size={16} /> Entrenamientos de {clientName}
+      </Link>
 
-      <h1 style={{ fontSize: 21, fontWeight: 800, marginBottom: 4 }}>{routineName}</h1>
+      <h1 style={{ fontSize: 21, fontWeight: 800, marginBottom: 4 }}>{view.routineName}</h1>
       <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 20 }}>
-        {new Date(date).toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ·{" "}
-        {new Date(date).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}
+        {new Date(view.date).toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ·{" "}
+        {new Date(view.date).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}
       </p>
 
       <div style={{ display: "flex", justifyContent: "space-around", padding: "14px 0", borderTop: `1px solid ${palette.panelBorder}`, borderBottom: `1px solid ${palette.panelBorder}`, marginBottom: 22 }}>
-        <StatItem icon={<Clock size={15} />} value={formatDurationLabel(durationSec)} label="Duración" />
-        <StatItem icon={<Weight size={15} />} value={`${Math.round(totalVolume).toLocaleString("es-CO")} kg`} label="Volumen" />
-        <StatItem icon={<Layers size={15} />} value={`${totalSets}`} label="Series efectivas" />
+        <StatItem icon={<Clock size={15} />} value={formatDurationLabel(view.durationSec)} label="Duración" />
+        <StatItem icon={<Weight size={15} />} value={`${Math.round(view.totalVolume).toLocaleString("es-CO")} kg`} label="Volumen" />
+        <StatItem icon={<Layers size={15} />} value={`${view.totalSets}`} label="Series efectivas" />
       </div>
 
-      {muscleDistribution.length > 0 && (
+      {view.muscleDistribution.length > 0 && (
         <div style={{ marginBottom: 26 }}>
           <div style={sectionLabel}>Distribución muscular</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {muscleDistribution.map((m, i) => (
+            {view.muscleDistribution.map((m, i) => (
               <div key={m.muscle}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                   <span>{muscleLabel(m.muscle)}</span>
@@ -68,8 +77,8 @@ export default function WorkoutLogDetail({
 
       <div style={sectionLabel}>Ejercicios</div>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        {exercises.map((ex, exIdx) => (
-          <div key={ex.id} style={{ paddingTop: 14, paddingBottom: 14, borderTop: exIdx > 0 ? `1px solid ${palette.panelBorder}` : "none" }}>
+        {view.exercises.map((ex, exIdx) => (
+          <div key={`${ex.id}-${exIdx}`} style={{ paddingTop: 14, paddingBottom: 14, borderTop: exIdx > 0 ? `1px solid ${palette.panelBorder}` : "none" }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{ex.name}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {ex.sets.map((s, i) => (

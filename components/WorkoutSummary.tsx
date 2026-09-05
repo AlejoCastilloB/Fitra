@@ -7,6 +7,7 @@ import { usePalette } from "@/lib/theme";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import type { LiveExercise } from "@/lib/workoutSession";
 import { Camera, Flame, Save, Trophy } from "lucide-react";
+import { formatDurationLabel } from "@/lib/formatDuration";
 
 const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
 
@@ -25,7 +26,6 @@ export default function WorkoutSummary({
 }) {
   const palette = usePalette();
   const supabase = createClient();
-  const minutes = Math.floor(durationSec / 60);
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
   const comparison = getWeightComparison(volume);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -179,7 +179,7 @@ export default function WorkoutSummary({
 
         <div style={{ display: "flex", justifyContent: "center", gap: 24 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>{minutes} min</div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{formatDurationLabel(durationSec)}</div>
             <div style={{ fontSize: 9.5, color: palette.inkDim, textTransform: "uppercase" }}>Duración</div>
           </div>
           <div>
