@@ -12,7 +12,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import SettingsGroup from "@/components/SettingsGroup";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
-import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, NUTRITION_CLOSE_DAY_OPTIONS, type UnitSystem } from "@/lib/units";
+import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
 import { FOOD_TASTE_OPTIONS } from "@/lib/foodTastes";
 import { clearSwCache } from "@/lib/clearSwCache";
 import { computeNutritionGoals, COMMITMENT_OPTIONS, type Sex, type CommitmentLevel } from "@/lib/computeNutritionGoals";
@@ -67,7 +67,6 @@ export default function ProfileSettingsPage() {
   const [sex, setSex] = useState<Sex | null>(null);
   const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
   const [physicalReminderDays, setPhysicalReminderDays] = useState<number | null>(null);
-  const [nutritionReminderTime, setNutritionReminderTime] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [daysAvailable, setDaysAvailable] = useState(3);
 
@@ -89,7 +88,7 @@ export default function ProfileSettingsPage() {
       setEmail(auth.user!.email ?? "");
 
       const [{ data: userRow }, { data: clientRow }, { data: foodTasteRow }] = await Promise.all([
-        supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days, physical_reminder_days, nutrition_reminder_time").eq("id", id).single(),
+        supabase.from("users").select("timer_sound, display_name, auto_warmup_prompt, unit_system, measurement_zones, progress_reminder_days, physical_reminder_days").eq("id", id).single(),
         supabase.from("clients").select("dietary_restrictions, kitchen_equipment, current_weight, height_cm, age, sex, commitment, lifestyle").eq("user_id", id).single(),
         // Consulta aparte: si esta migración nueva (food_likes/food_dislikes) todavía no corrió,
         // que falle sola y no tumbe el resto de "clients" (peso, altura, restricciones, etc.)
@@ -103,7 +102,6 @@ export default function ProfileSettingsPage() {
         setMeasurementZones(userRow.measurement_zones || []);
         setProgressReminderDays(userRow.progress_reminder_days ?? null);
         setPhysicalReminderDays(userRow.physical_reminder_days ?? null);
-        setNutritionReminderTime(userRow.nutrition_reminder_time ?? null);
         // Consulta aparte: meal_reminders es una columna nueva y, si la migración aún no
         // corrió, pedirla junto al resto tumbaría la carga completa de los ajustes.
         supabase.from("users").select("meal_reminders").eq("id", id).single()
@@ -205,11 +203,6 @@ export default function ProfileSettingsPage() {
     await supabase.from("users").update({ meal_reminders: serializeMealSlots(slots) }).eq("id", uid);
   }
 
-  async function updateNutritionReminderTime(time: string | null) {
-    setNutritionReminderTime(time);
-    await supabase.from("users").update({ nutrition_reminder_time: time }).eq("id", uid);
-  }
-
   async function saveDietaryInfo() {
     await Promise.all([
       supabase.from("clients").update({ dietary_restrictions: dietaryRestrictions, kitchen_equipment: kitchenEquipment }).eq("user_id", uid),
@@ -300,21 +293,6 @@ export default function ProfileSettingsPage() {
           sublabel={mealRemindersSummary(mealSlots)}
           showChevron
           onClick={() => setShowMealEdit(true)}
-        />
-        <ListRow
-          label="Recordatorio para cerrar el día"
-          sublabel="Te avisamos para que cuentes o grabes todo lo que comiste"
-          right={
-            <select
-              value={nutritionReminderTime ?? ""}
-              onChange={(e) => updateNutritionReminderTime(e.target.value || null)}
-              style={{ padding: "6px 8px", borderRadius: 8, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 12.5 }}
-            >
-              {NUTRITION_CLOSE_DAY_OPTIONS.map((o) => (
-                <option key={String(o.value)} value={o.value ?? ""}>{o.label}</option>
-              ))}
-            </select>
-          }
         />
       </SettingsGroup>
 

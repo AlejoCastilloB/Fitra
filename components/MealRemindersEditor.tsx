@@ -37,7 +37,8 @@ export default function MealRemindersEditor({
     <Modal title="Recordatorios de comida" onClose={onClose} maxWidth={400}>
       <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, marginBottom: 16 }}>
         Elige a qué hora quieres que te avisemos de cada comida y apaga las que no uses.
-        Si a esa hora ya registraste algo, no te llega nada.
+        Si ya registraste algo a esa hora, no te llega nada — y si no, te lo recordamos una
+        vez más a la hora siguiente. Nunca más de dos avisos por comida.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>

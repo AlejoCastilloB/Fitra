@@ -3,21 +3,6 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
-import { timeToMinutes } from "@/lib/mealReminders";
-
-/** Fecha y hora en la zona horaria del usuario, no en la del servidor. */
-function localParts(timeZone: string, date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)!.value;
-  return {
-    dateKey: `${get("year")}-${get("month")}-${get("day")}`,
-    hour: get("hour") === "24" ? 0 : +get("hour"),
-    minute: +get("minute"),
-  };
-}
 
 // Obligatorio. La comprobación del secreto vive en lib/cronAuth, así que Next ya no ve
 // que esta ruta lee la cabecera y la considera estática: cachearía la respuesta del build
@@ -104,38 +89,8 @@ export async function GET(req: Request) {
     await admin.from("users").update({ last_physical_reminder_sent_at: now.toISOString() }).eq("id", u.id);
   }
 
-  // Esto usaba un offset fijo de Bogotá (-5h) escrito a mano, así que a quien está fuera
-  // de Colombia el aviso le llegaba a la hora equivocada: en España, seis o siete horas
-  // antes. La hora la pone ahora el reloj de cada usuario, igual que el resto de la app.
-  const { data: nutritionUsers } = await admin
-    .from("users")
-    .select("id, timezone, nutrition_reminder_time, last_nutrition_reminder_sent_at")
-    .not("nutrition_reminder_time", "is", null);
-
-  for (const u of nutritionUsers ?? []) {
-    const time = u.nutrition_reminder_time as string;
-    if (!time) continue;
-
-    const targetMin = timeToMinutes(time);
-    if (targetMin === null) continue;
-
-    let local;
-    try {
-      local = localParts(u.timezone || "America/Bogota", now);
-    } catch {
-      continue;
-    }
-
-    if (u.last_nutrition_reminder_sent_at === local.dateKey) continue;
-    if (local.hour * 60 + local.minute < targetMin) continue;
-
-    sent += await sendTo(u.id, {
-      title: "Cierra tu día en FitTrack",
-      body: "Cuéntale a Fitra todo lo que comiste hoy — por texto o nota de voz — y arma tu registro completo.",
-      url: "/app/nutrition?closeDay=1",
-    });
-    await admin.from("users").update({ last_nutrition_reminder_sent_at: local.dateKey }).eq("id", u.id);
-  }
+  // El recordatorio de "cierra tu día" se quitó junto con esa pantalla: registrar la
+  // comida por nota de voz en el momento sustituye al resumen de todo el día.
 
   return NextResponse.json({ ok: true, sent });
 }

@@ -3,7 +3,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
-import { parseMealSlots, dueMeal, logWindowFor, MEAL_COPY, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
+import { parseMealSlots, dueReminder, logWindowFor, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
 
 function localParts(timeZone: string, date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -41,6 +41,28 @@ async function loadUsers(admin: any) {
   return { users: fallback.data ?? [], hasConfigColumn: false };
 }
 
+/**
+ * Reserva el aviso de una comida para un usuario y un día.
+ *
+ * El insert ES la comprobación: la restricción de unicidad sobre (user_id, local_date,
+ * slot) hace que solo la primera pasada consiga la fila. Así no hay carrera entre dos
+ * ejecuciones del cron que se solapen, y sobre todo: si la escritura falla por cualquier
+ * motivo, NO se manda nada. Fallar en silencio es mucho mejor que repetir la notificación
+ * cada diez minutos.
+ */
+async function claimReminder(
+  admin: any, userId: string, dateKey: string, slotKey: string,
+): Promise<{ claimed: boolean; error?: string }> {
+  const { error } = await admin
+    .from("meal_reminders_sent")
+    .insert({ user_id: userId, local_date: dateKey, slot: slotKey });
+
+  if (!error) return { claimed: true };
+  // 23505 = violación de unicidad. Es el caso normal: ya se mandó en una pasada anterior.
+  if (error.code === "23505") return { claimed: false };
+  return { claimed: false, error: `${error.code ?? "?"}: ${error.message}` };
+}
+
 // Obligatorio. La comprobación del secreto vive en lib/cronAuth, así que Next ya no ve
 // que esta ruta lee la cabecera y la considera estática: cachearía la respuesta del build
 // y ni ejecutaría la autorización. Con esto se evalúa en cada petición.
@@ -65,6 +87,7 @@ export async function GET(req: Request) {
   if (users.length === 0) return NextResponse.json({ ok: true, sent: 0, hasConfigColumn });
 
   let sent = 0;
+  const problems: { slot: string; error: string }[] = [];
 
   for (const u of users as any[]) {
     let local;
@@ -75,26 +98,25 @@ export async function GET(req: Request) {
     }
 
     const slots = hasConfigColumn ? parseMealSlots(u.meal_reminders) : DEFAULT_MEAL_SLOTS;
-    const slot = dueMeal(slots, local.hour * 60 + local.minute);
-    if (!slot) continue;
+    const due = dueReminder(slots, local.hour * 60 + local.minute);
+    if (!due) continue;
 
-    const { data: already } = await admin
-      .from("meal_reminders_sent")
-      .select("slot")
-      .eq("user_id", u.id).eq("local_date", local.dateKey).eq("slot", slot.key)
-      .maybeSingle();
-    if (already) continue;
-
-    await admin.from("meal_reminders_sent").upsert(
-      { user_id: u.id, local_date: local.dateKey, slot: slot.key },
-      { onConflict: "user_id,local_date,slot" }
-    );
+    // Reservar el aviso ANTES de mandarlo, y solo mandarlo si la reserva se guardó.
+    // Antes esto era un upsert cuyo error se ignoraba: si la escritura fallaba, el aviso
+    // salía igual y en la siguiente pasada volvía a salir, porque nunca quedaba constancia
+    // de haberlo mandado. Con el cron cada 10 minutos y una ventana de una hora, eso son
+    // seis notificaciones idénticas de la misma comida.
+    const claim = await claimReminder(admin, u.id, local.dateKey, due.dedupeKey);
+    if (!claim.claimed) {
+      if (claim.error) problems.push({ slot: due.dedupeKey, error: claim.error });
+      continue;
+    }
 
     const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", u.id);
     if (!subs || subs.length === 0) continue;
 
     // Si ya registró algo en la franja que cubre esta comida, no hace falta recordárselo.
-    const window = logWindowFor(slots, slot.key);
+    const window = logWindowFor(slots, due.slot.key);
     const sinceIso = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
     const { data: logs } = await admin
       .from("nutrition_logs")
@@ -110,12 +132,11 @@ export async function GET(req: Request) {
     });
     if (alreadyLogged) continue;
 
-    const copy = MEAL_COPY[slot.key];
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: copy.title, body: copy.body, url: "/app/nutrition" })
+          JSON.stringify({ title: due.title, body: due.body, url: due.url })
         );
         sent++;
       } catch (err: any) {
@@ -126,5 +147,7 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, hasConfigColumn });
+  // `problems` sale en la respuesta a propósito: si la reserva falla, los avisos se
+  // paran (mejor silencio que spam) y el motivo queda a la vista al abrir la URL del cron.
+  return NextResponse.json({ ok: true, sent, hasConfigColumn, problems });
 }

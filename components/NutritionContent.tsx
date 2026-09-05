@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, Moon, MoreVertical, Wand2, Images } from "lucide-react";
+import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Star, X, Trash2, MoreVertical, Wand2, Images } from "lucide-react";
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
@@ -36,8 +36,8 @@ export default function NutritionContent() {
   const audioChunksRef = useRef<Blob[]>([]);
   const fixRecorderRef = useRef<MediaRecorder | null>(null);
   const fixChunksRef = useRef<Blob[]>([]);
-  const closeDayRecorderRef = useRef<MediaRecorder | null>(null);
-  const closeDayChunksRef = useRef<Blob[]>([]);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
 
   const [logs, setLogs] = useState<any[]>([]);
   const [savedMeals, setSavedMeals] = useState<any[]>([]);
@@ -64,12 +64,12 @@ export default function NutritionContent() {
   const [fixAudioBlob, setFixAudioBlob] = useState<Blob | null>(null);
   const [fixSubmitting, setFixSubmitting] = useState(false);
   const [fixError, setFixError] = useState("");
-  const [showCloseDay, setShowCloseDay] = useState(false);
-  const [closeDayText, setCloseDayText] = useState("");
-  const [closeDayRecording, setCloseDayRecording] = useState(false);
-  const [closeDayAudioBlob, setCloseDayAudioBlob] = useState<Blob | null>(null);
-  const [closeDaySubmitting, setCloseDaySubmitting] = useState(false);
-  const [closeDayError, setCloseDayError] = useState("");
+  const [showVoiceLog, setShowVoiceLog] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const [voiceAudioBlob, setVoiceAudioBlob] = useState<Blob | null>(null);
+  const [voiceSubmitting, setVoiceSubmitting] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
 
   async function loadAll() {
     const { data: auth } = await supabase.auth.getUser();
@@ -97,7 +97,9 @@ export default function NutritionContent() {
   useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
-    if (searchParams.get("closeDay") === "1") setShowCloseDay(true);
+    // `closeDay` se conserva porque quedan notificaciones ya enviadas que apuntan ahí:
+    // en vez de dejarlas en una pantalla que ya no existe, abren la nota de voz.
+    if (searchParams.get("voice") === "1" || searchParams.get("closeDay") === "1") setShowVoiceLog(true);
   }, [searchParams]);
 
   async function addWater(delta: number) {
@@ -163,45 +165,48 @@ export default function NutritionContent() {
     } catch { setError("No pudimos acceder al micrófono."); }
   }
 
-  async function toggleCloseDayRecording() {
-    if (closeDayRecording) { closeDayRecorderRef.current?.stop(); setCloseDayRecording(false); return; }
+  async function toggleVoiceRecording() {
+    if (voiceRecording) { voiceRecorderRef.current?.stop(); setVoiceRecording(false); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
-      closeDayChunksRef.current = [];
-      recorder.ondataavailable = (e) => closeDayChunksRef.current.push(e.data);
-      recorder.onstop = () => { setCloseDayAudioBlob(new Blob(closeDayChunksRef.current, { type: "audio/webm" })); stream.getTracks().forEach((t) => t.stop()); };
+      voiceChunksRef.current = [];
+      recorder.ondataavailable = (e) => voiceChunksRef.current.push(e.data);
+      recorder.onstop = () => { setVoiceAudioBlob(new Blob(voiceChunksRef.current, { type: "audio/webm" })); stream.getTracks().forEach((t) => t.stop()); };
       recorder.start();
-      closeDayRecorderRef.current = recorder;
-      setCloseDayRecording(true);
-    } catch { setCloseDayError("No pudimos acceder al micrófono."); }
+      voiceRecorderRef.current = recorder;
+      setVoiceRecording(true);
+    } catch { setVoiceError("No pudimos acceder al micrófono."); }
   }
 
-  function closeCloseDayModal() {
-    setShowCloseDay(false);
-    setCloseDayText(""); setCloseDayAudioBlob(null); setCloseDayError("");
+  function closeVoiceModal() {
+    setShowVoiceLog(false);
+    setVoiceText(""); setVoiceAudioBlob(null); setVoiceError("");
   }
 
-  async function submitCloseDay() {
-    if (!closeDayText.trim() && !closeDayAudioBlob) return;
-    setCloseDaySubmitting(true);
-    setCloseDayError("");
+  /** Registra una comida solo con lo que el usuario cuenta: sin foto obligatoria. */
+  async function submitVoiceLog() {
+    if (!voiceText.trim() && !voiceAudioBlob) return;
+    setVoiceSubmitting(true);
+    setVoiceError("");
     try {
       const body: any = {};
-      if (closeDayText.trim()) body.text = closeDayText.trim();
-      if (closeDayAudioBlob) { body.audioBase64 = await fileToBase64(closeDayAudioBlob, false); body.audioMimeType = "audio/webm"; }
+      if (voiceText.trim()) body.note = voiceText.trim();
+      if (voiceAudioBlob) { body.audioBase64 = await fileToBase64(voiceAudioBlob, false); body.audioMimeType = "audio/webm"; }
 
-      const res = await fetch("/api/ai/log-day-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/ai/log-food", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
 
-      if (!res.ok) setCloseDayError(data.message || data.error || "Error al procesar tu resumen");
+      if (!res.ok) setVoiceError(data.message || data.error || "Error al registrar tu comida");
       else {
+        setRemaining(data.remaining);
+        setExpandedId(data.log.id);
         setCoachTip(data.coachTip || "");
-        closeCloseDayModal();
+        closeVoiceModal();
         await loadAll();
       }
-    } catch { setCloseDayError("Fallo de red, inténtalo de nuevo"); }
-    finally { setCloseDaySubmitting(false); }
+    } catch { setVoiceError("Fallo de red, inténtalo de nuevo"); }
+    finally { setVoiceSubmitting(false); }
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -481,13 +486,19 @@ export default function NutritionContent() {
             <Camera size={17} /> Foto de tu comida
           </button>
 
-          <button onClick={() => { setError(""); setCoachTip(""); fileRef.current?.click(); }} style={{ ...secondaryBtn(palette), width: "100%", marginBottom: 8 }}>
-            <Images size={14} /> Subir foto de la galería
-          </button>
+          {/* Las dos formas de registrar sin usar la cámara. La nota de voz no pide foto:
+              basta con contarle a Fitra qué comiste. */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button onClick={() => { setError(""); setCoachTip(""); fileRef.current?.click(); }} style={secondaryBtn(palette)}>
+              <Images size={14} /> Subir foto
+            </button>
+            <button onClick={() => { setError(""); setCoachTip(""); setShowVoiceLog(true); }} style={secondaryBtn(palette)}>
+              <Mic size={14} /> Nota de voz
+            </button>
+          </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Comidas guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
-            <button onClick={() => setShowCloseDay(true)} style={secondaryBtn(palette)}><Moon size={14} /> Cerrar mi día</button>
           </div>
           <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
           <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
@@ -679,19 +690,19 @@ export default function NutritionContent() {
 
       {showSaved && <SavedMealsModal meals={savedMeals} onClose={() => setShowSaved(false)} onPick={quickLogSaved} />}
 
-      {showCloseDay && (
-        <CloseDayModal
-          text={closeDayText} onTextChange={setCloseDayText}
-          recording={closeDayRecording} onToggleRecording={toggleCloseDayRecording}
-          hasAudio={!!closeDayAudioBlob} submitting={closeDaySubmitting} error={closeDayError}
-          onSubmit={submitCloseDay} onClose={closeCloseDayModal}
+      {showVoiceLog && (
+        <VoiceLogModal
+          text={voiceText} onTextChange={setVoiceText}
+          recording={voiceRecording} onToggleRecording={toggleVoiceRecording}
+          hasAudio={!!voiceAudioBlob} submitting={voiceSubmitting} error={voiceError}
+          onSubmit={submitVoiceLog} onClose={closeVoiceModal}
         />
       )}
     </div>
   );
 }
 
-function CloseDayModal({
+function VoiceLogModal({
   text, onTextChange, recording, onToggleRecording, hasAudio, submitting, error, onSubmit, onClose,
 }: {
   text: string; onTextChange: (v: string) => void; recording: boolean; onToggleRecording: () => void;
@@ -699,13 +710,13 @@ function CloseDayModal({
 }) {
   const palette = usePalette();
   return (
-    <Modal title="Cerrar tu día" onClose={onClose} maxWidth={400}>
+    <Modal title="Cuéntale a Fitra qué comiste" onClose={onClose} maxWidth={400}>
       <p style={{ fontSize: 12, color: palette.inkDim, lineHeight: 1.5, marginBottom: 14 }}>
-        Cuéntale a Fitra todo lo que comiste hoy en un solo mensaje — por texto o nota de voz — y arma el registro completo por ti.
+        Sin foto: grábale una nota de voz o escríbelo, y Fitra calcula las calorías y los macros.
       </p>
       <textarea
         value={text} onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Ej: en el desayuno comí huevos con arepa, a media mañana una manzana, y en el almuerzo arroz con pollo y ensalada..."
+        placeholder="Ej: me comí un plato de arroz con pollo, ensalada y un jugo de mora sin azúcar..."
         style={{ width: "100%", minHeight: 90, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 13, marginBottom: 10, fontFamily: "inherit", resize: "vertical" }}
       />
       <button onClick={onToggleRecording} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderRadius: 10, border: `1px solid ${recording ? "#f87171" : palette.panelBorder}`, background: recording ? "#f8717122" : palette.inputBg, color: recording ? "#f87171" : palette.ink, fontSize: 12.5, cursor: "pointer", fontWeight: 600, marginBottom: 6 }}>
@@ -721,7 +732,7 @@ function CloseDayModal({
         fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: submitting || (!text.trim() && !hasAudio) ? 0.6 : 1,
       }}>
-        {submitting ? <><Loader2 size={16} /> Fitra está registrando...</> : <><Sparkles size={16} /> Registrar mi día</>}
+        {submitting ? <><Loader2 size={16} /> Fitra está calculando...</> : <><Sparkles size={16} /> Calcular calorías</>}
       </button>
     </Modal>
   );
