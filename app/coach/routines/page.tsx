@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Plus, Dumbbell, Pencil, Trash2, RefreshCw, Folder, Copy, Info, Check, X } from "lucide-react";
+import { Plus, Dumbbell, Pencil, Trash2, RefreshCw, Folder, Copy, Info, Check, X, ChevronDown, ChevronRight, GripVertical, BarChart3, ArrowUp, ArrowDown } from "lucide-react";
 import { ROUTINE_DURATION_OPTIONS } from "@/lib/units";
+
+/** Las rutinas sin carpeta van juntas bajo este nombre; no es una carpeta de verdad. */
+const SIN_CARPETA = "Sin carpeta";
+/** Qué carpetas dejó cerradas este entrenador. Es preferencia suya, va en el navegador. */
+const COLLAPSED_KEY = "fitra_carpetas_cerradas";
 
 export default function RoutinesPage() {
   const palette = usePalette();
@@ -28,8 +33,10 @@ export default function RoutinesPage() {
     const [{ data: r }, { data: folders }] = await Promise.all([
       supabase
         .from("routines")
-        .select("id, name, client_id, assigned_at, duration_days, auto_renew, folder")
+        .select("id, name, client_id, assigned_at, duration_days, auto_renew, folder, sort_order")
         .eq("trainer_id", auth.user!.id)
+        // El orden manual manda; las que nunca se arrastraron van detrás, por fecha.
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false }),
       supabase.from("routine_folders").select("name, description").eq("trainer_id", auth.user!.id),
     ]);
@@ -84,6 +91,22 @@ export default function RoutinesPage() {
     const { error } = await supabase.from("routines").update({ folder: folder.trim() || null }).eq("id", routineId);
     if (error) { setActionError(`No pudimos cambiar la carpeta: ${error.message}`); return; }
     load();
+  }
+
+  /**
+   * Guarda el orden de las rutinas de una carpeta.
+   *
+   * Se numeran TODAS las de esa carpeta de cero en adelante, no solo la que se movió: así
+   * el orden queda completo aunque nunca se hubiera tocado antes.
+   */
+  async function saveOrder(ids: string[]) {
+    setActionError(null);
+    // Optimista: la lista ya se pintó en el orden nuevo, esto solo lo persiste.
+    const results = await Promise.all(
+      ids.map((id, i) => supabase.from("routines").update({ sort_order: i }).eq("id", id))
+    );
+    const fallo = results.find((r) => r.error);
+    if (fallo?.error) { setActionError(`No pudimos guardar el orden: ${fallo.error.message}`); load(); }
   }
 
   /** La descripción del programa entero, la que el cliente lee arriba de sus rutinas. */
@@ -174,6 +197,8 @@ export default function RoutinesPage() {
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
       ) : (
         <RoutineFolders
+          setRoutines={setRoutines}
+          saveOrder={saveOrder}
           folderDescriptions={folderDescriptions}
           saveFolderDescription={saveFolderDescription}
           routines={routines}
@@ -192,8 +217,10 @@ export default function RoutinesPage() {
   );
 }
 
-function RoutineFolders({ routines, clients, folderDescriptions, saveFolderDescription, reassign, updateDuration, toggleAutoRenew, updateFolder, deleteRoutine, duplicateRoutine, duplicatingId, palette }: {
+function RoutineFolders({ routines, setRoutines, saveOrder, clients, folderDescriptions, saveFolderDescription, reassign, updateDuration, toggleAutoRenew, updateFolder, deleteRoutine, duplicateRoutine, duplicatingId, palette }: {
   routines: any[]; clients: any[];
+  setRoutines: (r: any[]) => void;
+  saveOrder: (ids: string[]) => void;
   folderDescriptions: Record<string, string>;
   saveFolderDescription: (folder: string, description: string) => Promise<string | null>;
   reassign: (id: string, clientId: string) => void;
@@ -205,27 +232,95 @@ function RoutineFolders({ routines, clients, folderDescriptions, saveFolderDescr
   duplicatingId: string | null;
   palette: Palette;
 }) {
+  // Qué carpetas están cerradas. Se recuerda entre visitas: con seis programas abiertos
+  // la pantalla es un muro y hay que hacer scroll para llegar al que se busca.
+  const [collapsed, setCollapsed] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [dragging, setDragging] = useState<{ folder: string; id: string } | null>(null);
+
+  function toggleFolder(key: string) {
+    setCollapsed((prev) => {
+      const next = prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key];
+      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  /**
+   * Mueve una rutina dentro de su carpeta y guarda el orden.
+   *
+   * Se reordena la lista completa —no solo el grupo— para que la pantalla se repinte al
+   * instante; la numeración que se guarda es solo la de esa carpeta.
+   */
+  function moveWithinFolder(folderKey: string, fromId: string, toId: string) {
+    if (fromId === toId) return;
+    const delGrupo = routines.filter((r) => (r.folder || SIN_CARPETA) === folderKey);
+    const desde = delGrupo.findIndex((r) => r.id === fromId);
+    const hasta = delGrupo.findIndex((r) => r.id === toId);
+    if (desde < 0 || hasta < 0) return;
+
+    const reordenado = [...delGrupo];
+    const [movida] = reordenado.splice(desde, 1);
+    reordenado.splice(hasta, 0, movida);
+
+    // Se reconstruye la lista entera respetando la posición de las otras carpetas.
+    let i = 0;
+    setRoutines(routines.map((r) => ((r.folder || SIN_CARPETA) === folderKey ? reordenado[i++] : r)));
+    saveOrder(reordenado.map((r) => r.id));
+  }
+
   const folderNames = Array.from(new Set(routines.map((r) => r.folder).filter(Boolean))).sort();
   const groups: Record<string, any[]> = {};
   routines.forEach((r) => {
-    const key = r.folder || "Sin carpeta";
+    const key = r.folder || SIN_CARPETA;
     if (!groups[key]) groups[key] = [];
     groups[key].push(r);
   });
-  const orderedKeys = [...folderNames, ...(groups["Sin carpeta"] ? ["Sin carpeta"] : [])];
+  const orderedKeys = [...folderNames, ...(groups[SIN_CARPETA] ? [SIN_CARPETA] : [])];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       <datalist id="routine-folder-options">
         {folderNames.map((f) => <option key={f} value={f} />)}
       </datalist>
-      {orderedKeys.map((key) => (
+      {orderedKeys.map((key) => {
+        const estaCerrada = collapsed.includes(key);
+        return (
         <div key={key}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, color: palette.inkDim, fontSize: 12.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            <Folder size={13} /> {key} <span style={{ fontWeight: 400, textTransform: "none" }}>({groups[key].length})</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+            <button
+              onClick={() => toggleFolder(key)}
+              aria-expanded={!estaCerrada}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, textAlign: "left",
+                background: "none", border: "none", cursor: "pointer", padding: "6px 0",
+                color: palette.inkDim, fontSize: 12.5, fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.04em", fontFamily: "inherit", touchAction: "manipulation",
+              }}
+            >
+              {estaCerrada ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              <Folder size={13} /> {key}
+              <span style={{ fontWeight: 400, textTransform: "none" }}>({groups[key].length})</span>
+            </button>
+
+            {key !== SIN_CARPETA && (
+              <Link
+                href={`/coach/routines/folder/${encodeURIComponent(key)}`}
+                title="Ver el programa completo con sus series por músculo"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5, flexShrink: 0, textDecoration: "none",
+                  padding: "6px 11px", borderRadius: 9, fontSize: 11.5, fontWeight: 700,
+                  border: `1px solid ${palette.accent}55`, background: `${palette.accent}14`, color: palette.accent,
+                }}
+              >
+                <BarChart3 size={12} /> Ver programa
+              </Link>
+            )}
           </div>
 
-          {key !== "Sin carpeta" && (
+          {key !== SIN_CARPETA && !estaCerrada && (
             <FolderDescription
               folder={key}
               description={folderDescriptions[key] ?? null}
@@ -233,19 +328,62 @@ function RoutineFolders({ routines, clients, folderDescriptions, saveFolderDescr
               palette={palette}
             />
           )}
+          {!estaCerrada && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {groups[key].map((r, i) => {
             const daysLeft = r.assigned_at && r.duration_days
               ? r.duration_days - Math.floor((Date.now() - new Date(r.assigned_at).getTime()) / 86400000)
               : null;
+            const arrastrando = dragging?.id === r.id;
             return (
-            <div key={r.id} className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 16, display: "flex", flexDirection: "column", gap: 10, animationDelay: `${Math.min(i, 8) * 0.03}s` }}>
+            <div
+              key={r.id}
+              className="ft-fade-in-up"
+              onDragOver={(e) => { if (dragging?.folder === key) e.preventDefault(); }}
+              onDrop={(e) => { e.preventDefault(); const d = dragging; setDragging(null); if (d && d.folder === key) moveWithinFolder(key, d.id, r.id); }}
+              style={{
+                ...palette.glassPanel, padding: 16, display: "flex", flexDirection: "column", gap: 10,
+                animationDelay: `${Math.min(i, 8) * 0.03}s`,
+                opacity: arrastrando ? 0.45 : 1,
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", color: palette.accent, flexShrink: 0 }}>
-                  <Dumbbell size={16} />
+                {/* El asa de arrastre. En escritorio se arrastra; en móvil el arrastre
+                    nativo no existe, por eso al lado van las flechas de subir y bajar. */}
+                <div
+                  draggable
+                  onDragStart={() => setDragging({ folder: key, id: r.id })}
+                  onDragEnd={() => setDragging(null)}
+                  title="Arrastra para reordenar"
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, background: `${palette.accent}22`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: palette.accent, flexShrink: 0, cursor: "grab",
+                  }}
+                >
+                  {groups[key].length > 1 ? <GripVertical size={16} /> : <Dumbbell size={16} />}
                 </div>
+
+                {groups[key].length > 1 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                    <button
+                      onClick={() => i > 0 && moveWithinFolder(key, r.id, groups[key][i - 1].id)}
+                      disabled={i === 0} aria-label="Subir"
+                      style={arrowStyle(palette, i === 0)}
+                    ><ArrowUp size={11} /></button>
+                    <button
+                      onClick={() => i < groups[key].length - 1 && moveWithinFolder(key, r.id, groups[key][i + 1].id)}
+                      disabled={i === groups[key].length - 1} aria-label="Bajar"
+                      style={arrowStyle(palette, i === groups[key].length - 1)}
+                    ><ArrowDown size={11} /></button>
+                  </div>
+                )}
+
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
+                  {/* El nombre abre el editor: es lo primero que uno intenta tocar. */}
+                  <Link href={`/coach/routines/${r.id}/edit`} style={{ fontSize: 14, fontWeight: 600, color: palette.ink, textDecoration: "none" }}>
+                    {r.name}
+                  </Link>
                   {r.client_id && (
                     <div style={{ fontSize: 11, color: palette.inkDim }}>
                       {r.duration_days == null
@@ -318,8 +456,10 @@ function RoutineFolders({ routines, clients, folderDescriptions, saveFolderDescr
             );
             })}
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -396,4 +536,15 @@ function FolderDescription({ folder, description, onSave, palette }: {
       <Pencil size={13} color={palette.inkDim} style={{ flexShrink: 0, marginTop: 2 }} />
     </button>
   );
+}
+
+/** Las flechas de subir y bajar, para cuando no se puede arrastrar (móvil). */
+function arrowStyle(palette: Palette, disabled: boolean): React.CSSProperties {
+  return {
+    width: 22, height: 18, borderRadius: 5, cursor: disabled ? "default" : "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    border: `1px solid ${palette.panelBorder}`, background: "none",
+    color: palette.inkDim, opacity: disabled ? 0.35 : 1, padding: 0,
+    touchAction: "manipulation",
+  };
 }
