@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ensurePushSubscribed } from "@/lib/push";
 import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 import { dueOpenWorkoutReminder, reminderText, FIRST_REMINDER_MINUTES, SECOND_REMINDER_MINUTES, type ReminderStage } from "@/lib/openWorkoutReminders";
+import { startKeepAlive, stopKeepAlive } from "@/lib/keepAliveDuringRest";
 
 const SOUNDS: Record<string, { freq: number; pattern: number[] }> = {
   clasico: { freq: 880, pattern: [0.35] },
@@ -75,8 +76,19 @@ export default function RestAlarm() {
     } catch {}
   }
 
+  // Mientras corre un descanso se reproduce silencio para que el sistema no suspenda la
+  // pestaña. Sin esto, al bloquear el teléfono o cambiar de app iOS congela el temporizador
+  // de abajo y el aviso solo llegaba cuando pasaba el cron del servidor —cada varios
+  // minutos—. Se corta en cuanto el descanso termina: solo está activo esos 90 segundos.
+  useEffect(() => {
+    if (!session?.restEndAt) { stopKeepAlive(); return; }
+    if (session.restEndAt <= Date.now()) { stopKeepAlive(); return; }
+    startKeepAlive();
+    return () => stopKeepAlive();
+  }, [session?.restEndAt]);
+
   // El aviso del fin del descanso lo dispara la propia app con un temporizador, no el cron:
-  // el cron corre cada varios minutos y llegaría tardísimo. Se programa unos segundos antes
+  // el cron corre cada varios minutos y llegaría tardísimo. Se programa un segundo antes
   // del cero para compensar lo que tarda el sistema en pintarlo. Lleva `tag`, así que si
   // además llega el push del servidor lo reemplaza en vez de duplicarlo.
   useEffect(() => {
@@ -84,11 +96,12 @@ export default function RestAlarm() {
     if (!endAt) return;
     if (!("Notification" in window) || Notification.permission !== "granted") return;
 
-    const delay = endAt - REST_NOTIFY_LEAD_MS - Date.now();
-    if (delay < 0) return;
-
     const routineName = session?.routineName;
-    const timer = setTimeout(async () => {
+    let mostrada = false;
+
+    async function mostrar() {
+      if (mostrada) return;
+      mostrada = true;
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification("Descanso terminado", {
@@ -98,9 +111,22 @@ export default function RestAlarm() {
           data: { url: "/app" },
         });
       } catch {}
-    }, delay);
+    }
 
-    return () => clearTimeout(timer);
+    const delay = endAt - REST_NOTIFY_LEAD_MS - Date.now();
+    const timer = delay > 0 ? setTimeout(mostrar, delay) : null;
+
+    // Red de seguridad por si el sistema congela el temporizador de todas formas: al
+    // volver a la app, si el descanso ya se acabó y el aviso nunca salió, sale ahora.
+    function alVolver() {
+      if (document.visibilityState === "visible" && Date.now() >= endAt! - REST_NOTIFY_LEAD_MS) mostrar();
+    }
+    document.addEventListener("visibilitychange", alVolver);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
   }, [session?.restEndAt, session?.routineName]);
 
   useEffect(() => {

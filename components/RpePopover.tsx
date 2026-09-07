@@ -13,13 +13,27 @@ import { usePalette } from "@/lib/theme";
  * repeticiones y el check, y los números salen en un popover que se cierra al elegir.
  */
 
-const NIVELES: { value: number; label: string }[] = [
-  { value: 6, label: "Fácil, quedaban 4+" },
-  { value: 7, label: "Quedaban 3" },
-  { value: 8, label: "Quedaban 2" },
-  { value: 9, label: "Quedaba 1" },
-  { value: 10, label: "Al fallo" },
-];
+/**
+ * Los diez valores, con el significado de los que se usan de verdad.
+ *
+ * La escala entera va del 1 al 10 y así estaba antes; reducirla a 6-10 dejaba sin forma de
+ * registrar una serie fácil. Los de abajo casi no se usan entrenando en serio, pero
+ * quitarlos es decidir por la persona.
+ */
+const SIGNIFICADO: Record<number, string> = {
+  1: "Nada de esfuerzo",
+  2: "Muy fácil",
+  3: "Fácil",
+  4: "Cómodo",
+  5: "Quedaban muchas",
+  6: "Quedaban 4",
+  7: "Quedaban 3",
+  8: "Quedaban 2",
+  9: "Quedaba 1",
+  10: "Al fallo",
+};
+
+const VALORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export default function RpePopover({
   current, x, y, onSelect, onClose,
@@ -27,6 +41,8 @@ export default function RpePopover({
   const palette = usePalette();
   const ref = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  /** El número sobre el que está el dedo o el ratón, para explicar qué significa. */
+  const [preview, setPreview] = useState<number | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -44,11 +60,11 @@ export default function RpePopover({
 
   if (!mounted) return null;
 
-  const width = 190;
+  const width = 230;
   const ventanaW = typeof window !== "undefined" ? window.innerWidth : 400;
   const ventanaH = typeof window !== "undefined" ? window.innerHeight : 800;
   const left = Math.min(Math.max(8, x - width / 2), ventanaW - width - 8);
-  const alto = 292;
+  const alto = 190;
   // Si no cabe debajo del botón, se abre hacia arriba en vez de salirse de la pantalla.
   const top = y + 10 + alto > ventanaH ? Math.max(8, y - alto - 26) : y + 10;
 
@@ -66,34 +82,34 @@ export default function RpePopover({
     >
       <style>{`@keyframes ftPopoverIn { from { opacity: 0; transform: scale(0.92) translateY(-4px); } to { opacity: 1; transform: none; } }`}</style>
 
-      <div style={{ fontSize: 10.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700, padding: "2px 6px 8px" }}>
+      <div style={{ fontSize: 10.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700, padding: "2px 4px 8px" }}>
         ¿Cuánto te costó?
       </div>
 
-      {NIVELES.map((n) => (
-        <button
-          key={n.value}
-          onClick={() => { onSelect(n.value); onClose(); }}
-          style={{
-            display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 8px",
-            borderRadius: 9, cursor: "pointer", border: "none", minHeight: 40,
-            background: current === n.value ? `${palette.accent}18` : "transparent",
-            touchAction: "manipulation",
-          }}
-        >
-          <span style={{
-            width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800,
-            background: current === n.value ? palette.accent : palette.inputBg,
-            color: current === n.value ? palette.bg : palette.ink,
-          }}>{n.value}</span>
-          <span style={{ fontSize: 12, color: current === n.value ? palette.accent : palette.inkDim, textAlign: "left" }}>{n.label}</span>
-        </button>
-      ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+        {VALORES.map((n) => (
+          <button
+            key={n}
+            onMouseEnter={() => setPreview(n)}
+            onFocus={() => setPreview(n)}
+            onClick={() => { onSelect(n); onClose(); }}
+            style={{
+              height: 40, borderRadius: 9, cursor: "pointer", border: "none",
+              fontSize: 13, fontWeight: 800, fontFamily: "inherit", touchAction: "manipulation",
+              background: current === n ? palette.accent : palette.inputBg,
+              color: current === n ? palette.bg : palette.ink,
+            }}
+          >{n}</button>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 11.5, color: palette.inkDim, textAlign: "center", margin: "10px 2px 2px", minHeight: 15 }}>
+        {SIGNIFICADO[preview ?? current ?? 8]}
+      </p>
 
       {current != null && (
         <>
-          <div style={{ height: 1, background: palette.panelBorder, margin: "4px 6px" }} />
+          <div style={{ height: 1, background: palette.panelBorder, margin: "6px 4px 2px" }} />
           <button
             onClick={() => { onSelect(undefined); onClose(); }}
             style={{

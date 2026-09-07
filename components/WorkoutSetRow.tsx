@@ -102,7 +102,11 @@ export default function WorkoutSetRow({
             }}
           >{badge.text}</button>
 
-          {previousLabel !== undefined && (
+          {/* "Anterior" desaparece en cuanto la serie está marcada y hay que poner RPE:
+              en un iPhone SE (375 px) las dos cosas juntas no caben y lo que se encogía
+              eran los campos de peso y repeticiones. Además, una vez hecha la serie, saber
+              lo que levantaste la vez pasada ya no sirve para nada. */}
+          {previousLabel !== undefined && !(trackRpe && s.done) && (
             <span style={{ position: "relative", width: 62, fontSize: 11, color: palette.inkDim, textAlign: "center" }}>{previousLabel}</span>
           )}
 
