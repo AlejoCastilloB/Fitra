@@ -79,8 +79,24 @@ export default function RoutineBuilder({
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState<string | undefined>(routineId);
+  /**
+   * El id de la rutina, leído SIEMPRE desde aquí y no del estado.
+   *
+   * Aquí estaba el fallo de "añado el primer ejercicio y me quedan dos rutinas". El
+   * autoguardado programaba un guardado con una copia congelada del estado; si la persona
+   * seguía escribiendo mientras la creación viajaba por la red, esa segunda copia todavía
+   * veía currentId vacío y creaba una SEGUNDA rutina. Peor: como la firma de los
+   * ejercicios ya estaba marcada como guardada, la segunda nacía vacía — y la pantalla se
+   * quedaba editando esa, mientras el ejercicio se había guardado en la primera.
+   *
+   * Un ref se actualiza en el acto, sin esperar a un render, así que la segunda pasada ve
+   * el id de la primera y actualiza en vez de crear.
+   */
+  const currentIdRef = useRef<string | undefined>(routineId);
   // Evita que dos autoguardados simultáneos creen dos rutinas distintas.
   const creatingRef = useRef(false);
+  /** Un cambio que llegó mientras se guardaba y hay que guardar al terminar. */
+  const pendingRef = useRef(false);
   const firstRunRef = useRef(true);
   // Firma de los ejercicios ya guardados: evita borrarlos y reinsertarlos en cada
   // tecla del nombre, que además abre una ventana donde la rutina queda sin ejercicios
@@ -168,7 +184,9 @@ export default function RoutineBuilder({
   // crea la fila la primera vez y a partir de ahí actualiza siempre la misma.
   const persist = useCallback(async () => {
     if (!name.trim() || picked.length === 0) return;
-    if (creatingRef.current) return;
+    // Si ya hay un guardado en vuelo, este cambio no se tira a la basura: se anota para
+    // repetirlo al terminar. Antes se descartaba en silencio y esa edición se perdía.
+    if (creatingRef.current) { pendingRef.current = true; return; }
 
     setSaving(true);
     setSaveError(null);
@@ -177,7 +195,7 @@ export default function RoutineBuilder({
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("sesión expirada");
 
-      let id = currentId;
+      let id = currentIdRef.current;
 
       if (id) {
         const { error } = await supabase.from("routines").update({
@@ -196,9 +214,12 @@ export default function RoutineBuilder({
           notes: routineNotes,
           days_of_week: days,
         }).select().single();
-        creatingRef.current = false;
-        if (error || !routine) throw error ?? new Error("no se pudo crear la rutina");
+        if (error || !routine) { creatingRef.current = false; throw error ?? new Error("no se pudo crear la rutina"); }
         id = routine.id;
+        // El ref PRIMERO y el candado después: entre las dos líneas no puede colarse otra
+        // pasada, y a partir de aquí cualquiera que entre ya ve el id.
+        currentIdRef.current = id;
+        creatingRef.current = false;
         setCurrentId(id);
         // Cambiar la URL sin re-montar: si el entrenador recarga, sigue editando esta
         // misma rutina en vez de empezar otra en blanco.
@@ -237,16 +258,20 @@ export default function RoutineBuilder({
     } finally {
       setSaving(false);
     }
-  }, [name, picked, clientId, routineNotes, days, role, currentId]);
+  }, [name, picked, clientId, routineNotes, days, role]);
 
   // Autoguardado: se dispara solo cuando algo cambió de verdad, con una pausa para no
   // escribir en cada tecla.
   useEffect(() => {
     if (firstRunRef.current) { firstRunRef.current = false; return; }
     if (!name.trim() || picked.length === 0) return;
-    const t = setTimeout(() => { persist(); }, 1200);
+    const t = setTimeout(async () => {
+      await persist();
+      // Si mientras se guardaba llegó otro cambio, se guarda ahora con lo último.
+      if (pendingRef.current) { pendingRef.current = false; await persist(); }
+    }, 1200);
     return () => clearTimeout(t);
-  }, [name, picked, clientId, routineNotes, days]);
+  }, [name, picked, clientId, routineNotes, days, persist]);
 
   const canSave = !!name.trim() && picked.length > 0;
 

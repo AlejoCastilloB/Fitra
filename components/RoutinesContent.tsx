@@ -38,8 +38,11 @@ export default function RoutinesContent() {
     const [{ data, error: routinesError }, { data: folders }, { data: planRow }] = await Promise.all([
       supabase
         .from("routines")
-        .select("id, name, source, notes, folder")
+        .select("id, name, source, notes, folder, sort_order")
         .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`)
+        // El orden que el entrenador dejó puesto. Las que nunca se ordenaron van detrás,
+        // por fecha, como siempre.
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false }),
       // El RLS de routine_folders solo devuelve las carpetas de rutinas asignadas a esta
       // persona, así que no hace falta filtrar aquí.
