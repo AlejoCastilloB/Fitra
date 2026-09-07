@@ -60,7 +60,10 @@ export default function InviteBanner() {
   if (!invite) return null;
 
   return (
-    <Modal title="Invitación de entrenador" onClose={decline} maxWidth={360}>
+    // Cerrar NO es rechazar: la X y el fondo solo esconden el aviso hasta la próxima
+    // carga. Antes disparaban `decline`, que marca la invitación como usada — un gesto de
+    // "ya lo veo luego" dejaba a la persona sin coach y sin forma de recuperarlo.
+    <Modal title="Invitación de entrenador" onClose={() => setInvite(null)} maxWidth={360}>
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
         <div style={{ width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <UserCheck size={24} color={palette.accent} />

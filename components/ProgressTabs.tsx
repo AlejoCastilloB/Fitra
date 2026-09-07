@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { usePalette, type Palette } from "@/lib/theme";
 import RoutinesContent from "@/components/RoutinesContent";
 import NutritionContent from "@/components/NutritionContent";
+import FoodAnamnesisGate from "@/components/FoodAnamnesisGate";
 
-export default function ProgressTabs() {
+export default function ProgressTabs({ anamnesisDone }: { anamnesisDone: boolean }) {
   const palette = usePalette();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") === "nutrition" ? "nutrition" : "training";
@@ -21,7 +22,9 @@ export default function ProgressTabs() {
         <button onClick={() => setTab("nutrition")} style={segBtn(tab === "nutrition", palette)}>Nutrición</button>
       </div>
 
-      {tab === "training" ? <RoutinesContent /> : <NutritionContent />}
+      {tab === "training" ? <RoutinesContent /> : (
+        <FoodAnamnesisGate done={anamnesisDone}><NutritionContent /></FoodAnamnesisGate>
+      )}
     </div>
   );
 }

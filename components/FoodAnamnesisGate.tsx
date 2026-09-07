@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import FoodAnamnesisFlow from "@/components/FoodAnamnesisFlow";
 
-export default function FoodAnamnesisGate({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const [status, setStatus] = useState<"loading" | "needed" | "done">("loading");
+/**
+ * Muestra la anamnesis alimentaria antes de la pantalla de nutrición, si falta.
+ *
+ * El dato llega ya resuelto desde el servidor (lib/foodAnamnesis): este componente solo
+ * decide qué pintar y recuerda que se acaba de completar, sin volver a preguntar.
+ */
+export default function FoodAnamnesisGate({
+  done, children,
+}: { done: boolean; children: React.ReactNode }) {
+  const [completada, setCompletada] = useState(done);
 
-  useEffect(() => {
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) { setStatus("done"); return; }
-      const { data } = await supabase.from("clients").select("food_anamnesis_completed_at").eq("user_id", auth.user.id).single();
-      setStatus(data?.food_anamnesis_completed_at ? "done" : "needed");
-    })();
-  }, []);
-
-  if (status === "loading") return null;
-  if (status === "needed") return <FoodAnamnesisFlow onDone={() => setStatus("done")} />;
+  if (!completada) return <FoodAnamnesisFlow onDone={() => setCompletada(true)} />;
   return <>{children}</>;
 }

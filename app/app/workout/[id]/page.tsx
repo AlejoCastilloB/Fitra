@@ -16,6 +16,7 @@ import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExercisePicker from "@/components/ExercisePicker";
 import SetTypePopover from "@/components/SetTypePopover";
 import WorkoutSetRow from "@/components/WorkoutSetRow";
+import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
 import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
@@ -35,6 +36,7 @@ export default function WorkoutPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
+  const [editingRpe, setEditingRpe] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [finished, setFinished] = useState<FinishedWorkout | null>(null);
@@ -57,7 +59,7 @@ export default function WorkoutPage() {
   // La rutina cargada pero AÚN NO iniciada. Antes se llamaba a startSession apenas
   // cargaba la página, así que abrir otra rutina por error pisaba la sesión en curso y
   // borraba lo ya registrado. Ahora hay que pulsar "Empezar rutina" a propósito.
-  const [preview, setPreview] = useState<{ name: string; exercises: LiveExercise[] } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; description: string | null; exercises: LiveExercise[] } | null>(null);
   const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -79,7 +81,7 @@ export default function WorkoutPage() {
           .select("order_index, target_sets, notes, superset_group, exercises(id, name, media_url, measurement_type, description, equipment, muscle_group, instructions)")
           .eq("routine_id", id)
           .order("order_index"),
-        supabase.from("routines").select("name").eq("id", id).single(),
+        supabase.from("routines").select("name, notes").eq("id", id).single(),
         supabase.from("users").select("default_rest_seconds, keep_screen_awake, track_rpe, auto_warmup_prompt").eq("id", uid).single(),
         supabase.from("personal_records").select("exercise_id, value").eq("client_id", uid).eq("type", "1rm"),
         supabase.from("exercise_video_links").select("exercise_id, video_url").eq("user_id", uid),
@@ -147,7 +149,7 @@ export default function WorkoutPage() {
       }
       setPreviousMap(prevMap);
 
-      setPreview({ name: routine?.name ?? "Entrenamiento", exercises: built });
+      setPreview({ name: routine?.name ?? "Entrenamiento", description: (routine as any)?.notes ?? null, exercises: built });
       setLoading(false);
     })();
   }, [id, uid]);
@@ -306,6 +308,20 @@ export default function WorkoutPage() {
             }}>
               Volver a ese entreno
             </button>
+          </div>
+        )}
+
+        {preview?.description && (
+          <div style={{
+            ...palette.glassPanel, padding: 14, marginBottom: 14,
+            border: `1px solid ${palette.accent}44`,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7, color: palette.accent, fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <StickyNote size={12} /> Sobre este día
+            </div>
+            <p style={{ fontSize: 12.5, lineHeight: 1.6, color: palette.ink, margin: 0, whiteSpace: "pre-wrap" }}>
+              {preview.description}
+            </p>
           </div>
         )}
 
@@ -545,7 +561,8 @@ export default function WorkoutPage() {
                       previousLabel={prevLabel}
                       highlighted={highlightSet?.exIdx === exIdx && highlightSet?.setIdx === i}
                       trackRpe={trackRpe}
-                      onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom })}
+                      onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
+                      onOpenRpeMenu={(r) => setEditingRpe({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
                       onChangeField={(field, v) => field === "weight" ? handleWeightChange(exIdx, i, v) : updateSet(exIdx, i, field, v)}
                       onToggleDone={() => handleToggleSet(exIdx, i)}
                       onRemove={() => removeSet(exIdx, i)}
@@ -640,6 +657,15 @@ export default function WorkoutPage() {
           onSelect={(type) => updateSet(editingType.exIdx, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
           onDelete={() => removeSet(editingType.exIdx, editingType.setIdx)}
+        />
+      )}
+
+      {editingRpe && (
+        <RpePopover
+          current={session!.exercises[editingRpe.exIdx].sets[editingRpe.setIdx].rpe}
+          x={editingRpe.x} y={editingRpe.y}
+          onSelect={(n) => updateSet(editingRpe.exIdx, editingRpe.setIdx, "rpe", n)}
+          onClose={() => setEditingRpe(null)}
         />
       )}
 

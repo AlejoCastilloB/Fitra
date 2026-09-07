@@ -29,7 +29,12 @@ const FAT_PCT_OF_KCAL: Record<string, number> = {
   perdida_grasa: 0.30, masa_muscular: 0.25, rendimiento: 0.25, fuerza: 0.28, salud: 0.30,
 };
 
-const MIN_KCAL = 1200;
+export const MIN_KCAL = 1200;
+
+/** El ajuste sobre el mantenimiento que corresponde a un objetivo y un ritmo. */
+export function kcalAdjustPct(goal: string | null, commitment: CommitmentLevel): number {
+  return KCAL_ADJUST[goal ?? "salud"]?.[commitment] ?? 0;
+}
 
 function activityFactor(daysAvailable: number): number {
   if (daysAvailable <= 1) return 1.2;
@@ -52,7 +57,7 @@ export function computeNutritionGoals({
   const tdee = bmr * activityFactor(daysAvailable);
 
   const goalKey = goal ?? "salud";
-  const pct = KCAL_ADJUST[goalKey]?.[commitment] ?? 0;
+  const pct = kcalAdjustPct(goal, commitment);
   const kcal = Math.max(MIN_KCAL, Math.round(tdee * (1 + pct)));
 
   const protein = Math.round((PROTEIN_G_PER_KG[goalKey] ?? 1.6) * weightKg);

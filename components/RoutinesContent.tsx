@@ -6,8 +6,9 @@ import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import SwipeActionsRow from "@/components/SwipeActionsRow";
 import Overlay from "@/components/Overlay";
+import Button from "@/components/Button";
 import Link from "next/link";
-import { Pencil, Sparkles, Zap, ChevronRight, Copy, Trash2 } from "lucide-react";
+import { Pencil, Sparkles, Zap, ChevronRight, Copy, Trash2, ClipboardList, FolderOpen, StickyNote } from "lucide-react";
 
 export default function RoutinesContent() {
   const palette = usePalette();
@@ -18,16 +19,31 @@ export default function RoutinesContent() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Descripciones de programa que escribió el coach, por nombre de carpeta. */
+  const [programs, setPrograms] = useState<{ name: string; description: string }[]>([]);
+  /** Lo que el coach le escribió a ESTA persona sobre su plan. */
+  const [coachNote, setCoachNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!uid) return;
-    const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
-    const { data } = await supabase
-      .from("routines")
-      .select("id, name, source, notes")
-      .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`)
-      .order("created_at", { ascending: false });
+    const { data: clientRow } = await supabase.from("clients").select("trainer_id, training_description").eq("user_id", uid).maybeSingle();
+    setCoachNote((clientRow as any)?.training_description?.trim() || null);
+
+    // Las dos consultas son independientes entre sí: en serie eran dos viajes al servidor
+    // encadenados antes de pintar la lista.
+    const [{ data }, { data: folders }] = await Promise.all([
+      supabase
+        .from("routines")
+        .select("id, name, source, notes, folder")
+        .or(`source.eq.platform,client_id.eq.${uid}${clientRow?.trainer_id ? `,and(trainer_id.eq.${clientRow.trainer_id},client_id.is.null)` : ""}`)
+        .order("created_at", { ascending: false }),
+      // El RLS de routine_folders solo devuelve las carpetas de rutinas asignadas a esta
+      // persona, así que no hace falta filtrar aquí.
+      supabase.from("routine_folders").select("name, description").not("description", "is", null),
+    ]);
+
     setRoutines(data ?? []);
+    setPrograms((folders ?? []).filter((f: any) => f.description?.trim()) as any);
     setLoading(false);
   }, [uid]);
 
@@ -117,6 +133,37 @@ export default function RoutinesContent() {
         />
       </div>
 
+      {/* Lo que el coach quiere que se entienda ANTES de mirar la lista: para qué es el
+          plan y por qué tiene los días que tiene. Sin esto, seis rutinas sueltas no
+          explican nada por sí solas. */}
+      {coachNote && (
+        <div className="ft-fade-in-up" style={{
+          ...palette.glassPanel, padding: 16, marginBottom: 12,
+          border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <ClipboardList size={13} /> Indicaciones de tu coach
+          </div>
+          <p style={{ fontSize: 13, lineHeight: 1.65, color: palette.ink, margin: 0, whiteSpace: "pre-wrap" }}>
+            {coachNote}
+          </p>
+        </div>
+      )}
+
+      {programs.map((p) => (
+        <div key={p.name} className="ft-fade-in-up" style={{
+          ...palette.glassPanel, padding: 16, marginBottom: 12,
+          border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6, color: palette.accent, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <FolderOpen size={13} /> {p.name}
+          </div>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: palette.ink, margin: 0, whiteSpace: "pre-wrap" }}>
+            {p.description}
+          </p>
+        </div>
+      ))}
+
       {error && (
         <p style={{ fontSize: 12, color: "#f87171", textAlign: "center", marginBottom: 12, lineHeight: 1.5 }}>{error}</p>
       )}
@@ -173,9 +220,12 @@ export default function RoutinesContent() {
                       </Link>
                     </div>
                     {r.notes && (
-                      <p style={{ fontSize: 11.5, color: palette.accent, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${palette.panelBorder}` }}>
-                        📝 {r.notes}
-                      </p>
+                      <div style={{ display: "flex", gap: 7, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${palette.panelBorder}` }}>
+                        <StickyNote size={13} color={palette.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: palette.inkDim, margin: 0, whiteSpace: "pre-wrap" }}>
+                          {r.notes}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </SwipeActionsRow>
@@ -193,12 +243,10 @@ export default function RoutinesContent() {
               “{confirmDelete.name}” se borra para siempre. Los entrenos que ya registraste con ella se conservan.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>
-                Cancelar
-              </button>
-              <button onClick={() => remove(confirmDelete)} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+              <Button variant="ghost" fullWidth onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" fullWidth onClick={() => remove(confirmDelete)}>
                 Sí, eliminar
-              </button>
+              </Button>
             </div>
           </div>
         </Overlay>

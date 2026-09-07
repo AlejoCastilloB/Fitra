@@ -58,7 +58,7 @@ export default function BottomNav() {
   return (
     <nav
       style={{
-        position: "fixed", left: 20, bottom: 18, zIndex: 50,
+        position: "fixed", left: 20, bottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)", zIndex: 50,
         display: "flex", gap: 4, padding: 8, borderRadius: 20,
         background: `${palette.bg}99`, border: `1px solid ${palette.panelBorder}`,
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",

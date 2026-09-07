@@ -12,6 +12,7 @@ import NotificationPermissionSlide from "@/components/onboarding/NotificationPer
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
 import { computeNutritionGoals, Sex, CommitmentLevel, COMMITMENT_OPTIONS } from "@/lib/computeNutritionGoals";
+import CalorieBreakdownCard from "@/components/CalorieBreakdownCard";
 import {
   CYCLE_REGULARITY_OPTIONS, CYCLE_IMPACT_OPTIONS, describeCycle, hasCycleAnswers,
   type MenstrualCycleAnswers,
@@ -467,7 +468,7 @@ function OnboardingForm() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: palette.inkDim, marginTop: 12, lineHeight: 1.4 }}>
-              Fitra siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
+              FitTrack siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
             </p>
           </AnamnesisStep>
         )}
@@ -478,6 +479,16 @@ function OnboardingForm() {
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <Pill key={n} active={daysAvailable === n} onClick={() => setDaysAvailable(n)}>{n}</Pill>
               ))}
+            </div>
+
+            {/* Este era el último dato que faltaba para la cuenta, así que aquí mismo se
+                puede mostrar de dónde sale el número en vez de soltárselo ya hecho al
+                final. Se recalcula solo al tocar otro día. */}
+            <div style={{ marginTop: 20 }}>
+              <CalorieBreakdownCard
+                weightKg={weightKg} heightCm={heightCm} age={age} sex={sex}
+                daysAvailable={daysAvailable} goal={goal} commitment={commitment}
+              />
             </div>
           </AnamnesisStep>
         )}
@@ -629,7 +640,7 @@ function OnboardingForm() {
               {displayName ? `¡Listo, ${displayName.trim()}!` : "¡Todo listo!"}
             </h2>
             <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 26 }}>
-              Ya armamos tu perfil. Fitra va a usar todo esto para darte mejores recomendaciones desde el primer día.
+              Ya armamos tu perfil. FitTrack va a usar todo esto para darte mejores recomendaciones desde el primer día.
             </p>
             <button onClick={() => router.push("/app")} disabled={saving} style={{
               width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",

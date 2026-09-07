@@ -219,7 +219,12 @@ export default function RoutineBuilder({
 
       const signature = JSON.stringify(rows.map(({ routine_id, ...rest }) => rest));
       if (signature !== savedRowsRef.current) {
-        await supabase.from("routine_exercises").delete().eq("routine_id", id);
+        // Guardar es "borrar todo y volver a insertar". Si el borrado falla en silencio y
+        // el insert sí pasa, la rutina queda con los ejercicios DUPLICADOS — y desde que
+        // se permite repetir un ejercicio a propósito, ya no hay índice único que lo frene.
+        const { error: clearError } = await supabase.from("routine_exercises").delete().eq("routine_id", id);
+        if (clearError) { savedRowsRef.current = null; throw clearError; }
+
         const { error: rowsError } = await supabase.from("routine_exercises").insert(rows);
         if (rowsError) { savedRowsRef.current = null; throw rowsError; }
         savedRowsRef.current = signature;
@@ -363,8 +368,21 @@ export default function RoutineBuilder({
           </label>
 
           <label style={fieldLabel(palette)}>
-            Notas generales de la rutina
-            <textarea value={routineNotes} onChange={(e) => setRoutineNotes(e.target.value)} placeholder="Ej: enfocada en fuerza, progresar peso cada 2 semanas" style={{ ...inputStyle(palette), minHeight: 60, resize: "vertical" }} />
+            Descripción de la rutina
+            <textarea
+              value={routineNotes}
+              onChange={(e) => setRoutineNotes(e.target.value)}
+              placeholder={role === "trainer"
+                ? "Ej: día de empuje. Buscamos tensión mecánica en pecho y hombro; los primeros dos ejercicios son los pesados, deja el fallo para las últimas series."
+                : "Ej: enfocada en fuerza, progresar peso cada 2 semanas"}
+              style={{ ...inputStyle(palette), minHeight: 90, resize: "vertical" }}
+            />
+            {role === "trainer" && (
+              <span style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.5, marginTop: -2 }}>
+                Tu cliente la lee antes de empezar. Explícale el propósito del día: qué se busca,
+                qué priorizar y qué no.
+              </span>
+            )}
           </label>
         </div>
       )}
@@ -540,7 +558,7 @@ export default function RoutineBuilder({
             </button>
           </>
         ) : saving ? (
-          <><Loader2 size={13} /> Guardando...</>
+          <><Loader2 size={13} className="ft-spin" /> Guardando...</>
         ) : savedAt ? (
           <><Check size={13} color={palette.accent} /> Guardado automáticamente</>
         ) : canSave ? (

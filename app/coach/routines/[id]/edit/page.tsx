@@ -5,12 +5,20 @@ import { redirect } from "next/navigation";
 
 export default async function EditRoutinePage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [{ data: routine }, clients] = await Promise.all([
     supabase.from("routines").select("*").eq("id", params.id).single(),
     getCoachClients().catch(() => []),
   ]);
-  if (!routine) redirect("/coach/routines");
+
+  // La rutina tiene que ser suya. Sin esto, entrando por la URL con el id de otra se abría
+  // el constructor —y su autoguardado dispara solo a los 1200 ms, así que la sobrescribía
+  // sin que nadie tocara "Guardar". La página gemela del cliente ya hacía esta comprobación.
+  if (!routine || (routine.trainer_id !== user.id && routine.created_by !== user.id)) {
+    redirect("/coach/routines");
+  }
 
   const { data: routineExercises } = await supabase
     .from("routine_exercises")

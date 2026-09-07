@@ -54,6 +54,22 @@ export default function ClientDetailContent({
         </div>
       </div>
 
+      <Section title="Su plan de entrenamiento" icon={<Dumbbell size={15} />} palette={palette}>
+        <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 12 }}>
+          Sus programas y los días que los componen, con la descripción que lee antes de entrenar.
+          Ahí explicas el propósito de cada día y por qué el plan tiene los días que tiene.
+        </p>
+        <Link href={`/coach/clients/${clientId}/routines`} style={{ textDecoration: "none" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", borderRadius: 11,
+            border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
+            fontSize: 13, fontWeight: 700, cursor: "pointer",
+          }}>
+            <ClipboardList size={14} /> Ver y editar su plan
+          </span>
+        </Link>
+      </Section>
+
       {training && (
         <Section title="Entrenamientos" icon={<Dumbbell size={15} />} palette={palette}>
           {training.totalWorkouts === 0 ? (

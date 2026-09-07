@@ -8,6 +8,7 @@ import { getWeightComparison } from "@/lib/weightComparisons";
 import type { LiveExercise } from "@/lib/workoutSession";
 import { Camera, Check, Clock, Flame, NotebookPen, Save, Trophy } from "lucide-react";
 import { formatDurationLabel } from "@/lib/formatDuration";
+import Button from "@/components/Button";
 
 const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
 
@@ -299,25 +300,22 @@ export default function WorkoutSummary({
 
         {detailsError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{detailsError}</p>}
 
-        <button
+        <Button
+          variant={detailsSaved ? "ghost" : "secondary"}
+          fullWidth
           onClick={saveDetails}
-          disabled={savingDetails || detailsSaved}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%",
-            padding: 12, borderRadius: 11, border: `1px solid ${palette.accent}55`,
-            background: detailsSaved ? "transparent" : `${palette.accent}18`,
-            color: detailsSaved ? palette.inkDim : palette.accent,
-            fontWeight: 700, fontSize: 13, cursor: detailsSaved ? "default" : "pointer",
-            opacity: savingDetails ? 0.6 : 1,
-          }}
+          disabled={detailsSaved}
+          loading={savingDetails}
+          loadingLabel="Guardando..."
+          icon={detailsSaved ? <Check size={15} /> : undefined}
         >
-          {detailsSaved ? <><Check size={15} /> Guardado</> : savingDetails ? "Guardando..." : "Guardar notas y duración"}
-        </button>
+          {detailsSaved ? "Guardado" : "Guardar notas y duración"}
+        </Button>
       </div>
 
-      <button onClick={share} disabled={sharing} style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", marginBottom: 10, background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: sharing ? 0.7 : 1 }}>
-        {sharing ? "Generando imagen..." : "Compartir como imagen"}
-      </button>
+      <Button variant="primary" fullWidth onClick={share} loading={sharing} loadingLabel="Generando imagen..." style={{ marginBottom: 10 }}>
+        Compartir como imagen
+      </Button>
 
       {loggedExercises.length > 0 && (
         routineSaved ? (
@@ -337,27 +335,18 @@ export default function WorkoutSummary({
             </p>
             {saveRoutineError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{saveRoutineError}</p>}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowSaveRoutine(false)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={saveAsRoutine} disabled={savingRoutine || !newRoutineName.trim()} style={{
-                flex: 1, padding: 11, borderRadius: 11, border: "none", background: palette.accent, color: palette.bg,
-                cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: (savingRoutine || !newRoutineName.trim()) ? 0.5 : 1,
-              }}>{savingRoutine ? "Guardando..." : "Guardar"}</button>
+              <Button variant="ghost" fullWidth onClick={() => setShowSaveRoutine(false)}>Cancelar</Button>
+              <Button variant="primary" fullWidth onClick={saveAsRoutine} disabled={!newRoutineName.trim()} loading={savingRoutine} loadingLabel="Guardando...">Guardar</Button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setShowSaveRoutine(true)} style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", padding: 13, borderRadius: 12,
-            border: `1px solid ${palette.accent}55`, background: `${palette.accent}18`, color: palette.accent,
-            fontWeight: 700, fontSize: 13.5, cursor: "pointer", marginBottom: 10,
-          }}>
-            <Save size={15} /> Guardar como rutina
-          </button>
+          <Button variant="secondary" fullWidth onClick={() => setShowSaveRoutine(true)} icon={<Save size={15} />} style={{ marginBottom: 10 }}>
+            Guardar como rutina
+          </Button>
         )
       )}
 
-      <button onClick={onDone} style={{ width: "100%", padding: 13, borderRadius: 12, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.inkDim, fontSize: 13.5, cursor: "pointer" }}>
-        Volver a Inicio
-      </button>
+      <Button variant="ghost" fullWidth onClick={onDone}>Volver a Inicio</Button>
     </div>
   );
 }

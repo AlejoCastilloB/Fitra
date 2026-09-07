@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { startOfWeekInTimeZone, pickTimeZone } from "@/lib/timeZoneDate";
 
 /**
  * Lectura de los entrenamientos de los clientes desde el portal del entrenador.
@@ -78,16 +79,21 @@ export type CoachTrainingOverview = {
 
 /**
  * Todo lo que el panel del entrenador necesita sobre entrenamientos: los últimos de
- * cualquier cliente y el resumen de los últimos 7 días. Va junto para no pedir dos veces
+ * cualquier cliente y el resumen de la semana en curso. Va junto para no pedir dos veces
  * la lista de clientes.
  */
-export async function getCoachTrainingOverview(coachId: string, limit = 12): Promise<CoachTrainingOverview> {
+export async function getCoachTrainingOverview(
+  coachId: string, coachTimeZone?: string | null, limit = 12,
+): Promise<CoachTrainingOverview> {
   const names = await clientNames(coachId);
   const ids = Object.keys(names);
   if (ids.length === 0) return { recent: [], weekWorkouts: 0, weekSeconds: 0, weekActiveClients: 0 };
 
   const admin = createAdminClient();
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Desde el lunes, no los últimos 7 días rodantes. Antes esta tarjeta y las fichas de
+  // cliente contaban ventanas distintas, así que la suma de las fichas nunca cuadraba con
+  // el total de arriba.
+  const since = startOfWeekInTimeZone(pickTimeZone(coachTimeZone)).toISOString();
 
   const [recent, week] = await Promise.all([
     recentForClients(names, limit),

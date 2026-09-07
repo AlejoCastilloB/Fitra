@@ -141,7 +141,7 @@ export default function LandingContent() {
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6 }}>Con Fitra, tu copiloto de IA</div>
             <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.55 }}>
-              Fitra arma rutinas a tu medida, sugiere recetas con lo que tengas en la cocina y responde tus dudas de entrenamiento y nutrición — todo dentro de la app, en cualquier momento.
+              Fitra calcula las calorías y los macros de tus comidas con solo una foto, sugiere recetas con lo que tengas en la cocina y responde tus dudas de nutrición — todo dentro de la app, en cualquier momento.
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function LandingContent() {
       </div>
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "0 20px 30px", fontSize: 11, color: palette.inkDim }}>
-        FitTrack · Fitra
+        FitTrack
       </div>
     </main>
   );

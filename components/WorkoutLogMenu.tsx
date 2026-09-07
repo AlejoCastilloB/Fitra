@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { MoreVertical, Save, Trash2, X } from "lucide-react";
 import Overlay from "@/components/Overlay";
+import Button from "@/components/Button";
 
 type ExerciseGroup = {
   exercise_id: string;
@@ -24,6 +25,7 @@ export default function WorkoutLogMenu({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function saveAsRoutine() {
     setSaving(true);
@@ -55,8 +57,18 @@ export default function WorkoutLogMenu({
 
   async function handleDelete() {
     setDeleting(true);
-    await supabase.from("set_logs").delete().eq("workout_log_id", workoutLogId);
-    await supabase.from("workout_logs").delete().eq("id", workoutLogId);
+    setDeleteError(null);
+
+    // En dos pasos y en este orden por las claves foráneas. Si el segundo fallara y no lo
+    // miráramos, quedaría un entreno con cero series pero con su volumen intacto: el perfil
+    // seguiría sumándolo y las estadísticas —que lo recalculan desde las series— no. Dos
+    // números distintos para siempre.
+    const { error: setsError } = await supabase.from("set_logs").delete().eq("workout_log_id", workoutLogId);
+    if (setsError) { setDeleteError("No pudimos borrar las series de este entreno."); setDeleting(false); return; }
+
+    const { error: logError } = await supabase.from("workout_logs").delete().eq("id", workoutLogId);
+    if (logError) { setDeleteError("No pudimos borrar el entreno. Vuelve a intentarlo."); setDeleting(false); return; }
+
     router.push("/app/profile");
   }
 
@@ -91,11 +103,12 @@ export default function WorkoutLogMenu({
               <button onClick={() => setConfirmDelete(false)} style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer" }}><X size={18} /></button>
             </div>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18 }}>No se puede deshacer. Se borra el registro y todas sus series.</p>
+            {deleteError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 12 }}>{deleteError}</p>}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: deleting ? 0.6 : 1 }}>
-                {deleting ? "Borrando..." : "Sí, borrar"}
-              </button>
+              <Button variant="danger" fullWidth onClick={handleDelete} loading={deleting} loadingLabel="Borrando...">
+                Sí, borrar
+              </Button>
             </div>
           </div>
         </Overlay>

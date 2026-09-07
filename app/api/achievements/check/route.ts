@@ -93,7 +93,9 @@ export async function POST() {
 
   const stats: AchievementStats = {
     totalWorkouts: workouts.length,
-    currentStreak: computeStreakFromDates(workouts.map((r: any) => r.date)),
+    // Con la zona del usuario: el mismo cálculo corre en el navegador (perfil) y aquí
+    // en el servidor, y sin ella el servidor contaba en UTC y los dos números diferían.
+    currentStreak: computeStreakFromDates(workouts.map((r: any) => r.date), new Date(), timezone),
     totalPRs: totalPRs ?? 0,
     totalVolume,
     totalSets: sets.length,
@@ -119,7 +121,16 @@ export async function POST() {
   const newKeys = unlockedKeys.filter((k) => !alreadyUnlocked.has(k));
 
   if (newKeys.length > 0) {
-    await supabase.from("user_achievements").insert(newKeys.map((key) => ({ client_id: uid, achievement_key: key, seen: false })));
+    // El error NO se puede ignorar aquí. Esta ruta la llama AchievementChecker cada 60
+    // segundos: si el insert falla y aun así devolvemos el logro como nuevo, la animación
+    // de "¡desbloqueaste algo!" vuelve a salir un minuto después, y otra vez, para
+    // siempre. Antes que celebrar en bucle, preferimos no celebrar esta vez: en la
+    // siguiente pasada se vuelve a intentar.
+    const { error: insertError } = await supabase
+      .from("user_achievements")
+      .insert(newKeys.map((key) => ({ client_id: uid, achievement_key: key, seen: false })));
+
+    if (insertError) return NextResponse.json({ newAchievements: [] });
   }
 
   const newAchievements = ACHIEVEMENTS.filter((a) => newKeys.includes(a.key));
