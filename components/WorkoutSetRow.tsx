@@ -24,14 +24,14 @@ type Props = {
   onChangeField: (field: "weight" | "reps" | "time_sec" | "distance_m", value: number | undefined) => void;
   onToggleDone: () => void;
   onRemove: () => void;
-  onSetRpe: (rpe: number | undefined) => void;
-  /** Abre el selector de RPE anclado al botón que se tocó. */
+  /** Abre el selector de RPE anclado al botón que se tocó. El valor lo guarda la
+   *  pantalla desde el popover, no esta fila. */
   onOpenRpeMenu: (rect: DOMRect) => void;
 };
 
 export default function WorkoutSetRow({
   exercise, set: s, index, previousLabel, highlighted, trackRpe,
-  onOpenTypeMenu, onOpenRpeMenu, onChangeField, onToggleDone, onRemove, onSetRpe,
+  onOpenTypeMenu, onOpenRpeMenu, onChangeField, onToggleDone, onRemove,
 }: Props) {
   const palette = usePalette();
   const badge = getSetBadge(exercise.sets, index, palette.accent);

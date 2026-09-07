@@ -566,7 +566,6 @@ export default function WorkoutPage() {
                       onChangeField={(field, v) => field === "weight" ? handleWeightChange(exIdx, i, v) : updateSet(exIdx, i, field, v)}
                       onToggleDone={() => handleToggleSet(exIdx, i)}
                       onRemove={() => removeSet(exIdx, i)}
-                      onSetRpe={(n) => updateSet(exIdx, i, "rpe", n)}
                     />
                   );
                 })}
