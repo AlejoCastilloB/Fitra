@@ -102,11 +102,7 @@ export default function WorkoutSetRow({
             }}
           >{badge.text}</button>
 
-          {/* "Anterior" desaparece en cuanto la serie está marcada y hay que poner RPE:
-              en un iPhone SE (375 px) las dos cosas juntas no caben y lo que se encogía
-              eran los campos de peso y repeticiones. Además, una vez hecha la serie, saber
-              lo que levantaste la vez pasada ya no sirve para nada. */}
-          {previousLabel !== undefined && !(trackRpe && s.done) && (
+          {previousLabel !== undefined && (
             <span style={{ position: "relative", width: 62, fontSize: 11, color: palette.inkDim, textAlign: "center" }}>{previousLabel}</span>
           )}
 
@@ -114,23 +110,30 @@ export default function WorkoutSetRow({
 
           <div style={{ position: "relative", flex: 1 }} />
 
-          {/* El RPE solo tiene sentido una vez marcada la serie: antes de hacerla no hay
-              nada que valorar. Va aquí, pegado al check, porque es lo que se contesta
-              justo después de tocarlo. */}
-          {trackRpe && s.done && (
+          {/* El hueco del RPE se reserva desde el principio y solo se oculta el botón
+              hasta que la serie está marcada. Mostrándolo y escondiéndolo de verdad, la
+              fila se reacomodaba al tocar el check y "Anterior" se corría de sitio; así
+              nada se mueve. Compacto —solo el número— para que quepa junto a "Anterior"
+              en un iPhone SE de 375 px sin encoger los campos de peso y repeticiones. */}
+          {trackRpe && (
             <button
               onClick={(e) => onOpenRpeMenu(e.currentTarget.getBoundingClientRect())}
+              disabled={!s.done}
+              aria-label={s.rpe != null ? `RPE ${s.rpe}` : "Registrar el RPE de esta serie"}
               style={{
-                position: "relative", minWidth: 44, height: 28, padding: "0 8px", borderRadius: 9,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
-                cursor: "pointer", flexShrink: 0, marginRight: 8, touchAction: "manipulation",
+                position: "relative", width: 34, height: 28, borderRadius: 9, padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, marginRight: 8, touchAction: "manipulation",
+                visibility: s.done ? "visible" : "hidden",
+                cursor: s.done ? "pointer" : "default",
                 border: `1px solid ${s.rpe != null ? palette.accent : palette.panelBorder}`,
                 background: s.rpe != null ? `${palette.accent}22` : "transparent",
                 color: s.rpe != null ? palette.accent : palette.inkDim,
-                fontSize: 11, fontWeight: 700, fontFamily: "inherit",
+                fontWeight: 700, fontFamily: "inherit",
+                fontSize: s.rpe != null ? 13 : 9,
               }}
             >
-              {s.rpe != null ? <>RPE {s.rpe}</> : "RPE"}
+              {s.rpe != null ? s.rpe : "RPE"}
             </button>
           )}
 
