@@ -65,8 +65,8 @@ export default function CoachTodayContent({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
         <StatCard label="Clientes activos" value={activeCount} />
         <StatCard label="Total de clientes" value={total} />
-        <StatCard label="Entrenos (7 días)" value={weekWorkouts} hint={weekActiveClients > 0 ? `${weekActiveClients} ${weekActiveClients === 1 ? "cliente entrenó" : "clientes entrenaron"}` : undefined} />
-        <StatCard label="Tiempo entrenado" value={weekSeconds > 0 ? formatDurationLabel(weekSeconds) : "—"} hint="últimos 7 días" />
+        <StatCard label="Entrenos esta semana" value={weekWorkouts} hint={weekActiveClients > 0 ? `${weekActiveClients} ${weekActiveClients === 1 ? "cliente entrenó" : "clientes entrenaron"}` : undefined} />
+        <StatCard label="Tiempo entrenado" value={weekSeconds > 0 ? formatDurationLabel(weekSeconds) : "—"} hint="desde el lunes" />
       </div>
 
       {dueReminders.length > 0 && (

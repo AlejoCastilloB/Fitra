@@ -468,7 +468,7 @@ function OnboardingForm() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: palette.inkDim, marginTop: 12, lineHeight: 1.4 }}>
-              Fitra siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
+              FitTrack siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
             </p>
           </AnamnesisStep>
         )}
@@ -640,7 +640,7 @@ function OnboardingForm() {
               {displayName ? `¡Listo, ${displayName.trim()}!` : "¡Todo listo!"}
             </h2>
             <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 26 }}>
-              Ya armamos tu perfil. Fitra va a usar todo esto para darte mejores recomendaciones desde el primer día.
+              Ya armamos tu perfil. FitTrack va a usar todo esto para darte mejores recomendaciones desde el primer día.
             </p>
             <button onClick={() => router.push("/app")} disabled={saving} style={{
               width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",

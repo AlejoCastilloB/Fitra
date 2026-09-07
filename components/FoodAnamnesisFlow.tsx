@@ -121,7 +121,7 @@ export default function FoodAnamnesisFlow({ onDone }: { onDone: () => void }) {
         fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: submitting ? 0.7 : 1,
       }}>
-        {submitting ? <><Loader2 size={16} /> Guardando...</> : (likes.length || dislikes.length || text.trim() || audioBlob ? "Guardar y continuar" : "Omitir por ahora")}
+        {submitting ? <><Loader2 size={16} className="ft-spin" /> Guardando...</> : (likes.length || dislikes.length || text.trim() || audioBlob ? "Guardar y continuar" : "Omitir por ahora")}
       </button>
     </div>
   );

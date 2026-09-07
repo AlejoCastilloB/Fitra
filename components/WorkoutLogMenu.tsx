@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { MoreVertical, Save, Trash2, X } from "lucide-react";
 import Overlay from "@/components/Overlay";
+import Button from "@/components/Button";
 
 type ExerciseGroup = {
   exercise_id: string;
@@ -105,9 +106,9 @@ export default function WorkoutLogMenu({
             {deleteError && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 12 }}>{deleteError}</p>}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: deleting ? 0.6 : 1 }}>
-                {deleting ? "Borrando..." : "Sí, borrar"}
-              </button>
+              <Button variant="danger" fullWidth onClick={handleDelete} loading={deleting} loadingLabel="Borrando...">
+                Sí, borrar
+              </Button>
             </div>
           </div>
         </Overlay>

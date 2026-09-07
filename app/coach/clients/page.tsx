@@ -39,8 +39,12 @@ export default async function ClientsPage() {
     // si falla, simplemente no se ofrece el botón
   }
 
+  // La zona del entrenador es solo el respaldo: cada cliente cuenta su semana con la
+  // suya. Se usa cuando alguien todavía no ha abierto la app y no la tiene guardada.
+  const { data: coachRow } = await supabase.from("users").select("timezone").eq("id", trainerId).maybeSingle();
+
   const [stats, { data: invites }] = await Promise.all([
-    ids.length ? getClientStats(ids) : Promise.resolve({} as Record<string, ClientStats>),
+    ids.length ? getClientStats(ids, coachRow?.timezone) : Promise.resolve({} as Record<string, ClientStats>),
     supabase.from("invites").select("id, client_email").eq("trainer_id", trainerId).is("used_by", null).order("created_at", { ascending: false }),
   ]);
 

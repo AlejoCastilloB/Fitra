@@ -558,7 +558,7 @@ export default function RoutineBuilder({
             </button>
           </>
         ) : saving ? (
-          <><Loader2 size={13} /> Guardando...</>
+          <><Loader2 size={13} className="ft-spin" /> Guardando...</>
         ) : savedAt ? (
           <><Check size={13} color={palette.accent} /> Guardado automáticamente</>
         ) : canSave ? (

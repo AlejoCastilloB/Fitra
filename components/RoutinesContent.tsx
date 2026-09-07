@@ -6,6 +6,7 @@ import { usePalette } from "@/lib/theme";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import SwipeActionsRow from "@/components/SwipeActionsRow";
 import Overlay from "@/components/Overlay";
+import Button from "@/components/Button";
 import Link from "next/link";
 import { Pencil, Sparkles, Zap, ChevronRight, Copy, Trash2, ClipboardList, StickyNote } from "lucide-react";
 
@@ -228,12 +229,10 @@ export default function RoutinesContent() {
               “{confirmDelete.name}” se borra para siempre. Los entrenos que ya registraste con ella se conservan.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: 11, borderRadius: 11, border: `1px solid ${palette.panelBorder}`, background: "none", color: palette.ink, cursor: "pointer", fontSize: 13 }}>
-                Cancelar
-              </button>
-              <button onClick={() => remove(confirmDelete)} style={{ flex: 1, padding: 11, borderRadius: 11, border: "none", background: "#c0392b", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+              <Button variant="ghost" fullWidth onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="danger" fullWidth onClick={() => remove(confirmDelete)}>
                 Sí, eliminar
-              </button>
+              </Button>
             </div>
           </div>
         </Overlay>

@@ -12,6 +12,7 @@ import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, weightToKg, kgToWeightDisplay, weightUnitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { formatDurationLabel } from "@/lib/formatDuration";
+import { localDateKey, toLocalDateKey } from "@/lib/localDate";
 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -102,10 +103,16 @@ export default function ProfilePage() {
       setStats({ totalWorkouts: workoutCount ?? 0, totalVolume, totalPRs: prCount ?? 0 });
       setTopPRs(prRows ?? []);
 
+      // Por día de calendario local, no por bloques de 24 horas. Con la resta antigua, un
+      // entreno del lunes a las 22:00 mirado el martes a las 9:00 daba diffDays = 0 y se
+      // pintaba en el martes — mientras la tira de días de Inicio lo ponía bien en el lunes.
       const todayDow = new Date().getDay();
+      const todayKey = localDateKey();
       const days = Array(7).fill(false);
       (allVolumeRows ?? []).forEach((w: any) => {
-        const diffDays = Math.floor((Date.now() - new Date(w.date).getTime()) / 86400000);
+        const key = toLocalDateKey(w.date);
+        if (!key) return;
+        const diffDays = Math.round((Date.parse(todayKey) - Date.parse(key)) / 86400000);
         if (diffDays >= 0 && diffDays < 7) days[(todayDow - diffDays + 7) % 7] = true;
       });
       setActiveDays(days);

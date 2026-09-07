@@ -2,14 +2,14 @@
 
 import { useLayoutEffect, useState } from "react";
 import { usePalette, useTheme, type ThemeName } from "@/lib/theme";
-import { Home, Dumbbell, Users, MessageSquare, Settings, LogOut, Menu, X } from "lucide-react";
+import { Home, Dumbbell, Users, Settings, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clearSwCache } from "@/lib/clearSwCache";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
 import PrecacheWarmup from "@/components/PrecacheWarmup";
 
-const WARMUP_ROUTES = ["/coach/clients", "/coach/routines", "/coach/exercises", "/coach/message"];
+const WARMUP_ROUTES = ["/coach/clients", "/coach/routines", "/coach/exercises"];
 
 const MAIN_NAV = [
   { href: "/coach", icon: Home, label: "Hoy" },
@@ -20,7 +20,6 @@ const MAIN_NAV = [
 
 const MORE_NAV = [
   { href: "/coach/exercises", icon: Dumbbell, label: "Ejercicios" },
-  { href: "/coach/message", icon: MessageSquare, label: "Mensajes" },
 ];
 
 export default function CoachShell({ userEmail, children, initialTheme }: { userEmail: string | undefined; children: React.ReactNode; initialTheme: ThemeName }) {
@@ -64,7 +63,6 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
           <NavItem href="/coach/clients" icon={<Users size={17} />} label="Clientes" />
           <NavItem href="/coach/routines" icon={<Dumbbell size={17} />} label="Rutinas" />
           <NavItem href="/coach/exercises" icon={<Dumbbell size={17} />} label="Ejercicios" />
-          <NavItem href="/coach/message" icon={<MessageSquare size={17} />} label="Mensajes" />
 
           <div style={{ flex: 1 }} />
 
@@ -110,7 +108,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
       </div>
 
       <nav className="coach-mobile-only" style={{
-        position: "fixed", left: "50%", bottom: 14, zIndex: 50, transform: "translateX(-50%)",
+        position: "fixed", left: "50%", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", zIndex: 50, transform: "translateX(-50%)",
         gap: 2, padding: 6, borderRadius: 18,
         background: `${palette.bg}99`, border: `1px solid ${palette.panelBorder}`,
         backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",

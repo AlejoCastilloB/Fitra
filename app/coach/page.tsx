@@ -11,6 +11,8 @@ export default async function CoachToday() {
   // El join a "users" necesita la service role — el RLS de esa tabla solo deja
   // a cada quien leer su propia fila, así que el nombre de los clientes vuelve
   // null si se consulta con el cliente normal.
+  const { data: coachRow } = await supabase.from("users").select("timezone").eq("id", user!.id).maybeSingle();
+
   const [{ data: clients }, { data: reminders }, training] = await Promise.all([
     admin.from("clients").select("user_id, status, users(display_name, email)").eq("trainer_id", user!.id),
     supabase
@@ -20,7 +22,7 @@ export default async function CoachToday() {
       .eq("done", false)
       .order("remind_at", { ascending: true })
       .limit(20),
-    getCoachTrainingOverview(user!.id),
+    getCoachTrainingOverview(user!.id, coachRow?.timezone),
   ]);
 
   const activeCount = clients?.filter((c) => c.status === "active").length ?? 0;

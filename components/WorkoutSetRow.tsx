@@ -91,10 +91,12 @@ export default function WorkoutSetRow({
           }} />
 
           <button
+            className="ft-touch"
             onClick={(e) => onOpenTypeMenu(e.currentTarget.getBoundingClientRect())}
             style={{
-              position: "relative", width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer",
+              width: 22, height: 22, borderRadius: 7, border: "none", cursor: "pointer",
               fontWeight: 700, fontSize: 11, flexShrink: 0, color: badge.color, background: `${badge.color}22`,
+              touchAction: "manipulation",
             }}
           >{badge.text}</button>
 
@@ -106,8 +108,8 @@ export default function WorkoutSetRow({
 
           <div style={{ position: "relative", flex: 1 }} />
 
-          <button onClick={onToggleDone} style={{
-            position: "relative", width: 26, height: 26, borderRadius: 8,
+          <button onClick={onToggleDone} className="ft-touch" style={{
+            width: 28, height: 28, borderRadius: 9, touchAction: "manipulation",
             border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
             background: s.done ? "#4ADE80" : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
@@ -125,9 +127,9 @@ export default function WorkoutSetRow({
           }}>
             <span style={{ fontSize: 9.5, color: palette.inkDim, marginRight: 4 }}>RPE</span>
             {Array.from({ length: 10 }, (_, n) => n + 1).map((n) => (
-              <button key={n} onClick={() => onSetRpe(n)} style={{
-                width: 18, height: 18, borderRadius: 5, border: "none", cursor: "pointer",
-                fontSize: 9, fontWeight: 700, flexShrink: 0,
+              <button key={n} onClick={() => onSetRpe(n)} className="ft-touch-y" style={{
+                width: 26, height: 26, borderRadius: 7, border: "none", cursor: "pointer",
+                fontSize: 10.5, fontWeight: 700, flexShrink: 0, touchAction: "manipulation",
                 color: s.rpe === n ? palette.bg : palette.inkDim,
                 background: s.rpe === n ? palette.accent : palette.inputBg,
               }}>{n}</button>

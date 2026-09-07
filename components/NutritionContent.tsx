@@ -77,17 +77,25 @@ export default function NutritionContent() {
     const today = localDateKey();
     const dayStart = startOfLocalDay().toISOString();
 
-    const { data: logsData } = await supabase.from("nutrition_logs").select("*").eq("client_id", uid).gte("date", dayStart).order("date", { ascending: false });
+    // Las cuatro consultas son independientes entre sí. En cadena eran cuatro viajes al
+    // servidor esperándose uno a otro antes de pintar un solo píxel —y esta función se
+    // vuelve a llamar entera después de cada acción, así que borrar un registro costaba
+    // otros cuatro—. En paralelo es un solo viaje de ida y vuelta.
+    const [{ data: logsData }, { data: savedData }, { data: waterData }, { data: clientRow }] = await Promise.all([
+      supabase.from("nutrition_logs").select("*").eq("client_id", uid).gte("date", dayStart).order("date", { ascending: false }),
+      supabase.from("saved_meals").select("*").eq("client_id", uid).order("created_at", { ascending: false }),
+      // maybeSingle y no single: si todavía no hay fila de agua para hoy, `single`
+      // devuelve error y con Promise.all eso teñía el resto.
+      supabase.from("water_logs").select("ml").eq("client_id", uid).eq("date", today).maybeSingle(),
+      supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).maybeSingle(),
+    ]);
+
     setLogs(logsData ?? []);
-
-    const { data: savedData } = await supabase.from("saved_meals").select("*").eq("client_id", uid).order("created_at", { ascending: false });
     setSavedMeals(savedData ?? []);
-
-    const { data: waterData } = await supabase.from("water_logs").select("ml").eq("client_id", uid).eq("date", today).single();
     setWater(waterData?.ml ?? 0);
 
-    const { data: clientRow } = await supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single();
-    if (clientRow?.daily_kcal_goal) {
+    // Las cuatro metas o ninguna: con una sola en null, la pantalla pintaba NaN.
+    if (clientRow?.daily_kcal_goal && clientRow.daily_protein_goal != null && clientRow.daily_carbs_goal != null && clientRow.daily_fat_goal != null) {
       setGoals({ kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal });
     }
 
@@ -104,10 +112,20 @@ export default function NutritionContent() {
 
   async function addWater(delta: number) {
     markHintSeen("water_track");
+    const previo = water;
     const next = Math.max(0, water + delta);
     setWater(next);
+
     const { data: auth } = await supabase.auth.getUser();
-    await supabase.from("water_logs").upsert({ client_id: auth.user!.id, date: localDateKey(), ml: next });
+    // Con onConflict explícito: sin él, el upsert resolvía contra la clave primaria y
+    // podía crear una fila nueva por cada vaso en vez de actualizar la del día.
+    const { error } = await supabase
+      .from("water_logs")
+      .upsert({ client_id: auth.user!.id, date: localDateKey(), ml: next }, { onConflict: "client_id,date" });
+
+    // Si no se guardó, la barra vuelve a donde estaba en vez de mentir hasta el próximo
+    // refresco.
+    if (error) setWater(previo);
   }
 
   function fileToBase64(file: File | Blob, isImage: boolean): Promise<string> {
@@ -470,7 +488,7 @@ export default function NutritionContent() {
             fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             opacity: analyzing ? 0.7 : 1,
           }}>
-            {analyzing ? <><Loader2 size={16} /> Fitra está analizando...</> : <><Sparkles size={16} /> Calcular calorías</>}
+            {analyzing ? <><Loader2 size={16} className="ft-spin" /> Fitra está analizando...</> : <><Sparkles size={16} /> Calcular calorías</>}
           </button>
           <button onClick={cancelPending} disabled={analyzing} style={{ width: "100%", padding: 10, borderRadius: 12, border: "none", background: "none", color: palette.inkDim, fontSize: 12.5, cursor: "pointer" }}>
             Cancelar
@@ -732,7 +750,7 @@ function VoiceLogModal({
         fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: submitting || (!text.trim() && !hasAudio) ? 0.6 : 1,
       }}>
-        {submitting ? <><Loader2 size={16} /> Fitra está calculando...</> : <><Sparkles size={16} /> Calcular calorías</>}
+        {submitting ? <><Loader2 size={16} className="ft-spin" /> Fitra está calculando...</> : <><Sparkles size={16} /> Calcular calorías</>}
       </button>
     </Modal>
   );

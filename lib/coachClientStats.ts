@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dateKeyInTimeZone, startOfWeekInTimeZone, pickTimeZone } from "@/lib/timeZoneDate";
 
 export type ClientStats = {
   workoutsThisWeek: number;
@@ -9,22 +10,13 @@ export type ClientStats = {
   activeDaysThisWeek: number;
 };
 
-function startOfWeek(): Date {
-  const d = new Date();
-  const day = d.getDay();               // 0 = domingo
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diffToMonday);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 /**
  * Estadísticas de todos los clientes de un entrenador en tres consultas, no una por
  * cliente. Usa la service role porque el RLS no deja que el entrenador lea las filas
  * de entrenamiento y nutrición de sus clientes; quien llama ya verificó que esos
  * user_id le pertenecen.
  */
-export async function getClientStats(clientIds: string[]): Promise<Record<string, ClientStats>> {
+export async function getClientStats(clientIds: string[], coachTimeZone?: string | null): Promise<Record<string, ClientStats>> {
   const empty = (): ClientStats => ({
     workoutsThisWeek: 0, plannedThisWeek: 0, lastWorkoutAt: null,
     daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0,
@@ -33,40 +25,72 @@ export async function getClientStats(clientIds: string[]): Promise<Record<string
   if (clientIds.length === 0) return {};
 
   const admin = createAdminClient();
-  const weekStart = startOfWeek();
-  const since = new Date(weekStart);
+
+  // Cada cliente cuenta su semana y su "hoy" con SU reloj. El proceso corre en el
+  // servidor —UTC en Vercel—, así que sin esto una cena a las 8 de la noche en Colombia
+  // caía en el día siguiente y el entrenador veía otra cosa que su cliente.
+  const { data: zoneRows } = await admin.from("users").select("id, timezone").in("id", clientIds);
+  const zoneByClient: Record<string, string> = {};
+  clientIds.forEach((id) => {
+    const suya = (zoneRows ?? []).find((u: any) => u.id === id)?.timezone;
+    zoneByClient[id] = pickTimeZone(suya, coachTimeZone);
+  });
+
+  // La consulta se abre con la semana MÁS TEMPRANA de todas las zonas y luego cada
+  // cliente se filtra con la suya: una sola consulta para todos, sin perder filas de
+  // quien vaya por delante en el calendario.
+  const now = new Date();
+  const weekStartByClient: Record<string, number> = {};
+  clientIds.forEach((id) => { weekStartByClient[id] = startOfWeekInTimeZone(zoneByClient[id], now).getTime(); });
+  const earliestWeekStart = new Date(Math.min(...Object.values(weekStartByClient)));
+
+  const since = new Date(earliestWeekStart);
   since.setDate(since.getDate() - 60); // ventana amplia para sacar la última actividad
 
-  const [{ data: workouts }, { data: meals }, { data: routines }] = await Promise.all([
+  const [{ data: workouts }, { data: meals }, { data: routines }, { data: lastEver }] = await Promise.all([
     admin.from("workout_logs").select("client_id, date").in("client_id", clientIds).gte("date", since.toISOString()),
-    admin.from("nutrition_logs").select("client_id, date, kcal").in("client_id", clientIds).gte("date", weekStart.toISOString()),
+    admin.from("nutrition_logs").select("client_id, date, kcal").in("client_id", clientIds).gte("date", earliestWeekStart.toISOString()),
     admin.from("routines").select("client_id, days_of_week").in("client_id", clientIds),
+    // Sin ventana: la última sesión de cada quien, aunque fuera hace un año. Con la
+    // ventana de 60 días, la lista decía "Sin entrenos aún" de alguien cuya ficha sí
+    // mostraba entrenos — dos pantallas contando cosas distintas.
+    admin.from("workout_logs").select("client_id, date").in("client_id", clientIds).order("date", { ascending: false }),
   ]);
 
   const stats: Record<string, ClientStats> = {};
   clientIds.forEach((id) => { stats[id] = empty(); });
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const weekStartMs = weekStart.getTime();
+  const todayKeyByClient: Record<string, string | null> = {};
+  clientIds.forEach((id) => { todayKeyByClient[id] = dateKeyInTimeZone(now, zoneByClient[id]); });
+
   const trainedDays: Record<string, Set<string>> = {};
   const foodDays: Record<string, Set<string>> = {};
+
+  // Viene ordenado de más reciente a más antiguo: la primera fila de cada cliente es la
+  // que vale.
+  (lastEver ?? []).forEach((w: any) => {
+    const s = stats[w.client_id];
+    if (s && w.date && !s.lastWorkoutAt) s.lastWorkoutAt = w.date;
+  });
 
   (workouts ?? []).forEach((w: any) => {
     const s = stats[w.client_id];
     if (!s || !w.date) return;
-    if (!s.lastWorkoutAt || new Date(w.date) > new Date(s.lastWorkoutAt)) s.lastWorkoutAt = w.date;
-    if (new Date(w.date).getTime() >= weekStartMs) {
+    if (new Date(w.date).getTime() >= weekStartByClient[w.client_id]) {
       s.workoutsThisWeek += 1;
-      (trainedDays[w.client_id] ??= new Set()).add(w.date.slice(0, 10));
+      const day = dateKeyInTimeZone(w.date, zoneByClient[w.client_id]);
+      if (day) (trainedDays[w.client_id] ??= new Set()).add(day);
     }
   });
 
   (meals ?? []).forEach((m: any) => {
     const s = stats[m.client_id];
     if (!s || !m.date) return;
-    const day = m.date.slice(0, 10);
+    if (new Date(m.date).getTime() < weekStartByClient[m.client_id]) return;
+    const day = dateKeyInTimeZone(m.date, zoneByClient[m.client_id]);
+    if (!day) return;
     (foodDays[m.client_id] ??= new Set()).add(day);
-    if (day === todayKey) s.kcalToday += m.kcal ?? 0;
+    if (day === todayKeyByClient[m.client_id]) s.kcalToday += m.kcal ?? 0;
   });
 
   // Entrenamientos previstos = días de la semana marcados en las rutinas del cliente.

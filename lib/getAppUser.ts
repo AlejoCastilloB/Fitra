@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/supabase/getAuthenticatedUser";
 
-export type AppUserRow = { role: string; theme_pref: string | null; display_name: string | null };
+export type AppUserRow = { role: string; theme_pref: string | null; display_name: string | null; timezone: string | null };
 
 // El layout y la página de /app necesitaban lo mismo (quién es el usuario y su fila
 // en `users`) y cada uno lo pedía por su cuenta: dos validaciones de token contra el
@@ -15,7 +15,7 @@ export const getAppUser = cache(async (): Promise<{ userId: string | null; row: 
 
   const { data: row } = await supabase
     .from("users")
-    .select("role, theme_pref, display_name")
+    .select("role, theme_pref, display_name, timezone")
     .eq("id", user.id)
     .single();
 

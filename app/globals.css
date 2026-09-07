@@ -67,3 +67,46 @@ body {
   .coach-mobile-topbar { display: flex !important; }
   .coach-main { padding: 20px 16px 104px; }
 }
+
+/* Zona de toque de 44 px para controles pequeños.
+ *
+ * El dibujo del botón sigue midiendo lo que medía; lo que se agranda es el área que
+ * responde al dedo, con un pseudo-elemento centrado que no ocupa espacio en el diseño y
+ * por tanto no empuja a los elementos de al lado. Apple pide 44x44 y la app tenía
+ * controles de 18, 22 y 26 px — entre ellos el check de "serie hecha", que se toca
+ * decenas de veces por entrenamiento, de pie y con las manos sudadas. */
+.ft-touch {
+  position: relative;
+}
+.ft-touch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+}
+
+/* Variante para controles en fila apretada, como los diez botones de RPE: ahí los
+ * centros están a 28 px unos de otros, así que extender 44 px a lo ancho haría que las
+ * zonas se solaparan y un toque destinado al 7 pudiera registrar el 8 — peor que el
+ * problema original. Se gana solo el alto, que es la dimensión que de verdad falta en
+ * una fila, y a lo ancho cada botón se queda con lo suyo. */
+.ft-touch-y {
+  position: relative;
+}
+.ft-touch-y::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: max(100%, 44px);
+}
+
+/* Los cinco spinners de la app eran iconos quietos: durante los diez y pico segundos que
+ * tarda una respuesta de la IA parecía que se había colgado. */
+@keyframes ftSpin { to { transform: rotate(360deg); } }
+.ft-spin { animation: ftSpin 0.9s linear infinite; transform-origin: 50% 50%; }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 import { DAILY_GOALS as DEFAULT_DAILY_GOALS } from "@/lib/nutritionGoals";
 import { getPersonalizationContext, personalizationPromptBlock } from "@/lib/aiPersonalization";
+import { startOfDayInTimeZone, pickTimeZone } from "@/lib/timeZoneDate";
 
 const DAILY_LIMIT = 20;
 
@@ -26,7 +27,12 @@ export async function POST(request: Request) {
   const DAILY_GOALS = clientRow?.daily_kcal_goal
     ? { kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal }
     : DEFAULT_DAILY_GOALS;
-  const { data: todayLogs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", user.id).gte("date", `${today}T00:00:00`);
+  // El día del usuario, no el del servidor. Antes la ventana se abría en medianoche UTC,
+  // así que lo que se le contaba a la IA no era lo mismo que el usuario ve en pantalla.
+  // (La fecha de la CUOTA sí sigue en UTC: la escribe la función de la base.)
+  const { data: tzRow } = await supabase.from("users").select("timezone").eq("id", user.id).maybeSingle();
+  const dayStart = startOfDayInTimeZone(pickTimeZone(tzRow?.timezone)).toISOString();
+  const { data: todayLogs } = await supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", user.id).gte("date", dayStart);
   const consumed = (todayLogs ?? []).reduce((a, l) => ({
     kcal: a.kcal + (l.kcal ?? 0), protein: a.protein + (l.protein ?? 0), carbs: a.carbs + (l.carbs ?? 0), fat: a.fat + (l.fat ?? 0),
   }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
