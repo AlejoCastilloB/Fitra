@@ -26,12 +26,16 @@ export default function RoutinesContent() {
 
   const load = useCallback(async () => {
     if (!uid) return;
-    const { data: clientRow } = await supabase.from("clients").select("trainer_id, training_description").eq("user_id", uid).maybeSingle();
-    setCoachNote((clientRow as any)?.training_description?.trim() || null);
+    // `trainer_id` va SOLO en esta consulta. Metiendo aquí una columna nueva, si esa
+    // columna todavía no existe en la base PostgREST rechaza la fila entera y devuelve
+    // null: `trainer_id` se perdería y con él la cláusula de abajo, así que al usuario le
+    // desaparecerían de la lista las rutinas plantilla de su entrenador. Las columnas
+    // nuevas se piden aparte, como ya se hace en los ajustes.
+    const { data: clientRow, error: clientError } = await supabase
+      .from("clients").select("trainer_id").eq("user_id", uid).maybeSingle();
+    if (clientError) setError("No pudimos cargar tu perfil, puede que falten rutinas de tu coach.");
 
-    // Las dos consultas son independientes entre sí: en serie eran dos viajes al servidor
-    // encadenados antes de pintar la lista.
-    const [{ data }, { data: folders }] = await Promise.all([
+    const [{ data, error: routinesError }, { data: folders }, { data: planRow }] = await Promise.all([
       supabase
         .from("routines")
         .select("id, name, source, notes, folder")
@@ -40,10 +44,16 @@ export default function RoutinesContent() {
       // El RLS de routine_folders solo devuelve las carpetas de rutinas asignadas a esta
       // persona, así que no hace falta filtrar aquí.
       supabase.from("routine_folders").select("name, description").not("description", "is", null),
+      // Aparte y a prueba de fallos: si la migración 006 no ha corrido, esto falla solo y
+      // no se lleva por delante nada más.
+      supabase.from("clients").select("training_description").eq("user_id", uid).maybeSingle(),
     ]);
+
+    if (routinesError) setError(`No pudimos cargar tus rutinas: ${routinesError.message}`);
 
     setRoutines(data ?? []);
     setPrograms((folders ?? []).filter((f: any) => f.description?.trim()) as any);
+    setCoachNote((planRow as any)?.training_description?.trim() || null);
     setLoading(false);
   }, [uid]);
 

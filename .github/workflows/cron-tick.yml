@@ -19,9 +19,15 @@ name: Recordatorios de Fitra
 
 on:
   schedule:
-    # Cada 10 minutos. GitHub puede retrasar la corrida cuando hay cola, por eso la
+    # Cada 5 minutos. GitHub puede retrasar la corrida cuando hay cola, por eso la
     # ventana de las comidas en check-meals es de una hora y no de quince minutos.
-    - cron: "*/10 * * * *"
+    #
+    # Cinco y no diez porque este cron es la red de seguridad del aviso de fin de descanso:
+    # cuando el sistema suspende la pestaña, es lo único que queda para avisar. La app ya
+    # se defiende sola (lib/keepAliveDuringRest mantiene viva la pestaña durante esos 90
+    # segundos), así que esto es el suelo, no el camino normal. Bajar de cinco no sirve de
+    # mucho: GitHub no garantiza intervalos más cortos y encola las corridas igual.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:

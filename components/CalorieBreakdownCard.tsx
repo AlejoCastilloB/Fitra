@@ -14,12 +14,10 @@ import { Flame, Minus, Plus, Equal } from "lucide-react";
  * se puede juzgar: no se sabe si eso es mucho, poco, o por qué.
  */
 export default function CalorieBreakdownCard({
-  weightKg, heightCm, age, sex, daysAvailable, goal, commitment, compact = false,
+  weightKg, heightCm, age, sex, daysAvailable, goal, commitment,
 }: {
   weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null;
   daysAvailable: number; goal: string | null; commitment: CommitmentLevel;
-  /** En ajustes va más apretada; en el onboarding, con todo el texto. */
-  compact?: boolean;
 }) {
   const palette = usePalette();
 
@@ -82,13 +80,11 @@ export default function CalorieBreakdownCard({
         </div>
       </div>
 
-      {!compact && (
-        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          {textos.map((t, i) => (
-            <p key={i} style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.6, margin: 0 }}>{t}</p>
-          ))}
-        </div>
-      )}
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+        {textos.map((t, i) => (
+          <p key={i} style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.6, margin: 0 }}>{t}</p>
+        ))}
+      </div>
     </div>
   );
 }

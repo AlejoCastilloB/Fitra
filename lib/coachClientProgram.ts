@@ -43,14 +43,18 @@ export async function getClientProgram(coachId: string, clientId: string): Promi
 
   const admin = createAdminClient();
 
-  const [{ data: client }, { data: routines }, { data: folders }] = await Promise.all([
-    admin.from("clients").select("training_description, users(display_name, email)").eq("user_id", clientId).maybeSingle(),
+  const [{ data: client }, { data: routines }, { data: folders }, { data: planRow }] = await Promise.all([
+    admin.from("clients").select("users(display_name, email)").eq("user_id", clientId).maybeSingle(),
     admin
       .from("routines")
       .select("id, name, notes, folder, days_of_week, created_at, routine_exercises(target_sets, exercises(muscle_group))")
       .eq("client_id", clientId)
       .order("created_at", { ascending: true }),
     admin.from("routine_folders").select("name, description").eq("trainer_id", coachId),
+    // Columna nueva, en su propia consulta: si la migración 006 todavía no ha corrido,
+    // pidiéndola junto al nombre del cliente se caería la fila entera y toda la pantalla
+    // diría "Cliente" en vez de su nombre.
+    admin.from("clients").select("training_description").eq("user_id", clientId).maybeSingle(),
   ]);
 
   const clientName = (client as any)?.users?.display_name || (client as any)?.users?.email || "Cliente";
@@ -58,7 +62,7 @@ export async function getClientProgram(coachId: string, clientId: string): Promi
 
   return {
     clientName,
-    trainingDescription: (client as any)?.training_description ?? null,
+    trainingDescription: (planRow as any)?.training_description ?? null,
     programs: groupIntoPrograms(routines ?? [], descriptionByFolder),
   };
 }

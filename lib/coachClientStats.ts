@@ -51,10 +51,13 @@ export async function getClientStats(clientIds: string[], coachTimeZone?: string
     admin.from("workout_logs").select("client_id, date").in("client_id", clientIds).gte("date", since.toISOString()),
     admin.from("nutrition_logs").select("client_id, date, kcal").in("client_id", clientIds).gte("date", earliestWeekStart.toISOString()),
     admin.from("routines").select("client_id, days_of_week").in("client_id", clientIds),
-    // Sin ventana: la última sesión de cada quien, aunque fuera hace un año. Con la
-    // ventana de 60 días, la lista decía "Sin entrenos aún" de alguien cuya ficha sí
-    // mostraba entrenos — dos pantallas contando cosas distintas.
-    admin.from("workout_logs").select("client_id, date").in("client_id", clientIds).order("date", { ascending: false }),
+    // La última sesión de cada quien, aunque fuera hace un año: con la ventana de 60 días
+    // la lista decía "Sin entrenos aún" de alguien cuya ficha sí mostraba entrenos. Viene
+    // de más reciente a más antigua y solo se usa la primera fila de cada cliente, así que
+    // el tope de 1000 no estorba —haría falta que un solo cliente tuviera mil entrenos más
+    // recientes que el último de otro para dejar a alguien fuera—.
+    admin.from("workout_logs").select("client_id, date").in("client_id", clientIds)
+      .order("date", { ascending: false }).limit(1000),
   ]);
 
   const stats: Record<string, ClientStats> = {};

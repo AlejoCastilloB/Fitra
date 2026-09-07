@@ -94,9 +94,16 @@ export default function NutritionContent() {
     setSavedMeals(savedData ?? []);
     setWater(waterData?.ml ?? 0);
 
-    // Las cuatro metas o ninguna: con una sola en null, la pantalla pintaba NaN.
-    if (clientRow?.daily_kcal_goal && clientRow.daily_protein_goal != null && clientRow.daily_carbs_goal != null && clientRow.daily_fat_goal != null) {
-      setGoals({ kcal: clientRow.daily_kcal_goal, protein: clientRow.daily_protein_goal, carbs: clientRow.daily_carbs_goal, fat: clientRow.daily_fat_goal });
+    // Cada meta por su cuenta: la que exista se usa, y la que falte cae al valor por
+    // defecto. Exigirlas las cuatro hacía que un macro en null tirara también la meta de
+    // calorías personalizada, y la persona veía un número que no era el suyo.
+    if (clientRow?.daily_kcal_goal) {
+      setGoals({
+        kcal: clientRow.daily_kcal_goal,
+        protein: clientRow.daily_protein_goal ?? DAILY_GOALS.protein,
+        carbs: clientRow.daily_carbs_goal ?? DAILY_GOALS.carbs,
+        fat: clientRow.daily_fat_goal ?? DAILY_GOALS.fat,
+      });
     }
 
     setLoading(false);

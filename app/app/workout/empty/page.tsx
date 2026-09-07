@@ -233,7 +233,6 @@ export default function EmptyWorkoutPage() {
                     onChangeField={(field, v) => updateSet(exIdx, i, field, v)}
                     onToggleDone={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)}
                     onRemove={() => removeSet(exIdx, i)}
-                    onSetRpe={(n) => updateSet(exIdx, i, "rpe", n)}
                   />
                 ))}
 

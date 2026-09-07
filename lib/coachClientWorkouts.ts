@@ -90,17 +90,30 @@ export async function getCoachTrainingOverview(
   if (ids.length === 0) return { recent: [], weekWorkouts: 0, weekSeconds: 0, weekActiveClients: 0 };
 
   const admin = createAdminClient();
-  // Desde el lunes, no los últimos 7 días rodantes. Antes esta tarjeta y las fichas de
-  // cliente contaban ventanas distintas, así que la suma de las fichas nunca cuadraba con
-  // el total de arriba.
-  const since = startOfWeekInTimeZone(pickTimeZone(coachTimeZone)).toISOString();
+  const now = new Date();
+
+  // La semana de CADA cliente, con su propio reloj — igual que las fichas de la lista de
+  // clientes. Contándola con el reloj del entrenador, esta tarjeta y la suma de las fichas
+  // volvían a discrepar para quien viviera en otro huso.
+  const { data: zoneRows } = await admin.from("users").select("id, timezone").in("id", ids);
+  const weekStartByClient: Record<string, number> = {};
+  for (const id of ids) {
+    const suya = (zoneRows ?? []).find((u: any) => u.id === id)?.timezone;
+    weekStartByClient[id] = startOfWeekInTimeZone(pickTimeZone(suya, coachTimeZone), now).getTime();
+  }
+
+  // Se pide desde la semana más temprana de todas y luego cada fila se filtra con la de su
+  // dueño: una sola consulta, sin perder a quien vaya por delante en el calendario.
+  const since = new Date(Math.min(...Object.values(weekStartByClient))).toISOString();
 
   const [recent, week] = await Promise.all([
     recentForClients(names, limit),
-    admin.from("workout_logs").select("client_id, duration_sec").in("client_id", ids).gte("date", since),
+    admin.from("workout_logs").select("client_id, date, duration_sec").in("client_id", ids).gte("date", since),
   ]);
 
-  const rows = (week.data ?? []) as any[];
+  const rows = ((week.data ?? []) as any[])
+    .filter((r) => new Date(r.date).getTime() >= (weekStartByClient[r.client_id] ?? Infinity));
+
   return {
     recent,
     weekWorkouts: rows.length,
