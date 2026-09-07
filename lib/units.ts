@@ -46,3 +46,25 @@ export function displayToCm(value: number, unit: UnitSystem): number {
 export function unitLabel(unit: UnitSystem): string {
   return unit === "imperial" ? "in" : "cm";
 }
+
+/**
+ * El peso SIEMPRE se guarda en kilos.
+ *
+ * `clients.current_weight` alimenta el cálculo de calorías (lib/computeNutritionGoals),
+ * que asume kilos. Guardando ahí el número que la persona escribió en libras, 180 lb se
+ * convertían en 180 kg y el gasto calculado se disparaba. Estas dos funciones son la
+ * frontera: se convierte al mostrar y al guardar, nunca en el medio.
+ */
+const LB_PER_KG = 2.20462;
+
+export function weightToKg(value: number, unit: UnitSystem): number {
+  return unit === "imperial" ? Math.round((value / LB_PER_KG) * 10) / 10 : value;
+}
+
+export function kgToWeightDisplay(valueKg: number, unit: UnitSystem): number {
+  return unit === "imperial" ? Math.round(valueKg * LB_PER_KG * 10) / 10 : Math.round(valueKg * 10) / 10;
+}
+
+export function weightUnitLabel(unit: UnitSystem): string {
+  return unit === "imperial" ? "lb" : "kg";
+}

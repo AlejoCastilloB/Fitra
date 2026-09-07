@@ -12,6 +12,7 @@ import NotificationPermissionSlide from "@/components/onboarding/NotificationPer
 import AddToHomeScreenSlide from "@/components/onboarding/AddToHomeScreenSlide";
 import { GOALS, SPORT_GOAL_ID, goalLabel } from "@/lib/goals";
 import { computeNutritionGoals, Sex, CommitmentLevel, COMMITMENT_OPTIONS } from "@/lib/computeNutritionGoals";
+import CalorieBreakdownCard from "@/components/CalorieBreakdownCard";
 import {
   CYCLE_REGULARITY_OPTIONS, CYCLE_IMPACT_OPTIONS, describeCycle, hasCycleAnswers,
   type MenstrualCycleAnswers,
@@ -478,6 +479,16 @@ function OnboardingForm() {
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <Pill key={n} active={daysAvailable === n} onClick={() => setDaysAvailable(n)}>{n}</Pill>
               ))}
+            </div>
+
+            {/* Este era el último dato que faltaba para la cuenta, así que aquí mismo se
+                puede mostrar de dónde sale el número en vez de soltárselo ya hecho al
+                final. Se recalcula solo al tocar otro día. */}
+            <div style={{ marginTop: 20 }}>
+              <CalorieBreakdownCard
+                weightKg={weightKg} heightCm={heightCm} age={age} sex={sex}
+                daysAvailable={daysAvailable} goal={goal} commitment={commitment}
+              />
             </div>
           </AnamnesisStep>
         )}

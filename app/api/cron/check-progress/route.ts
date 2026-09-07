@@ -45,6 +45,20 @@ export async function GET(req: Request) {
     return count;
   }
 
+  /**
+   * Reserva el aviso escribiendo la fecha ANTES de mandarlo.
+   *
+   * Marcándolo después, un fallo de escritura dejaba `dueAt` vencido y el mismo
+   * recordatorio salía en cada pasada del cron —decenas al día—. Prefiero perder un aviso
+   * a repetirlo: la condición sobre el valor anterior hace que solo una pasada lo consiga.
+   */
+  async function claim(userId: string, column: string, previous: string | null): Promise<boolean> {
+    const q = admin.from("users").update({ [column]: now.toISOString() }).eq("id", userId);
+    const { data, error } = await (previous === null ? q.is(column, null) : q.eq(column, previous)).select("id");
+    if (error) return false;
+    return !!data && data.length > 0;
+  }
+
   let sent = 0;
 
   const { data: progressUsers } = await admin
@@ -60,12 +74,13 @@ export async function GET(req: Request) {
     const dueAt = last ? new Date(last.getTime() + days * 86400000) : now;
     if (now < dueAt) continue;
 
+    if (!(await claim(u.id, "last_progress_reminder_sent_at", u.last_progress_reminder_sent_at ?? null))) continue;
+
     sent += await sendTo(u.id, {
       title: "Hora de registrar tu progreso",
       body: "Suma una foto, tus medidas o tu peso para seguir viendo tu evolución.",
       url: "/app/profile",
     });
-    await admin.from("users").update({ last_progress_reminder_sent_at: now.toISOString() }).eq("id", u.id);
   }
 
   const { data: physicalUsers } = await admin
@@ -81,12 +96,13 @@ export async function GET(req: Request) {
     const dueAt = last ? new Date(last.getTime() + days * 86400000) : now;
     if (now < dueAt) continue;
 
+    if (!(await claim(u.id, "last_physical_reminder_sent_at", u.last_physical_reminder_sent_at ?? null))) continue;
+
     sent += await sendTo(u.id, {
       title: "Actualiza tus datos físicos",
       body: "Revisa tu peso, altura y edad para que tus metas de calorías sigan siendo precisas.",
       url: "/app/profile/settings",
     });
-    await admin.from("users").update({ last_physical_reminder_sent_at: now.toISOString() }).eq("id", u.id);
   }
 
   // El recordatorio de "cierra tu día" se quitó junto con esa pantalla: registrar la

@@ -3,13 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTrainer } from "@/lib/requireTrainer";
 import { uploadExerciseMedia } from "@/lib/exerciseMedia";
 
-// Cualquier entrenador autenticado puede editar cualquier ejercicio, incluyendo
-// los de la biblioteca compartida (trainer_id null) — el RLS normal de "exercises"
-// no lo permitiría (solo deja tocar filas donde trainer_id = auth.uid()), así que
-// esto usa la service role a propósito. Es una decisión consciente: se prioriza
-// poder corregir nombres/vínculos de la biblioteca sobre aislar ediciones por dueño.
+// Se edita con la service role porque el RLS de "exercises" solo deja tocar las filas
+// propias, y hace falta poder corregir también la biblioteca compartida (trainer_id null).
+//
+// Pero eso salta el RLS por completo, así que el límite lo pone este archivo: se permite
+// editar la biblioteca compartida y los ejercicios propios, y NADA MÁS. Sin esta
+// comprobación, cualquier cuenta con rol de entrenador podía reescribir el nombre, el GIF
+// y el `counts_toward_exercise_id` de los ejercicios privados de otro entrenador —y ese
+// último campo decide cómo se agrupa el volumen en las estadísticas de sus clientes.
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const { error } = await requireTrainer();
+  const { user, error } = await requireTrainer();
   if (error) return error;
 
   const body = await request.json();
@@ -24,6 +27,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const admin = createAdminClient();
+
+  const { data: target } = await admin.from("exercises").select("trainer_id").eq("id", params.id).maybeSingle();
+  if (!target) return NextResponse.json({ error: "ese ejercicio no existe" }, { status: 404 });
+  if (target.trainer_id !== null && target.trainer_id !== user!.id) {
+    return NextResponse.json({ error: "ese ejercicio es de otro entrenador" }, { status: 403 });
+  }
+
   const { data, error: dbError } = await admin.from("exercises").update({
     name: body.name,
     muscle_group: body.muscleGroup,

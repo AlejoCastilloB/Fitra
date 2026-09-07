@@ -16,6 +16,8 @@ import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, type Un
 import { FOOD_TASTE_OPTIONS } from "@/lib/foodTastes";
 import { clearSwCache } from "@/lib/clearSwCache";
 import { computeNutritionGoals, COMMITMENT_OPTIONS, type Sex, type CommitmentLevel } from "@/lib/computeNutritionGoals";
+import { GOALS } from "@/lib/goals";
+import CalorieBreakdownCard from "@/components/CalorieBreakdownCard";
 
 const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }> = {
   clasico: { label: "Clásico", freq: 880, pattern: [0.35] },
@@ -68,6 +70,7 @@ export default function ProfileSettingsPage() {
   const [commitment, setCommitment] = useState<CommitmentLevel>("moderado");
   const [physicalReminderDays, setPhysicalReminderDays] = useState<number | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
+  const [lifestyle, setLifestyle] = useState<Record<string, any>>({});
   const [daysAvailable, setDaysAvailable] = useState(3);
 
   const [showSoundPicker, setShowSoundPicker] = useState(false);
@@ -116,6 +119,7 @@ export default function ProfileSettingsPage() {
         setAge(clientRow.age ?? null);
         setSex((clientRow.sex as Sex) ?? null);
         setCommitment((clientRow.commitment as CommitmentLevel) ?? "moderado");
+        setLifestyle(clientRow.lifestyle ?? {});
         setGoal(clientRow.lifestyle?.goal ?? null);
         setDaysAvailable(clientRow.lifestyle?.days_available ?? 3);
       }
@@ -170,24 +174,32 @@ export default function ProfileSettingsPage() {
     setShowNameEdit(false);
   }
 
-  async function savePhysicalProfile(next: { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; reminderDays: number | null }) {
+  async function savePhysicalProfile(next: PhysicalProfile) {
     setWeightKg(next.weightKg);
     setHeightCm(next.heightCm);
     setAge(next.age);
     setSex(next.sex);
     setCommitment(next.commitment);
+    setGoal(next.goal);
     setPhysicalReminderDays(next.reminderDays);
 
     const nutritionGoals = (next.weightKg && next.heightCm && next.age && next.sex)
       ? computeNutritionGoals({
           weightKg: next.weightKg, heightCm: next.heightCm, age: next.age, sex: next.sex,
-          daysAvailable, goal, commitment: next.commitment,
+          daysAvailable, goal: next.goal, commitment: next.commitment,
         })
       : null;
 
+    // El objetivo vive dentro del jsonb `lifestyle`, así que se fusiona: mandar solo
+    // { goal } reemplazaría el objeto entero y se perdería el nivel, los días y las
+    // respuestas del ciclo menstrual.
+    const nextLifestyle = { ...lifestyle, goal: next.goal };
+    setLifestyle(nextLifestyle);
+
     await Promise.all([
       supabase.from("clients").update({
-        current_weight: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex, commitment: next.commitment,
+        current_weight: next.weightKg, height_cm: next.heightCm, age: next.age, sex: next.sex,
+        commitment: next.commitment, lifestyle: nextLifestyle,
         ...(nutritionGoals && {
           daily_kcal_goal: nutritionGoals.kcal, daily_protein_goal: nutritionGoals.protein,
           daily_carbs_goal: nutritionGoals.carbs, daily_fat_goal: nutritionGoals.fat,
@@ -348,8 +360,8 @@ export default function ProfileSettingsPage() {
       {showPhysicalEdit && (
         <Modal title="Perfil físico" onClose={() => setShowPhysicalEdit(false)} maxWidth={340}>
           <PhysicalProfileEditor
-            initial={{ weightKg, heightCm, age, sex, commitment, reminderDays: physicalReminderDays }}
-            showCommitment={goal !== null && goal !== "salud"}
+            initial={{ weightKg, heightCm, age, sex, commitment, goal, reminderDays: physicalReminderDays }}
+            daysAvailable={daysAvailable}
             onSave={savePhysicalProfile}
           />
         </Modal>
@@ -485,16 +497,21 @@ function NameEditor({ initial, onSave }: { initial: string; onSave: (v: string) 
   );
 }
 
-type PhysicalProfile = { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; reminderDays: number | null };
+type PhysicalProfile = { weightKg: number | null; heightCm: number | null; age: number | null; sex: Sex | null; commitment: CommitmentLevel; goal: string | null; reminderDays: number | null };
 
-function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: PhysicalProfile; showCommitment: boolean; onSave: (v: PhysicalProfile) => void }) {
+function PhysicalProfileEditor({ initial, daysAvailable, onSave }: { initial: PhysicalProfile; daysAvailable: number; onSave: (v: PhysicalProfile) => void }) {
   const palette = usePalette();
   const [weightKg, setWeightKg] = useState(initial.weightKg);
   const [heightCm, setHeightCm] = useState(initial.heightCm);
   const [age, setAge] = useState(initial.age);
   const [sex, setSex] = useState(initial.sex);
   const [commitment, setCommitment] = useState(initial.commitment);
+  const [goal, setGoal] = useState(initial.goal);
   const [reminderDays, setReminderDays] = useState(initial.reminderDays);
+
+  // "Salud general" no lleva ni déficit ni superávit, así que preguntar el ritmo no
+  // tendría efecto sobre nada.
+  const showCommitment = goal !== null && goal !== "salud";
 
   function numberInput(value: number | null, onChange: (v: number | null) => void, label: string) {
     return (
@@ -531,6 +548,21 @@ function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: P
         ))}
       </div>
 
+      <div style={{ fontSize: 12, color: palette.inkDim, margin: "18px 0 8px" }}>Tu objetivo</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+        {GOALS.map((g) => (
+          <button key={g.id} onClick={() => setGoal(g.id)} style={{
+            textAlign: "left", padding: "9px 12px", borderRadius: 10, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+            border: `1px solid ${goal === g.id ? palette.accent : palette.panelBorder}`,
+            background: goal === g.id ? `${palette.accent}18` : palette.inputBg,
+          }}>
+            <span style={{ fontSize: 15 }}>{g.emoji}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: palette.ink }}>{g.label}</span>
+          </button>
+        ))}
+      </div>
+
       {showCommitment && (
         <>
           <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Nivel de compromiso con tu objetivo</div>
@@ -548,6 +580,15 @@ function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: P
         </>
       )}
 
+      {/* En vivo: cambiar el objetivo o el ritmo mueve el número aquí mismo, antes de
+          guardar. Es la única forma de que la decisión se tome con la cuenta a la vista. */}
+      <div style={{ marginBottom: 18 }}>
+        <CalorieBreakdownCard
+          weightKg={weightKg} heightCm={heightCm} age={age} sex={sex}
+          daysAvailable={daysAvailable} goal={goal} commitment={commitment}
+        />
+      </div>
+
       <div style={{ fontSize: 12, color: palette.inkDim, marginBottom: 8 }}>Recordarme actualizar estos datos</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
         {PHYSICAL_REMINDER_OPTIONS.map((r) => (
@@ -561,7 +602,7 @@ function PhysicalProfileEditor({ initial, showCommitment, onSave }: { initial: P
       </div>
 
       <button
-        onClick={() => onSave({ weightKg, heightCm, age, sex, commitment, reminderDays })}
+        onClick={() => onSave({ weightKg, heightCm, age, sex, commitment, goal, reminderDays })}
         disabled={!weightKg || !heightCm || !age || !sex}
         style={{
           width: "100%", padding: 12, borderRadius: 11, border: "none",

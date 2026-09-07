@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
-import { Plus, Dumbbell, Pencil, Trash2, RefreshCw, Folder, Copy } from "lucide-react";
+import { Plus, Dumbbell, Pencil, Trash2, RefreshCw, Folder, Copy, Info, Check, X } from "lucide-react";
 import { ROUTINE_DURATION_OPTIONS } from "@/lib/units";
 
 export default function RoutinesPage() {
@@ -16,17 +16,28 @@ export default function RoutinesPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [clientsError, setClientsError] = useState<string | null>(null);
+  const [folderDescriptions, setFolderDescriptions] = useState<Record<string, string>>({});
+  const [uid, setUid] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
+    setUid(auth.user?.id ?? null);
 
-    const { data: r } = await supabase
-      .from("routines")
-      .select("id, name, client_id, assigned_at, duration_days, auto_renew, folder")
-      .eq("trainer_id", auth.user!.id)
-      .order("created_at", { ascending: false });
+    // Las dos consultas no dependen una de la otra: en serie eran dos esperas seguidas.
+    const [{ data: r }, { data: folders }] = await Promise.all([
+      supabase
+        .from("routines")
+        .select("id, name, client_id, assigned_at, duration_days, auto_renew, folder")
+        .eq("trainer_id", auth.user!.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("routine_folders").select("name, description").eq("trainer_id", auth.user!.id),
+    ]);
+
     setRoutines(r ?? []);
+    setFolderDescriptions(Object.fromEntries(
+      (folders ?? []).filter((f: any) => f.description).map((f: any) => [f.name, f.description as string])
+    ));
 
     try {
       const res = await fetch("/api/coach/client-names");
@@ -55,18 +66,41 @@ export default function RoutinesPage() {
   }
 
   async function updateDuration(routineId: string, durationDays: number | null) {
-    await supabase.from("routines").update({ duration_days: durationDays }).eq("id", routineId);
+    setActionError(null);
+    const { error } = await supabase.from("routines").update({ duration_days: durationDays }).eq("id", routineId);
+    if (error) { setActionError(`No pudimos cambiar la duración: ${error.message}`); return; }
     load();
   }
 
   async function toggleAutoRenew(routineId: string, autoRenew: boolean) {
-    await supabase.from("routines").update({ auto_renew: autoRenew }).eq("id", routineId);
+    setActionError(null);
+    const { error } = await supabase.from("routines").update({ auto_renew: autoRenew }).eq("id", routineId);
+    if (error) { setActionError(`No pudimos cambiar la renovación: ${error.message}`); return; }
     load();
   }
 
   async function updateFolder(routineId: string, folder: string) {
-    await supabase.from("routines").update({ folder: folder.trim() || null }).eq("id", routineId);
+    setActionError(null);
+    const { error } = await supabase.from("routines").update({ folder: folder.trim() || null }).eq("id", routineId);
+    if (error) { setActionError(`No pudimos cambiar la carpeta: ${error.message}`); return; }
     load();
+  }
+
+  /** La descripción del programa entero, la que el cliente lee arriba de sus rutinas. */
+  async function saveFolderDescription(folder: string, description: string) {
+    if (!uid) return "Se cerró tu sesión, vuelve a entrar.";
+    const { error } = await supabase.from("routine_folders").upsert(
+      { trainer_id: uid, name: folder, description: description.trim() || null, updated_at: new Date().toISOString() },
+      { onConflict: "trainer_id,name" },
+    );
+    if (error) return `No pudimos guardarla: ${error.message}`;
+    setFolderDescriptions((prev) => {
+      const next = { ...prev };
+      if (description.trim()) next[folder] = description.trim();
+      else delete next[folder];
+      return next;
+    });
+    return null;
   }
 
   // Duplica la rutina con todos sus ejercicios, series, notas, descansos y superseries.
@@ -140,6 +174,8 @@ export default function RoutinesPage() {
         <div style={{ ...palette.glassPanel, padding: 32, textAlign: "center", color: palette.inkDim }}>Todavía no armaste ninguna rutina.</div>
       ) : (
         <RoutineFolders
+          folderDescriptions={folderDescriptions}
+          saveFolderDescription={saveFolderDescription}
           routines={routines}
           clients={clients}
           reassign={reassign}
@@ -156,8 +192,10 @@ export default function RoutinesPage() {
   );
 }
 
-function RoutineFolders({ routines, clients, reassign, updateDuration, toggleAutoRenew, updateFolder, deleteRoutine, duplicateRoutine, duplicatingId, palette }: {
+function RoutineFolders({ routines, clients, folderDescriptions, saveFolderDescription, reassign, updateDuration, toggleAutoRenew, updateFolder, deleteRoutine, duplicateRoutine, duplicatingId, palette }: {
   routines: any[]; clients: any[];
+  folderDescriptions: Record<string, string>;
+  saveFolderDescription: (folder: string, description: string) => Promise<string | null>;
   reassign: (id: string, clientId: string) => void;
   updateDuration: (id: string, days: number | null) => void;
   toggleAutoRenew: (id: string, on: boolean) => void;
@@ -186,6 +224,15 @@ function RoutineFolders({ routines, clients, reassign, updateDuration, toggleAut
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, color: palette.inkDim, fontSize: 12.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             <Folder size={13} /> {key} <span style={{ fontWeight: 400, textTransform: "none" }}>({groups[key].length})</span>
           </div>
+
+          {key !== "Sin carpeta" && (
+            <FolderDescription
+              folder={key}
+              description={folderDescriptions[key] ?? null}
+              onSave={saveFolderDescription}
+              palette={palette}
+            />
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {groups[key].map((r, i) => {
             const daysLeft = r.assigned_at && r.duration_days
@@ -274,5 +321,79 @@ function RoutineFolders({ routines, clients, reassign, updateDuration, toggleAut
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * La descripción del programa: para qué es el conjunto, no cada día.
+ *
+ * Vive en la carpeta porque es lo que agrupa los días de un mismo plan, y el cliente la
+ * lee arriba de su lista de rutinas — es lo primero que ve al entrar a entrenar.
+ */
+function FolderDescription({ folder, description, onSave, palette }: {
+  folder: string; description: string | null;
+  onSave: (folder: string, description: string) => Promise<string | null>;
+  palette: Palette;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    const err = await onSave(folder, text);
+    setSaving(false);
+    if (err) { setError(err); return; }
+    setError(null);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ ...palette.glassPanel, padding: 14, marginBottom: 10 }}>
+        <textarea
+          value={text} onChange={(e) => setText(e.target.value)} rows={5} autoFocus
+          placeholder="Ej: son seis días porque repartimos el volumen para tocar cada grupo dos veces por semana sin sesiones eternas. Este mes vamos por estrés metabólico: más repeticiones y menos descanso. En un mes pasamos a tensión mecánica."
+          style={{
+            width: "100%", padding: "10px 12px", borderRadius: 11, resize: "vertical",
+            border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
+            fontSize: 13.5, fontFamily: "inherit", lineHeight: 1.6, marginBottom: 10,
+          }}
+        />
+        {error && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{error}</p>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => { setEditing(false); setText(description ?? ""); setError(null); }} style={{
+            flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${palette.panelBorder}`,
+            background: "none", color: palette.inkDim, fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}><X size={13} /> Cancelar</button>
+          <button onClick={save} disabled={saving} style={{
+            flex: 1, padding: 10, borderRadius: 10, border: "none", background: palette.accent,
+            color: palette.bg, fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.6 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}><Check size={13} /> {saving ? "Guardando..." : "Guardar"}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      style={{
+        width: "100%", textAlign: "left", cursor: "pointer", marginBottom: 10,
+        ...palette.glassPanel, padding: 13,
+        display: "flex", alignItems: "flex-start", gap: 9,
+        border: description ? `1px solid ${palette.accent}44` : `1px dashed ${palette.panelBorder}`,
+        color: palette.ink,
+      }}
+    >
+      <Info size={13} color={description ? palette.accent : palette.inkDim} style={{ flexShrink: 0, marginTop: 2 }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.55, color: description ? palette.ink : palette.inkDim, whiteSpace: "pre-wrap" }}>
+        {description ?? "Sin descripción del programa. Explica para qué es este plan y por qué tiene estos días — tus clientes lo leen antes de entrenar."}
+      </span>
+      <Pencil size={13} color={palette.inkDim} style={{ flexShrink: 0, marginTop: 2 }} />
+    </button>
   );
 }

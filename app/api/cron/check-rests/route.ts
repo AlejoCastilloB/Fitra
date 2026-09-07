@@ -39,7 +39,23 @@ export async function GET(req: Request) {
   if (!pending || pending.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
   let sent = 0;
+  let yaAvisado = 0;
+
   for (const row of pending) {
+    // Se marca ANTES de mandar, y solo si la fila sigue sin avisar. Marcándolo después
+    // —como estaba— un fallo de escritura dejaba `notified` en false y el mismo
+    // "Descanso terminado" salía otra vez en cada pasada del cron. Es el mismo problema
+    // que tuvimos con los recordatorios de comida.
+    const { data: claimed, error: claimError } = await admin
+      .from("active_rests")
+      .update({ notified: true })
+      .eq("user_id", row.user_id)
+      .eq("notified", false)
+      .select("user_id");
+
+    if (claimError) continue;
+    if (!claimed || claimed.length === 0) { yaAvisado++; continue; }
+
     const { data: subs } = await admin.from("push_subscriptions").select("*").eq("user_id", row.user_id);
 
     for (const sub of subs ?? []) {
@@ -59,9 +75,7 @@ export async function GET(req: Request) {
         }
       }
     }
-
-    await admin.from("active_rests").update({ notified: true }).eq("user_id", row.user_id);
   }
 
-  return NextResponse.json({ ok: true, sent });
+  return NextResponse.json({ ok: true, sent, skipped: { yaAvisado } });
 }

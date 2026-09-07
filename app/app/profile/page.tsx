@@ -9,7 +9,7 @@ import { getWeightComparison } from "@/lib/weightComparisons";
 import Link from "next/link";
 import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler, ChevronRight } from "lucide-react";
 import Modal from "@/components/Modal";
-import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, type UnitSystem } from "@/lib/units";
+import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, weightToKg, kgToWeightDisplay, weightUnitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { formatDurationLabel } from "@/lib/formatDuration";
 
@@ -82,7 +82,9 @@ export default function ProfilePage() {
         setUnitSystemState((userRow.unit_system as UnitSystem) ?? "metric");
         setMeasurementZones(userRow.measurement_zones || []);
       }
-      setCurrentWeight(clientRow?.current_weight ? String(clientRow.current_weight) : "");
+      // En la base está en kilos; aquí se muestra en la unidad elegida.
+      const unidad = ((userRow?.unit_system as UnitSystem) ?? "metric");
+      setCurrentWeight(clientRow?.current_weight ? String(kgToWeightDisplay(clientRow.current_weight, unidad)) : "");
 
       const latest: Record<string, number> = {};
       (measurementRows ?? []).forEach((m: any) => { if (!(m.measurement_key in latest)) latest[m.measurement_key] = m.value_cm; });
@@ -516,12 +518,17 @@ function MeasurementsModal({
   const [weight, setWeight] = useState(currentWeight);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const activeZones = MEASUREMENT_ZONES.filter((z) => zones.includes(z.key));
 
   async function save() {
     setSaving(true);
     if (weight.trim()) {
-      await supabase.from("clients").update({ current_weight: +weight || null }).eq("user_id", uid);
+      // A la base siempre en kilos: es lo que espera el cálculo de calorías. Antes se
+      // guardaba el número tal cual, así que en libras 180 entraba como 180 kg.
+      const kg = weightToKg(+weight, unitSystem);
+      const { error } = await supabase.from("clients").update({ current_weight: kg || null }).eq("user_id", uid);
+      if (error) { setSaveError("No pudimos guardar tu peso, intenta de nuevo."); setSaving(false); return; }
     }
 
     const updated: Record<string, number> = {};
@@ -532,7 +539,10 @@ function MeasurementsModal({
         updated[z.key] = valueCm;
         return { user_id: uid, measurement_key: z.key, value_cm: valueCm };
       });
-    if (rows.length > 0) await supabase.from("body_measurements").insert(rows);
+    if (rows.length > 0) {
+      const { error } = await supabase.from("body_measurements").insert(rows);
+      if (error) { setSaveError("No pudimos guardar tus medidas, intenta de nuevo."); setSaving(false); return; }
+    }
 
     setSaving(false);
     onSaved(weight, updated);
@@ -541,12 +551,13 @@ function MeasurementsModal({
   return (
     <Modal title="Medidas y peso" onClose={onClose} maxWidth={380}>
       <label style={{ fontSize: 12, color: palette.inkDim, display: "block", marginBottom: 6 }}>
-        Peso actual ({unitSystem === "imperial" ? "lb" : "kg"})
+        Peso actual ({weightUnitLabel(unitSystem)})
       </label>
       <input
-        type="number" value={weight} onChange={(e) => setWeight(e.target.value)}
+        type="number" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)}
         style={{ width: "100%", padding: 11, borderRadius: 10, border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink, fontSize: 14, marginBottom: 16 }}
       />
+      {saveError && <p style={{ fontSize: 11.5, color: "#f87171", marginTop: -10, marginBottom: 14 }}>{saveError}</p>}
 
       {activeZones.length === 0 ? (
         <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5, marginBottom: 16 }}>
