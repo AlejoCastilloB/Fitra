@@ -10,7 +10,7 @@ import { supersetColor } from "@/lib/supersetColors";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useWorkoutSession, newExerciseUid, LiveExercise } from "@/lib/workoutSession";
 import { finishWorkoutSession, type FinishedWorkout } from "@/lib/finishWorkout";
-import { X, Trophy, Flame, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote } from "lucide-react";
+import { X, Trophy, ChevronDown, Trash2, Plus, Timer, Settings, Link2, StickyNote } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExercisePicker from "@/components/ExercisePicker";
@@ -506,14 +506,17 @@ export default function WorkoutPage() {
                   </div>
                 )}
 
-                {/* Calentamiento y descanso van a la derecha y como pastillas: antes eran
-                    texto pequeño pegado a la izquierda y parecían relleno. */}
+                {/* El descanso va a la derecha y como pastilla: antes era texto pequeño
+                    pegado a la izquierda y parecía relleno.
+
+                    Aquí había también un botón de "Calentamiento" que abría la calculadora
+                    a mano. Estorbaba: seguía ahí en el último ejercicio, cuando ya no tiene
+                    sentido calentar, y aparecía aunque el aviso automático estuviera
+                    apagado en ajustes —el ajuste solo gobernaba el aviso, no el botón—, lo
+                    que hacía parecer que el ajuste no funcionaba. La calculadora sigue
+                    existiendo y sale sola al escribir el primer peso, si el ajuste está
+                    encendido. */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 10 }}>
-                  {ex.measurement_type === "reps_weight" && (
-                    <button onClick={() => setWarmupFor(exIdx)} style={{ ...pillStyle(palette), color: palette.accent, borderColor: `${palette.accent}55`, background: `${palette.accent}12` }}>
-                      <Flame size={13} /> Calentamiento
-                    </button>
-                  )}
                   {editingRestFor === exIdx ? (
                     <div style={{ ...pillStyle(palette), color: palette.inkDim }}>
                       <Timer size={13} />
