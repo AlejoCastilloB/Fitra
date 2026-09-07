@@ -13,6 +13,7 @@ import { X, Plus, Timer, Trash2 } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
 import WorkoutSetRow from "@/components/WorkoutSetRow";
+import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
 import ExercisePicker from "@/components/ExercisePicker";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
@@ -33,6 +34,12 @@ export default function EmptyWorkoutPage() {
   const [leaving, setLeaving] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
+  const [editingRpe, setEditingRpe] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
+  // Los ajustes del usuario no se leían aquí: el seguimiento de RPE quedaba apagado
+  // aunque estuviera activado, y los ejercicios nuevos nacían siempre con 90 s de
+  // descanso en vez del predeterminado que la persona eligió.
+  const [trackRpe, setTrackRpe] = useState(false);
+  const [defaultRest, setDefaultRest] = useState(90);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [finished, setFinished] = useState<FinishedWorkout | null>(null);
@@ -49,6 +56,16 @@ export default function EmptyWorkoutPage() {
     if (!hydrated || finished || leaving) return;
     if (!session) startSession(EMPTY_ROUTINE_ID, EMPTY_WORKOUT_NAME, []);
   }, [hydrated, session, finished, leaving]);
+
+  // Los mismos ajustes que respeta el entreno con rutina. Esta pantalla no los leía.
+  useEffect(() => {
+    if (!uid) return;
+    supabase.from("users").select("track_rpe, default_rest_seconds").eq("id", uid).single().then(({ data }) => {
+      if (!data) return;
+      setTrackRpe(data.track_rpe ?? false);
+      setDefaultRest(data.default_rest_seconds ?? 90);
+    });
+  }, [uid]);
 
   async function finishWorkout() {
     if (!session || !uid || finishing) return;
@@ -210,7 +227,9 @@ export default function EmptyWorkoutPage() {
                   <WorkoutSetRow
                     key={i}
                     exercise={ex} set={s} index={i}
-                    onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom })}
+                    trackRpe={trackRpe}
+                    onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
+                    onOpenRpeMenu={(r) => setEditingRpe({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
                     onChangeField={(field, v) => updateSet(exIdx, i, field, v)}
                     onToggleDone={() => toggleSetDone(exIdx, i, ex.restSeconds ?? 90)}
                     onRemove={() => removeSet(exIdx, i)}
@@ -269,6 +288,7 @@ export default function EmptyWorkoutPage() {
             addExercise({
               id: ex.id, name: ex.name, media_url: ex.media_url,
               measurement_type: ex.measurement_type, muscle_group: ex.muscle_group, equipment: ex.equipment,
+              restSeconds: defaultRest,
             });
             setShowPicker(false);
           }}
@@ -292,6 +312,15 @@ export default function EmptyWorkoutPage() {
             </div>
           </div>
         </Overlay>
+      )}
+
+      {editingRpe && (
+        <RpePopover
+          current={session?.exercises[editingRpe.exIdx]?.sets[editingRpe.setIdx]?.rpe}
+          x={editingRpe.x} y={editingRpe.y}
+          onSelect={(n) => updateSet(editingRpe.exIdx, editingRpe.setIdx, "rpe", n)}
+          onClose={() => setEditingRpe(null)}
+        />
       )}
 
       {editingType && (

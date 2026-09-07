@@ -31,7 +31,12 @@ export type Program = {
   days: ProgramDay[];
 };
 
-export type ClientProgram = { clientName: string; programs: Program[] };
+export type ClientProgram = {
+  clientName: string;
+  /** Lo que el entrenador le explica a ESTA persona sobre su plan. La lee ella. */
+  trainingDescription: string | null;
+  programs: Program[];
+};
 
 export async function getClientProgram(coachId: string, clientId: string): Promise<ClientProgram | null> {
   if (!(await coachOwnsClient(coachId, clientId))) return null;
@@ -39,7 +44,7 @@ export async function getClientProgram(coachId: string, clientId: string): Promi
   const admin = createAdminClient();
 
   const [{ data: client }, { data: routines }, { data: folders }] = await Promise.all([
-    admin.from("clients").select("users(display_name, email)").eq("user_id", clientId).maybeSingle(),
+    admin.from("clients").select("training_description, users(display_name, email)").eq("user_id", clientId).maybeSingle(),
     admin
       .from("routines")
       .select("id, name, notes, folder, days_of_week, created_at, routine_exercises(target_sets, exercises(muscle_group))")
@@ -51,7 +56,11 @@ export async function getClientProgram(coachId: string, clientId: string): Promi
   const clientName = (client as any)?.users?.display_name || (client as any)?.users?.email || "Cliente";
   const descriptionByFolder = Object.fromEntries((folders ?? []).map((f: any) => [f.name, f.description ?? null]));
 
-  return { clientName, programs: groupIntoPrograms(routines ?? [], descriptionByFolder) };
+  return {
+    clientName,
+    trainingDescription: (client as any)?.training_description ?? null,
+    programs: groupIntoPrograms(routines ?? [], descriptionByFolder),
+  };
 }
 
 /** Separado de la consulta para poder probarlo sin base de datos. */

@@ -2,22 +2,39 @@
 
 import { useState } from "react";
 import { usePalette } from "@/lib/theme";
-import { createClient } from "@/lib/supabase/client";
+import Button from "@/components/Button";
 import { Save } from "lucide-react";
 
 export default function TrainerNotesEditor({ clientId, initialNotes }: { clientId: string; initialNotes: string }) {
   const palette = usePalette();
-  const supabase = createClient();
   const [notes, setNotes] = useState(initialNotes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Por la ruta de servidor, no directo a Supabase: el RLS de `clients` no deja al
+   * entrenador escribir en la fila de otra persona, así que la escritura se rechazaba —y
+   * como el error no se miraba, el botón decía "Guardado" y las notas se perdían.
+   */
   async function save() {
     setSaving(true);
-    await supabase.from("clients").update({ trainer_notes: notes }).eq("user_id", clientId);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    setError(null);
+    try {
+      const res = await fetch("/api/coach/client-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, trainerNotes: notes }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || `error ${res.status}`);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1800);
+    } catch (e: any) {
+      setError(`No pudimos guardar las notas: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -31,12 +48,11 @@ export default function TrainerNotesEditor({ clientId, initialNotes }: { clientI
           background: palette.inputBg, color: palette.ink, fontSize: 13.5, fontFamily: "inherit", resize: "vertical", marginBottom: 10,
         }}
       />
-      <button onClick={save} disabled={saving} style={{
-        ...palette.glassPanel, padding: "9px 16px", borderRadius: 11, cursor: "pointer", border: "none",
-        display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: palette.ink, opacity: saving ? 0.6 : 1,
-      }}>
-        <Save size={14} /> {saving ? "Guardando..." : saved ? "Guardado" : "Guardar notas"}
-      </button>
+      {error && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{error}</p>}
+
+      <Button variant="secondary" size="sm" onClick={save} loading={saving} loadingLabel="Guardando..." icon={<Save size={14} />}>
+        {saved ? "Guardado" : "Guardar notas"}
+      </Button>
     </div>
   );
 }

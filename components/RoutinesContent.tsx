@@ -8,7 +8,7 @@ import SwipeActionsRow from "@/components/SwipeActionsRow";
 import Overlay from "@/components/Overlay";
 import Button from "@/components/Button";
 import Link from "next/link";
-import { Pencil, Sparkles, Zap, ChevronRight, Copy, Trash2, ClipboardList, StickyNote } from "lucide-react";
+import { Pencil, Sparkles, Zap, ChevronRight, Copy, Trash2, ClipboardList, FolderOpen, StickyNote } from "lucide-react";
 
 export default function RoutinesContent() {
   const palette = usePalette();
@@ -21,10 +21,13 @@ export default function RoutinesContent() {
   const [error, setError] = useState<string | null>(null);
   /** Descripciones de programa que escribió el coach, por nombre de carpeta. */
   const [programs, setPrograms] = useState<{ name: string; description: string }[]>([]);
+  /** Lo que el coach le escribió a ESTA persona sobre su plan. */
+  const [coachNote, setCoachNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!uid) return;
-    const { data: clientRow } = await supabase.from("clients").select("trainer_id").eq("user_id", uid).single();
+    const { data: clientRow } = await supabase.from("clients").select("trainer_id, training_description").eq("user_id", uid).maybeSingle();
+    setCoachNote((clientRow as any)?.training_description?.trim() || null);
 
     // Las dos consultas son independientes entre sí: en serie eran dos viajes al servidor
     // encadenados antes de pintar la lista.
@@ -133,17 +136,28 @@ export default function RoutinesContent() {
       {/* Lo que el coach quiere que se entienda ANTES de mirar la lista: para qué es el
           plan y por qué tiene los días que tiene. Sin esto, seis rutinas sueltas no
           explican nada por sí solas. */}
-      {programs.map((p) => (
-        <div key={p.name} className="ft-fade-in-up" style={{
+      {coachNote && (
+        <div className="ft-fade-in-up" style={{
           ...palette.glassPanel, padding: 16, marginBottom: 12,
           border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, color: palette.accent, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             <ClipboardList size={13} /> Indicaciones de tu coach
           </div>
-          {programs.length > 1 && (
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 5 }}>{p.name}</div>
-          )}
+          <p style={{ fontSize: 13, lineHeight: 1.65, color: palette.ink, margin: 0, whiteSpace: "pre-wrap" }}>
+            {coachNote}
+          </p>
+        </div>
+      )}
+
+      {programs.map((p) => (
+        <div key={p.name} className="ft-fade-in-up" style={{
+          ...palette.glassPanel, padding: 16, marginBottom: 12,
+          border: `1px solid ${palette.accent}55`, background: `${palette.accent}12`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6, color: palette.accent, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <FolderOpen size={13} /> {p.name}
+          </div>
           <p style={{ fontSize: 13, lineHeight: 1.6, color: palette.ink, margin: 0, whiteSpace: "pre-wrap" }}>
             {p.description}
           </p>

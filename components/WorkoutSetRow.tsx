@@ -24,12 +24,14 @@ type Props = {
   onChangeField: (field: "weight" | "reps" | "time_sec" | "distance_m", value: number | undefined) => void;
   onToggleDone: () => void;
   onRemove: () => void;
-  onSetRpe: (rpe: number) => void;
+  onSetRpe: (rpe: number | undefined) => void;
+  /** Abre el selector de RPE anclado al botón que se tocó. */
+  onOpenRpeMenu: (rect: DOMRect) => void;
 };
 
 export default function WorkoutSetRow({
   exercise, set: s, index, previousLabel, highlighted, trackRpe,
-  onOpenTypeMenu, onChangeField, onToggleDone, onRemove, onSetRpe,
+  onOpenTypeMenu, onOpenRpeMenu, onChangeField, onToggleDone, onRemove, onSetRpe,
 }: Props) {
   const palette = usePalette();
   const badge = getSetBadge(exercise.sets, index, palette.accent);
@@ -108,6 +110,26 @@ export default function WorkoutSetRow({
 
           <div style={{ position: "relative", flex: 1 }} />
 
+          {/* El RPE solo tiene sentido una vez marcada la serie: antes de hacerla no hay
+              nada que valorar. Va aquí, pegado al check, porque es lo que se contesta
+              justo después de tocarlo. */}
+          {trackRpe && s.done && (
+            <button
+              onClick={(e) => onOpenRpeMenu(e.currentTarget.getBoundingClientRect())}
+              style={{
+                position: "relative", minWidth: 44, height: 28, padding: "0 8px", borderRadius: 9,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+                cursor: "pointer", flexShrink: 0, marginRight: 8, touchAction: "manipulation",
+                border: `1px solid ${s.rpe != null ? palette.accent : palette.panelBorder}`,
+                background: s.rpe != null ? `${palette.accent}22` : "transparent",
+                color: s.rpe != null ? palette.accent : palette.inkDim,
+                fontSize: 11, fontWeight: 700, fontFamily: "inherit",
+              }}
+            >
+              {s.rpe != null ? <>RPE {s.rpe}</> : "RPE"}
+            </button>
+          )}
+
           <button onClick={onToggleDone} className="ft-touch" style={{
             width: 28, height: 28, borderRadius: 9, touchAction: "manipulation",
             border: `1px solid ${s.done ? "#4ADE80" : palette.panelBorder}`,
@@ -119,23 +141,6 @@ export default function WorkoutSetRow({
           </button>
         </div>
 
-        {trackRpe && s.done && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 4,
-            padding: `0 ${SET_ROW_BLEED}px 8px ${SET_ROW_BLEED + 30}px`,
-            background: index % 2 === 1 ? palette.panel : "transparent",
-          }}>
-            <span style={{ fontSize: 9.5, color: palette.inkDim, marginRight: 4 }}>RPE</span>
-            {Array.from({ length: 10 }, (_, n) => n + 1).map((n) => (
-              <button key={n} onClick={() => onSetRpe(n)} className="ft-touch-y" style={{
-                width: 26, height: 26, borderRadius: 7, border: "none", cursor: "pointer",
-                fontSize: 10.5, fontWeight: 700, flexShrink: 0, touchAction: "manipulation",
-                color: s.rpe === n ? palette.bg : palette.inkDim,
-                background: s.rpe === n ? palette.accent : palette.inputBg,
-              }}>{n}</button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

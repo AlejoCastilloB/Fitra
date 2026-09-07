@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import type { Program } from "@/lib/coachClientProgram";
-import { ChevronLeft, ChevronRight, Dumbbell, FolderOpen, Layers, Pencil, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Dumbbell, FolderOpen, Layers, Pencil, Info } from "lucide-react";
+import Button from "@/components/Button";
 
 const DAY_LABELS = ["D", "L", "M", "X", "J", "V", "S"];
 
@@ -19,8 +20,8 @@ const DAY_LABELS = ["D", "L", "M", "X", "J", "V", "S"];
  * porque es leyendo el desglose cuando uno se da cuenta de lo que hay que explicar.
  */
 export default function CoachClientProgramContent({
-  clientId, clientName, programs,
-}: { clientId: string; clientName: string; programs: Program[] }) {
+  clientId, clientName, trainingDescription, programs,
+}: { clientId: string; clientName: string; trainingDescription: string | null; programs: Program[] }) {
   const palette = usePalette();
   const totalDays = programs.reduce((n, p) => n + p.days.length, 0);
 
@@ -37,6 +38,8 @@ export default function CoachClientProgramContent({
           : `${totalDays} ${totalDays === 1 ? "día" : "días"} en ${programs.length} ${programs.length === 1 ? "programa" : "programas"}. Todo lo que escribas aquí lo lee ${clientName} en su app.`}
       </p>
 
+      <PlanDescription clientId={clientId} clientName={clientName} initial={trainingDescription} palette={palette} />
+
       {totalDays === 0 ? (
         <div style={{ ...palette.glassPanel, padding: 30, textAlign: "center" }}>
           <Dumbbell size={22} color={palette.inkDim} style={{ marginBottom: 10 }} />
@@ -51,6 +54,81 @@ export default function CoachClientProgramContent({
         </div>
       ) : (
         programs.map((p) => <ProgramBlock key={p.folder ?? "__sueltas"} program={p} palette={palette} clientName={clientName} />)
+      )}
+    </div>
+  );
+}
+
+/**
+ * La explicación general del plan de esta persona: para qué es, por qué tiene los días que
+ * tiene, qué se busca este mes. Va aparte de las carpetas porque la mayoría de clientes no
+ * tienen sus rutinas organizadas en ninguna, y aun así necesitan la explicación.
+ */
+function PlanDescription({ clientId, clientName, initial, palette }: {
+  clientId: string; clientName: string; initial: string | null; palette: Palette;
+}) {
+  const router = useRouter();
+  const [texto, setTexto] = useState(initial ?? "");
+  const [editando, setEditando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar() {
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/coach/client-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, trainingDescription: texto }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || `error ${res.status}`);
+      setEditando(false);
+      router.refresh();
+    } catch (e: any) {
+      setError(`No pudimos guardarla: ${e.message}`);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div style={{ ...palette.glassPanel, padding: 16, marginBottom: 24, border: `1px solid ${palette.accent}55` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, color: palette.accent, fontWeight: 700, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <ClipboardList size={13} /> Indicaciones para {clientName}
+      </div>
+
+      {editando ? (
+        <>
+          <textarea
+            value={texto} onChange={(e) => setTexto(e.target.value)} rows={6} autoFocus
+            placeholder={`Ej: ${clientName}, este mes vamos con seis días porque repartimos el volumen para tocar cada grupo dos veces por semana sin sesiones eternas. Buscamos estrés metabólico: más repeticiones y menos descanso entre series. En cuatro semanas cambiamos el enfoque a tensión mecánica y bajamos las repeticiones.`}
+            style={{
+              width: "100%", padding: "11px 13px", borderRadius: 11, resize: "vertical",
+              border: `1px solid ${palette.panelBorder}`, background: palette.inputBg, color: palette.ink,
+              fontSize: 13.5, fontFamily: "inherit", lineHeight: 1.6, marginBottom: 10,
+            }}
+          />
+          {error && <p style={{ fontSize: 11.5, color: "#f87171", marginBottom: 10 }}>{error}</p>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="ghost" fullWidth onClick={() => { setEditando(false); setTexto(initial ?? ""); setError(null); }}>
+              Cancelar
+            </Button>
+            <Button variant="primary" fullWidth onClick={guardar} loading={guardando} loadingLabel="Guardando...">
+              Guardar
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, lineHeight: 1.65, color: texto ? palette.ink : palette.inkDim, margin: "0 0 12px", whiteSpace: "pre-wrap" }}>
+            {texto || `Sin indicaciones todavía. Explícale a ${clientName} para qué es su plan y por qué tiene estos días — lo lee arriba de sus rutinas, antes de entrenar.`}
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => setEditando(true)} icon={<Pencil size={12} />}>
+            {texto ? "Editar indicaciones" : "Escribir indicaciones"}
+          </Button>
+        </>
       )}
     </div>
   );

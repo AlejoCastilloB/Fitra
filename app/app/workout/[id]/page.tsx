@@ -16,6 +16,7 @@ import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExercisePicker from "@/components/ExercisePicker";
 import SetTypePopover from "@/components/SetTypePopover";
 import WorkoutSetRow from "@/components/WorkoutSetRow";
+import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
 import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
@@ -35,6 +36,7 @@ export default function WorkoutPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
+  const [editingRpe, setEditingRpe] = useState<{ exIdx: number; setIdx: number; x: number; y: number } | null>(null);
   const [editingRestFor, setEditingRestFor] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [finished, setFinished] = useState<FinishedWorkout | null>(null);
@@ -559,7 +561,8 @@ export default function WorkoutPage() {
                       previousLabel={prevLabel}
                       highlighted={highlightSet?.exIdx === exIdx && highlightSet?.setIdx === i}
                       trackRpe={trackRpe}
-                      onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left, y: r.bottom })}
+                      onOpenTypeMenu={(r) => setEditingType({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
+                      onOpenRpeMenu={(r) => setEditingRpe({ exIdx, setIdx: i, x: r.left + r.width / 2, y: r.bottom })}
                       onChangeField={(field, v) => field === "weight" ? handleWeightChange(exIdx, i, v) : updateSet(exIdx, i, field, v)}
                       onToggleDone={() => handleToggleSet(exIdx, i)}
                       onRemove={() => removeSet(exIdx, i)}
@@ -654,6 +657,15 @@ export default function WorkoutPage() {
           onSelect={(type) => updateSet(editingType.exIdx, editingType.setIdx, "set_type", type)}
           onClose={() => setEditingType(null)}
           onDelete={() => removeSet(editingType.exIdx, editingType.setIdx)}
+        />
+      )}
+
+      {editingRpe && (
+        <RpePopover
+          current={session!.exercises[editingRpe.exIdx].sets[editingRpe.setIdx].rpe}
+          x={editingRpe.x} y={editingRpe.y}
+          onSelect={(n) => updateSet(editingRpe.exIdx, editingRpe.setIdx, "rpe", n)}
+          onClose={() => setEditingRpe(null)}
         />
       )}
 

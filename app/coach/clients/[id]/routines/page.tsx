@@ -17,6 +17,7 @@ export default async function CoachClientProgramPage({ params }: { params: { id:
     <CoachClientProgramContent
       clientId={params.id}
       clientName={program.clientName}
+      trainingDescription={program.trainingDescription}
       programs={program.programs}
     />
   );
