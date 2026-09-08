@@ -9,14 +9,15 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { useExerciseSearch, useExerciseFilterOptions } from "@/lib/useExerciseSearch";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
-import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal, Timer, Check, Loader2, AlertCircle } from "lucide-react";
+import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal, Timer, Check, Loader2, AlertCircle, ArrowLeftRight } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
 import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
+import ExercisePicker, { type PickableExercise } from "@/components/ExercisePicker";
+import { carrySets, emptySet, type SetRow } from "@/lib/replaceExercise";
 
-type SetRow = { set_type: string; reps?: number; weight?: number; time_sec?: number; distance_m?: number };
 /** Un ejercicio dentro de la rutina.
  *
  *  `id` es el del catálogo y `uid` el de ESTA fila. Hacen falta los dos porque el mismo
@@ -33,13 +34,6 @@ let uidCounter = 0;
 function newUid() { return `row_${Date.now().toString(36)}_${uidCounter++}`; }
 
 export const DEFAULT_REST_SECONDS = 90;
-
-function emptySet(measurementType: string): SetRow {
-  if (measurementType === "time") return { set_type: "normal", time_sec: 30 };
-  if (measurementType === "time_distance") return { set_type: "normal", time_sec: 60, distance_m: 200 };
-  if (measurementType === "distance") return { set_type: "normal", distance_m: 100 };
-  return { set_type: "normal", reps: 10, weight: 0 };
-}
 
 export default function RoutineBuilder({
   routineId,
@@ -108,6 +102,8 @@ export default function RoutineBuilder({
   const [supersetPopoverFor, setSupersetPopoverFor] = useState<{ exId: string; x: number; y: number } | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
+  /** La fila que se está cambiando por otro ejercicio, o null si no hay ninguna. */
+  const [replacingUid, setReplacingUid] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(!isEditing);
 
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
@@ -116,6 +112,25 @@ export default function RoutineBuilder({
     // A propósito sin comprobar duplicados: repetir un ejercicio en la misma rutina es
     // algo que se hace a menudo (una serie pesada al principio y otra ligera al final).
     setPicked([...picked, { uid: newUid(), id: ex.id, name: ex.name, media_url: ex.media_url, measurement_type: ex.measurement_type, sets: [emptySet(ex.measurement_type)], notes: "", restSeconds: DEFAULT_REST_SECONDS }]);
+  }
+
+  /**
+   * Cambia el ejercicio de una fila conservando la fila entera.
+   *
+   * Se mantiene el `uid`, así que la fila no se mueve de su sitio y con ella se quedan las
+   * series (cuántas, con qué reps y qué peso), el descanso, la nota y la superserie. Lo
+   * único que cambia es de qué ejercicio se trata. Es lo que hace rápido adaptar una
+   * rutina copiada: la estructura ya está, solo se sustituye el movimiento.
+   */
+  function replaceExercise(uid: string, ex: PickableExercise) {
+    setPicked((prev) => prev.map((p) => p.uid !== uid ? p : {
+      ...p,
+      id: ex.id,
+      name: ex.name,
+      media_url: ex.media_url,
+      measurement_type: ex.measurement_type,
+      sets: carrySets(p.sets, p.measurement_type, ex.measurement_type),
+    }));
   }
 
   function removeExercise(id: string) {
@@ -428,8 +443,8 @@ export default function RoutineBuilder({
                   borderLeft: groupColor ? `3px solid ${groupColor}` : undefined,
                 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <GripVertical size={15} color={palette.inkDim} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                    <GripVertical size={15} color={palette.inkDim} style={{ flexShrink: 0 }} />
                     <GifThumb src={ex.media_url} size={34} />
                     <button
                       type="button"
@@ -440,12 +455,26 @@ export default function RoutineBuilder({
                         fontWeight: 600, fontSize: 13.5, color: palette.ink,
                         textDecoration: "underline", textDecorationColor: palette.panelBorder,
                         textUnderlineOffset: 3,
+                        // El nombre cede primero: los botones de la derecha no se salen de la tarjeta.
+                        minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}
                     >
                       {ex.name}
                     </button>
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    <button
+                      onClick={() => setReplacingUid(ex.uid)}
+                      className="ft-touch-y"
+                      title="Cambiar este ejercicio por otro, conservando las series"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 999,
+                        border: `1px solid ${palette.panelBorder}`, background: palette.inputBg,
+                        color: palette.inkDim, fontSize: 10.5, fontWeight: 700, cursor: "pointer",
+                      }}
+                    >
+                      <ArrowLeftRight size={11} /> Reemplazar
+                    </button>
                     {role === "client" && (
                       <button onClick={() => setOpenNotesFor(openNotesFor === ex.uid ? null : ex.uid)} style={{
                         background: "none", border: "none", cursor: "pointer",
@@ -604,6 +633,23 @@ export default function RoutineBuilder({
       >
         Listo
       </button>
+
+      {replacingUid && (() => {
+        const target = picked.find((p) => p.uid === replacingUid);
+        if (!target) return null;
+        return (
+          <ExercisePicker
+            mode="replace"
+            subtitle={`Sale ${target.name}. El nuevo entra en su mismo sitio y con sus mismas series.`}
+            addedCounts={picked.reduce<Record<string, number>>((acc, p) => {
+              acc[p.id] = (acc[p.id] ?? 0) + 1;
+              return acc;
+            }, {})}
+            onPick={(ex) => { replaceExercise(replacingUid, ex); setReplacingUid(null); }}
+            onClose={() => setReplacingUid(null)}
+          />
+        );
+      })()}
 
       {detailFor && (
         <ExerciseDetailModal

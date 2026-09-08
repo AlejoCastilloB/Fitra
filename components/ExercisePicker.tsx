@@ -6,7 +6,7 @@ import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { useExerciseSearch, useExerciseFilterOptions, type FoundExercise } from "@/lib/useExerciseSearch";
-import { Search, Plus, X, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, X, SlidersHorizontal, ArrowLeftRight } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 
 export type PickableExercise = FoundExercise;
@@ -16,12 +16,16 @@ export type PickableExercise = FoundExercise;
  * combinables entre sí. Solo consulta la tabla `exercises`.
  */
 export default function ExercisePicker({
-  onPick, onClose, addedCounts = {},
+  onPick, onClose, addedCounts = {}, mode = "add", subtitle,
 }: {
   onPick: (exercise: PickableExercise) => void;
   onClose: () => void;
   /** Cuántas veces está ya cada ejercicio. Solo informa: repetir está permitido. */
   addedCounts?: Record<string, number>;
+  /** "replace" cambia el título y el icono: no se agrega uno más, se cambia el que hay. */
+  mode?: "add" | "replace";
+  /** Una línea bajo el título, para recordar qué se está cambiando y por qué. */
+  subtitle?: string;
 }) {
   const palette = usePalette();
   const [search, setSearch] = useState("");
@@ -62,9 +66,14 @@ export default function ExercisePicker({
       `}</style>
 
       <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${palette.panelBorder}` }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700 }}>Agregar ejercicio</h2>
-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: 4 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700 }}>{mode === "replace" ? "Reemplazar ejercicio" : "Agregar ejercicio"}</h2>
+            {subtitle && (
+              <p style={{ fontSize: 11.5, color: palette.inkDim, marginTop: 3, lineHeight: 1.45 }}>{subtitle}</p>
+            )}
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", padding: 4, flexShrink: 0 }}>
             <X size={22} />
           </button>
         </div>
@@ -132,7 +141,9 @@ export default function ExercisePicker({
                   background: `${palette.accent}22`, borderRadius: 999, padding: "2px 8px",
                 }}>×{veces}</span>
               )}
-              <Plus size={17} color={palette.accent} style={{ flexShrink: 0 }} />
+              {mode === "replace"
+                ? <ArrowLeftRight size={17} color={palette.accent} style={{ flexShrink: 0 }} />
+                : <Plus size={17} color={palette.accent} style={{ flexShrink: 0 }} />}
             </button>
           );
         })}
