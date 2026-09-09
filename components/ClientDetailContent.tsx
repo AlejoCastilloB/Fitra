@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePalette, type Palette } from "@/lib/theme";
 import { goalLabel } from "@/lib/goals";
 import { describeCycle, type MenstrualCycleAnswers } from "@/lib/menstrualCycle";
-import { ChevronLeft, Sparkles, ClipboardList, Dumbbell, ChevronRight, Clock, Weight, Utensils } from "lucide-react";
+import { ChevronLeft, Sparkles, ClipboardList, Dumbbell, ChevronRight, Clock, Weight, Utensils, Trash2 } from "lucide-react";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import type { CoachWorkoutRow } from "@/lib/coachClientWorkouts";
 import TrainerNotesEditor from "@/components/TrainerNotesEditor";
 import CopyButton from "@/components/CopyButton";
 import Toggle from "@/components/Toggle";
+import DeleteClientButton from "@/components/DeleteClientButton";
 
 type SportRow = { sport: string; level: string | null; experience: string | null; include_in_plan: boolean };
 
@@ -172,6 +173,17 @@ export default function ClientDetailContent({
           Solo tú las ves — cosas a tener en cuenta al planificar su entrenamiento.
         </p>
         <TrainerNotesEditor clientId={clientId} initialNotes={trainerNotes} />
+      </Section>
+
+      {/* Al final del todo, y no arriba: nadie debería tropezarse con esto mientras
+          revisa la ficha de su cliente. */}
+      <Section title="Eliminar cuenta" icon={<Trash2 size={15} />} palette={palette}>
+        <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 14 }}>
+          Borra la cuenta y todo lo que tiene dentro: entrenamientos, series, récords, medidas,
+          fotos, comidas e insignias. No se puede deshacer. Si solo quieres que deje de usar la
+          nutrición, apágala arriba en vez de borrar la cuenta.
+        </p>
+        <DeleteClientButton clientId={clientId} email={email} displayName={displayName} />
       </Section>
     </div>
   );
