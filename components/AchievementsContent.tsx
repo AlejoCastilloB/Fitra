@@ -3,18 +3,23 @@
 import { useState } from "react";
 import { usePalette } from "@/lib/theme";
 import { ACHIEVEMENTS, CATEGORY_LABELS, type Achievement, type AchievementCategory } from "@/lib/achievements";
+import { visibleAchievements } from "@/lib/nutritionAccess";
 import Overlay from "@/components/Overlay";
 import Link from "next/link";
 import { ChevronLeft, Lock, Check } from "lucide-react";
 
-export default function AchievementsContent({ unlockedKeys }: { unlockedKeys: string[] }) {
+export default function AchievementsContent({
+  unlockedKeys, nutritionEnabled = true,
+}: { unlockedKeys: string[]; nutritionEnabled?: boolean }) {
   const palette = usePalette();
   const unlockedSet = new Set(unlockedKeys);
   const [selected, setSelected] = useState<Achievement | null>(null);
 
+  const visibles = visibleAchievements(ACHIEVEMENTS, nutritionEnabled);
+
   // Agrupadas por categoría, respetando el orden en que están declaradas.
   const groups: [AchievementCategory, Achievement[]][] = [];
-  for (const a of ACHIEVEMENTS) {
+  for (const a of visibles) {
     const last = groups[groups.length - 1];
     if (last && last[0] === a.category) last[1].push(a);
     else groups.push([a.category, [a]]);
@@ -27,7 +32,7 @@ export default function AchievementsContent({ unlockedKeys }: { unlockedKeys: st
         <h1 style={{ fontSize: 20, fontWeight: 700 }}>Insignias</h1>
       </div>
       <p style={{ fontSize: 13, color: palette.inkDim, marginBottom: 22 }}>
-        {unlockedSet.size} de {ACHIEVEMENTS.length} desbloqueadas · toca una para ver de qué se trata
+        {visibles.filter((a) => unlockedSet.has(a.key)).length} de {visibles.length} desbloqueadas · toca una para ver de qué se trata
       </p>
 
       {groups.map(([category, items]) => (

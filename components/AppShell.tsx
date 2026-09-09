@@ -15,10 +15,14 @@ import SessionKeepAlive from "@/components/SessionKeepAlive";
 import PrecacheWarmup from "@/components/PrecacheWarmup";
 
 const WARMUP_ROUTES = ["/app/progress", "/app/profile", "/app/nutrition", "/app/nutrition/recipes"];
+/** Sin nutrición no vale la pena precalentar sus pantallas: redirigen a Inicio. */
+const WARMUP_ROUTES_SIN_NUTRICION = ["/app/progress", "/app/profile"];
 
 const HIDE_FLOATING_NAV_ROUTES = ["/app/nutrition/recipes"];
 
-export default function AppShell({ children, initialTheme }: { children: React.ReactNode; initialTheme: ThemeName }) {
+export default function AppShell({
+  children, initialTheme, nutritionEnabled = true,
+}: { children: React.ReactNode; initialTheme: ThemeName; nutritionEnabled?: boolean }) {
   const palette = usePalette();
   const { hydrateTheme } = useTheme();
   const pathname = usePathname();
@@ -58,9 +62,9 @@ export default function AppShell({ children, initialTheme }: { children: React.R
       <OpenWorkoutBeacon />
       <TimezoneSync />
       <SessionKeepAlive />
-      <PrecacheWarmup routes={WARMUP_ROUTES} />
+      <PrecacheWarmup routes={nutritionEnabled ? WARMUP_ROUTES : WARMUP_ROUTES_SIN_NUTRICION} />
       <InviteBanner />
-      {!hideFloatingNav && <HomeFab />}
+      {!hideFloatingNav && <HomeFab nutritionEnabled={nutritionEnabled} />}
       {!hideFloatingNav && <BottomNav />}
     </div>
   );

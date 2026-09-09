@@ -11,6 +11,7 @@ import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Ruler, ChevronRight }
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, weightToKg, kgToWeightDisplay, weightUnitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import { nutritionEnabledFrom, visibleAchievements } from "@/lib/nutritionAccess";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import { localDateKey, toLocalDateKey } from "@/lib/localDate";
 import ShareStage from "@/components/ShareStage";
@@ -40,6 +41,7 @@ export default function ProfilePage() {
   const [selectedHistory, setSelectedHistory] = useState<any | null>(null);
   const [stats, setStats] = useState({ totalWorkouts: 0, totalVolume: 0, totalPRs: 0 });
   const [unlockedCount, setUnlockedCount] = useState(0);
+  const [nutritionEnabled, setNutritionEnabled] = useState(true);
   const [activeDays, setActiveDays] = useState<boolean[]>(Array(7).fill(false));
   const [topPRs, setTopPRs] = useState<any[]>([]);
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
@@ -68,6 +70,7 @@ export default function ProfilePage() {
         { data: nutritionRows },
         { data: prRows, count: prCount },
         { count: achievementCount },
+        { data: prefsRow },
       ] = await Promise.all([
         supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single(),
         supabase.from("clients").select("current_weight").eq("user_id", id).single(),
@@ -78,8 +81,13 @@ export default function ProfilePage() {
         supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20),
         supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5),
         supabase.from("user_achievements").select("achievement_key", { count: "exact", head: true }).eq("client_id", id),
+        // En su propia consulta a propósito: si se pidiera junto al resto de columnas de
+        // `users` y la migración 008 todavía no hubiera corrido, PostgREST devolvería la
+        // fila entera vacía y el perfil se quedaría sin nombre ni foto.
+        supabase.from("users").select("nutrition_enabled").eq("id", id).single(),
       ]);
       setUnlockedCount(achievementCount ?? 0);
+      setNutritionEnabled(nutritionEnabledFrom(prefsRow as { nutrition_enabled?: boolean | null } | null));
 
       if (userRow) {
         setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || "");
@@ -122,7 +130,11 @@ export default function ProfilePage() {
 
       const combined = [
         ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString("es-CO")} kg · ${formatDurationLabel(w.duration_sec)}` })),
-        ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
+        // Las comidas ya registradas no se borran, pero con nutrición apagada dejan de
+        // aparecer en la actividad: la persona no las está usando.
+        ...(nutritionEnabledFrom(prefsRow as { nutrition_enabled?: boolean | null } | null)
+          ? (nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` }))
+          : []),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
       setHistory(combined);
     })();
@@ -197,7 +209,7 @@ export default function ProfilePage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>Logros</div>
-            <div style={{ fontSize: 10.5, color: palette.inkDim }}>{unlockedCount} de {ACHIEVEMENTS.length} insignias desbloqueadas</div>
+            <div style={{ fontSize: 10.5, color: palette.inkDim }}>{unlockedCount} de {visibleAchievements(ACHIEVEMENTS, nutritionEnabled).length} insignias desbloqueadas</div>
           </div>
           <ChevronRight size={16} color={palette.inkDim} style={{ flexShrink: 0 }} />
         </Link>

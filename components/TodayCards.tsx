@@ -47,7 +47,9 @@ function DumbbellRing({ done }: { done: boolean }) {
   );
 }
 
-export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: string; name: string } | null }) {
+export default function TodayCards({
+  todaysRoutine, nutritionEnabled = true,
+}: { todaysRoutine: { id: string; name: string } | null; nutritionEnabled?: boolean }) {
   const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
@@ -72,8 +74,14 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
       // Las cuatro consultas son independientes entre sí: en serie eran cuatro viajes
       // al servidor encadenados antes de pintar la tarjeta. En paralelo es uno solo.
       const [{ data: logs }, { data: clientRow }, workoutTodayRes, exRowsRes] = await Promise.all([
-        supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", dayStart),
-        supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single(),
+        // Con nutrición apagada no se piden las comidas ni las metas: la tarjeta no se
+        // pinta, así que serían dos viajes al servidor para nada.
+        nutritionEnabled
+          ? supabase.from("nutrition_logs").select("kcal, protein, carbs, fat").eq("client_id", uid).gte("date", dayStart)
+          : Promise.resolve({ data: null }),
+        nutritionEnabled
+          ? supabase.from("clients").select("daily_kcal_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal").eq("user_id", uid).single()
+          : Promise.resolve({ data: null }),
         todaysRoutine
           ? supabase.from("workout_logs").select("id").eq("client_id", uid).eq("routine_id", todaysRoutine.id).gte("date", dayStart).limit(1)
           : Promise.resolve({ data: null }),
@@ -113,13 +121,14 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
         setTopMuscle(top ? top[0] : null);
       }
     })();
-  }, [todaysRoutine?.id, uid]);
+  }, [todaysRoutine?.id, uid, nutritionEnabled]);
 
   const kcalRemaining = Math.max(0, goals.kcal - kcalConsumed);
   const macroValue = (consumed: number, goal: number) => (mode === "remaining" ? Math.max(0, Math.round(goal - consumed)) : Math.round(consumed));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+      {nutritionEnabled && (
       <button
         onClick={() => setMode((m) => (m === "remaining" ? "consumed" : "remaining"))}
         style={{
@@ -145,6 +154,7 @@ export default function TodayCards({ todaysRoutine }: { todaysRoutine: { id: str
           <MacroChip letter="G" value={macroValue(fatConsumed, goals.fat)} color="#C56767" palette={palette} />
         </div>
       </button>
+      )}
 
       <Link
         href={todaysRoutine ? `/app/workout/${todaysRoutine.id}` : "/app/routines"}

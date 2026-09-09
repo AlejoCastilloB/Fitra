@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Play } from "lucide-react";
 import SettingsGroup from "@/components/SettingsGroup";
+import Toggle from "@/components/Toggle";
+import { nutritionEnabledFrom } from "@/lib/nutritionAccess";
 import ListRow from "@/components/ListRow";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, REMINDER_OPTIONS, PHYSICAL_REMINDER_OPTIONS, type UnitSystem } from "@/lib/units";
@@ -29,21 +31,6 @@ const SOUNDS: Record<string, { label: string; freq: number; pattern: number[] }>
 
 const EQUIPMENT_OPTIONS = ["Horno", "Microondas", "Estufa", "Air fryer", "Licuadora", "Plancha/Parrilla", "Olla arrocera", "Sartén", "Batidora"];
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  const palette = usePalette();
-  return (
-    <button onClick={onChange} style={{
-      width: 42, height: 25, borderRadius: 999, border: "none", cursor: "pointer", position: "relative",
-      background: checked ? palette.accent : palette.inputBg, transition: "background .2s",
-    }}>
-      <div style={{
-        width: 20, height: 20, borderRadius: "50%", background: checked ? palette.bg : palette.inkDim,
-        position: "absolute", top: 2.5, left: checked ? 20 : 3, transition: "left .2s",
-      }} />
-    </button>
-  );
-}
-
 export default function ProfileSettingsPage() {
   const palette = usePalette();
   const { theme, setTheme } = useTheme();
@@ -55,6 +42,7 @@ export default function ProfileSettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [timerSound, setTimerSound] = useState("clasico");
   const [notifEnabled, setNotifEnabled] = useState(false);
+  const [nutritionEnabled, setNutritionEnabled] = useState(true);
   const [autoWarmupPrompt, setAutoWarmupPrompt] = useState(true);
   const [dietaryRestrictions, setDietaryRestrictions] = useState("");
   const [kitchenEquipment, setKitchenEquipment] = useState<string[]>([]);
@@ -109,6 +97,9 @@ export default function ProfileSettingsPage() {
         // corrió, pedirla junto al resto tumbaría la carga completa de los ajustes.
         supabase.from("users").select("meal_reminders").eq("id", id).single()
           .then(({ data }) => { if (data) setMealSlots(parseMealSlots((data as any).meal_reminders)); });
+        // Y lo mismo con nutrition_enabled, de la migración 008.
+        supabase.from("users").select("nutrition_enabled").eq("id", id).single()
+          .then(({ data }) => setNutritionEnabled(nutritionEnabledFrom(data as any)));
       }
 
       if (clientRow) {
@@ -160,6 +151,19 @@ export default function ProfileSettingsPage() {
       await unsubscribeFromPush();
       setNotifEnabled(false);
     }
+  }
+
+  async function toggleNutrition() {
+    const next = !nutritionEnabled;
+    setNutritionEnabled(next);
+    const { error } = await supabase.from("users").update({ nutrition_enabled: next }).eq("id", uid);
+    // Si la migración 008 no ha corrido, el update falla: se vuelve al valor anterior en
+    // vez de dejar la pantalla mintiendo sobre un cambio que no se guardó.
+    if (error) { setNutritionEnabled(!next); return; }
+    // La barra de abajo, el botón + y las pestañas de Progreso se pintan en el servidor a
+    // partir de esta bandera, así que hay que rehacer esa parte para que desaparezcan sin
+    // tener que cerrar y abrir la app.
+    router.refresh();
   }
 
   async function toggleAutoWarmup() {
@@ -295,17 +299,28 @@ export default function ProfileSettingsPage() {
 
       <SettingsGroup title="Nutrición">
         <ListRow
+          label="Usar la parte de nutrición"
+          sublabel={nutritionEnabled
+            ? "Registro de comidas, calorías, Fitra y recordatorios"
+            : "Apagada: FitTrack se queda solo con el entrenamiento"}
+          right={<Toggle checked={nutritionEnabled} onChange={toggleNutrition} />}
+        />
+        {nutritionEnabled && (
+        <ListRow
           label="Preferencias de nutrición"
           sublabel={`${dietaryRestrictions || "Sin restricciones"} · ${kitchenEquipment.length > 0 ? `${kitchenEquipment.length} utensilios` : "sin utensilios"}`}
           showChevron
           onClick={() => setShowDietEdit(true)}
         />
+        )}
+        {nutritionEnabled && (
         <ListRow
           label="Recordatorios de comida"
           sublabel={mealRemindersSummary(mealSlots)}
           showChevron
           onClick={() => setShowMealEdit(true)}
         />
+        )}
       </SettingsGroup>
 
       <SettingsGroup title="Registro de progreso">

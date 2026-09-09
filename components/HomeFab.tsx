@@ -13,7 +13,7 @@ import FirstTimeHint, { markHintSeen } from "@/components/FirstTimeHint";
 
 const ANIM_MS = 260;
 
-export default function HomeFab() {
+export default function HomeFab({ nutritionEnabled = true }: { nutritionEnabled?: boolean }) {
   const palette = usePalette();
   const supabase = createClient();
   const uid = useCurrentUser();
@@ -82,8 +82,10 @@ export default function HomeFab() {
     ...(inWorkout ? [] : [
       { icon: <Dumbbell size={17} />, label: "Empezar entrenamiento", href: todaysRoutineId ? `/app/workout/${todaysRoutineId}` : "/app/routines", external: false },
     ]),
-    { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
-    { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
+    ...(nutritionEnabled ? [
+      { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
+      { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
+    ] : []),
     ...(coachWhatsapp
       ? [{ icon: <Phone size={17} />, label: "Hablar con tu coach", href: `https://wa.me/${coachWhatsapp}`, external: true }]
       : []),
@@ -91,7 +93,15 @@ export default function HomeFab() {
 
   return (
     <>
-      {!mounted && !inWorkout && <FirstTimeHint id="fab_menu" floating text="Toca aquí para empezar un entrenamiento, registrar comida, preguntarle a Fitra o hablar con tu coach." />}
+      {!mounted && !inWorkout && (
+        <FirstTimeHint
+          id="fab_menu"
+          floating
+          text={nutritionEnabled
+            ? "Toca aquí para empezar un entrenamiento, registrar comida, preguntarle a Fitra o hablar con tu coach."
+            : "Toca aquí para empezar un entrenamiento o hablar con tu coach."}
+        />
+      )}
 
       {mounted && (
         <div

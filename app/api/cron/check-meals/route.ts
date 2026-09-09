@@ -21,24 +21,31 @@ function localParts(timeZone: string, date: Date) {
 /**
  * Lee los usuarios con su configuración de comidas.
  *
- * `meal_reminders` es una columna nueva. Si la migración todavía no corrió, la consulta
- * entera falla y NADIE recibiría avisos, así que en ese caso se reintenta sin la columna y
- * todo el mundo se queda con los horarios por defecto.
+ * `meal_reminders` y `nutrition_enabled` son columnas nuevas. Si una migración todavía no
+ * corrió, pedir esa columna hace fallar la consulta ENTERA y nadie recibiría avisos, así
+ * que se prueban de más a menos y cada nivel cae al siguiente. Sin `meal_reminders` todo
+ * el mundo se queda con los horarios por defecto; sin `nutrition_enabled`, con nutrición
+ * encendida, que es como estaba la app antes.
  */
 async function loadUsers(admin: any) {
-  const withConfig = await admin
+  const completa = await admin
+    .from("users")
+    .select("id, timezone, meal_reminders, nutrition_enabled")
+    .not("timezone", "is", null);
+  if (!completa.error) return { users: completa.data ?? [], hasConfigColumn: true, hasNutritionColumn: true };
+
+  const soloConfig = await admin
     .from("users")
     .select("id, timezone, meal_reminders")
     .not("timezone", "is", null);
+  if (!soloConfig.error) return { users: soloConfig.data ?? [], hasConfigColumn: true, hasNutritionColumn: false };
 
-  if (!withConfig.error) return { users: withConfig.data ?? [], hasConfigColumn: true };
-
-  const fallback = await admin
+  const minima = await admin
     .from("users")
     .select("id, timezone")
     .not("timezone", "is", null);
 
-  return { users: fallback.data ?? [], hasConfigColumn: false };
+  return { users: minima.data ?? [], hasConfigColumn: false, hasNutritionColumn: false };
 }
 
 /**
@@ -83,12 +90,24 @@ export async function GET(req: Request) {
   );
 
   const now = new Date();
-  const { users, hasConfigColumn } = await loadUsers(admin);
+  const { users: todos, hasConfigColumn, hasNutritionColumn } = await loadUsers(admin);
+
+  // Quien apagó la parte de nutrición no debe recibir "¿ya almorzaste?" cuatro veces al
+  // día: no tiene dónde registrarlo. Es lo primero que hay que filtrar, antes incluso de
+  // mirar la hora.
+  const users = todos.filter((u: any) => u.nutrition_enabled !== false);
+  const sinNutricion = todos.length - users.length;
+
   if (users.length === 0) {
     // Sin zona horaria guardada no se puede saber qué hora es para esa persona. La app la
     // guarda sola al entrar (TimezoneSync), así que esto solo pasa con cuentas que nunca
     // abrieron la app después de que existiera esa columna.
-    return NextResponse.json({ ok: true, sent: 0, hasConfigColumn, aviso: "ningún usuario tiene zona horaria guardada" });
+    return NextResponse.json({
+      ok: true, sent: 0, hasConfigColumn, hasNutritionColumn, sinNutricion,
+      aviso: todos.length === 0
+        ? "ningún usuario tiene zona horaria guardada"
+        : "todos los usuarios con zona horaria tienen la nutrición apagada",
+    });
   }
 
   let sent = 0;
@@ -163,7 +182,7 @@ export async function GET(req: Request) {
   // Todo esto sale en la respuesta a propósito: abriendo la URL del cron se ve de un
   // vistazo si hubo un fallo (`problems`) o simplemente no tocaba mandar nada (`skipped`).
   return NextResponse.json({
-    ok: true, sent, revisados: users.length, hasConfigColumn, problems, skipped,
+    ok: true, sent, revisados: users.length, sinNutricion, hasConfigColumn, hasNutritionColumn, problems, skipped,
     ahora: now.toISOString(),
   });
 }

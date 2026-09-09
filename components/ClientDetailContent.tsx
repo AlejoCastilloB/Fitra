@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePalette, type Palette } from "@/lib/theme";
 import { goalLabel } from "@/lib/goals";
 import { describeCycle, type MenstrualCycleAnswers } from "@/lib/menstrualCycle";
-import { ChevronLeft, Sparkles, ClipboardList, Dumbbell, ChevronRight, Clock, Weight } from "lucide-react";
+import { ChevronLeft, Sparkles, ClipboardList, Dumbbell, ChevronRight, Clock, Weight, Utensils } from "lucide-react";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import type { CoachWorkoutRow } from "@/lib/coachClientWorkouts";
 import TrainerNotesEditor from "@/components/TrainerNotesEditor";
 import CopyButton from "@/components/CopyButton";
+import Toggle from "@/components/Toggle";
 
 type SportRow = { sport: string; level: string | null; experience: string | null; include_in_plan: boolean };
 
@@ -19,7 +21,7 @@ type TrainingPanel = {
 
 export default function ClientDetailContent({
   displayName, email, status, createdAt, lifestyle, injuries, medicalNotes, dietaryRestrictions, kitchenEquipment,
-  aiContext, trainerNotes, clientId, sports, training,
+  aiContext, trainerNotes, clientId, sports, training, nutritionEnabled = true,
 }: {
   displayName: string | null; email: string | null; status: string; createdAt: string | null;
   lifestyle: { goal?: string; secondary_goals?: string[]; level?: string; days_available?: number; menstrual_cycle?: MenstrualCycleAnswers };
@@ -27,6 +29,7 @@ export default function ClientDetailContent({
   medicalNotes: string | null; dietaryRestrictions: string | null; kitchenEquipment: string[];
   aiContext: string | null; trainerNotes: string; clientId: string; sports: SportRow[];
   training: TrainingPanel | null;
+  nutritionEnabled?: boolean;
 }) {
   const palette = usePalette();
   const secondaryGoals = lifestyle.secondary_goals ?? [];
@@ -53,6 +56,8 @@ export default function ClientDetailContent({
           {memberSince && <div style={{ fontSize: 12, color: palette.inkDim, marginTop: 2 }}>Cliente desde {memberSince}</div>}
         </div>
       </div>
+
+      <NutritionSwitch clientId={clientId} initial={nutritionEnabled} palette={palette} />
 
       <Section title="Su plan de entrenamiento" icon={<Dumbbell size={15} />} palette={palette}>
         <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 12 }}>
@@ -198,5 +203,67 @@ function Field({ label, value, palette }: { label: string; value: string; palett
       <div style={{ fontSize: 11.5, color: palette.inkDim, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 13.5 }}>{value}</div>
     </div>
+  );
+}
+
+/**
+ * Encender o apagar la nutrición de este cliente.
+ *
+ * Mucha gente usa FitTrack solo para entrenar. Apagado, a esta persona le desaparecen la
+ * pestaña de comidas, las calorías del inicio, Fitra y —sobre todo— los recordatorios de
+ * comida, que si no le suenan cuatro veces al día sin tener dónde registrar nada.
+ *
+ * Lo que ya haya registrado no se borra: si se vuelve a encender, sigue ahí.
+ */
+function NutritionSwitch({
+  clientId, initial, palette,
+}: { clientId: string; initial: boolean; palette: Palette }) {
+  const [enabled, setEnabled] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle() {
+    const next = !enabled;
+    setEnabled(next);
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/coach/client-nutrition", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, enabled: next }),
+      });
+      // Si el guardado falla, el interruptor vuelve a donde estaba: mostrarlo cambiado
+      // haría creer al entrenador que su cliente dejó de recibir avisos cuando no es así.
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => ({}));
+        setEnabled(!next);
+        setError(cuerpo?.error ? `No se pudo guardar: ${cuerpo.error}` : "No se pudo guardar el cambio.");
+      }
+    } catch {
+      setEnabled(!next);
+      setError("No se pudo guardar. Revisa tu conexión.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section title="Nutrición" icon={<Utensils size={15} />} palette={palette}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 3 }}>
+            {enabled ? "Encendida" : "Apagada"}
+          </div>
+          <p style={{ fontSize: 12, color: palette.inkDim, lineHeight: 1.55 }}>
+            {enabled
+              ? "Ve el registro de comidas, las calorías, Fitra y recibe los recordatorios."
+              : "Solo ve la parte de entrenamiento. No recibe recordatorios de comida. Lo que ya registró se conserva."}
+          </p>
+        </div>
+        <Toggle checked={enabled} onChange={toggle} disabled={saving} label="Nutrición para este cliente" />
+      </div>
+      {error && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{error}</p>}
+    </Section>
   );
 }

@@ -5,7 +5,7 @@ import { dayOfWeekInTimeZone, pickTimeZone } from "@/lib/timeZoneDate";
 
 export default async function ClientToday() {
   // Ya lo resolvió el layout en este mismo request: acá sale de la caché, sin red.
-  const { userId, row } = await getAppUser();
+  const { userId, row, nutritionEnabled } = await getAppUser();
   const uid = userId!;
 
   const supabase = await createClient();
@@ -29,6 +29,7 @@ export default async function ClientToday() {
       displayName={row?.display_name ?? null}
       todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name, source: todaysRoutine.source } : null}
       otherRoutines={otherRoutines.map((r) => ({ id: r.id, name: r.name, source: r.source }))}
+      nutritionEnabled={nutritionEnabled}
     />
   );
 }

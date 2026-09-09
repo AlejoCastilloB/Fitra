@@ -8,6 +8,9 @@ export type ClientStats = {
   daysLoggedFoodThisWeek: number;
   kcalToday: number;
   activeDaysThisWeek: number;
+  /** Si esta persona usa la parte de nutrición. Apagada, sus cifras de comida no se
+   *  muestran: serían siempre cero y parecería que va mal cuando simplemente no la usa. */
+  nutritionEnabled: boolean;
 };
 
 /**
@@ -19,7 +22,7 @@ export type ClientStats = {
 export async function getClientStats(clientIds: string[], coachTimeZone?: string | null): Promise<Record<string, ClientStats>> {
   const empty = (): ClientStats => ({
     workoutsThisWeek: 0, plannedThisWeek: 0, lastWorkoutAt: null,
-    daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0,
+    daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0, nutritionEnabled: true,
   });
 
   if (clientIds.length === 0) return {};
@@ -30,6 +33,14 @@ export async function getClientStats(clientIds: string[], coachTimeZone?: string
   // servidor —UTC en Vercel—, así que sin esto una cena a las 8 de la noche en Colombia
   // caía en el día siguiente y el entrenador veía otra cosa que su cliente.
   const { data: zoneRows } = await admin.from("users").select("id, timezone").in("id", clientIds);
+  // En consulta aparte: si `nutrition_enabled` se pidiera arriba y la migración 008 no
+  // hubiera corrido, se perderían TODAS las filas y con ellas las zonas horarias.
+  const { data: nutriRows } = await admin.from("users").select("id, nutrition_enabled").in("id", clientIds);
+  const nutritionByClient: Record<string, boolean> = {};
+  clientIds.forEach((id) => {
+    const fila = (nutriRows ?? []).find((u: any) => u.id === id);
+    nutritionByClient[id] = fila?.nutrition_enabled ?? true;
+  });
   const zoneByClient: Record<string, string> = {};
   clientIds.forEach((id) => {
     const suya = (zoneRows ?? []).find((u: any) => u.id === id)?.timezone;
@@ -61,7 +72,7 @@ export async function getClientStats(clientIds: string[], coachTimeZone?: string
   ]);
 
   const stats: Record<string, ClientStats> = {};
-  clientIds.forEach((id) => { stats[id] = empty(); });
+  clientIds.forEach((id) => { stats[id] = { ...empty(), nutritionEnabled: nutritionByClient[id] ?? true }; });
 
   const todayKeyByClient: Record<string, string | null> = {};
   clientIds.forEach((id) => { todayKeyByClient[id] = dateKeyInTimeZone(now, zoneByClient[id]); });

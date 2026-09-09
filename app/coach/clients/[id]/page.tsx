@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ClientDetailContent from "@/components/ClientDetailContent";
 import { getClientTrainingPanel } from "@/lib/coachClientWorkouts";
+import { nutritionEnabledFrom } from "@/lib/nutritionAccess";
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
@@ -22,12 +23,16 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   if (!client) redirect("/coach/clients");
 
-  const [{ data: sports }, training] = await Promise.all([
+  // La bandera de nutrición va en su propia consulta y no dentro del join a `users` de
+  // arriba: si se pidiera ahí y la migración 008 no hubiera corrido, PostgREST devolvería
+  // el cliente ENTERO vacío y esta pantalla redirigiría como si no fuera tuyo.
+  const [{ data: sports }, training, { data: prefs }] = await Promise.all([
     supabase
       .from("client_sports")
       .select("sport, level, experience, include_in_plan")
       .eq("client_id", params.id),
     getClientTrainingPanel(user.id, params.id),
+    admin.from("users").select("nutrition_enabled").eq("id", params.id).single(),
   ]);
 
   const users = client.users as unknown as { display_name: string | null; email: string | null };
@@ -48,6 +53,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       clientId={client.user_id}
       sports={sports ?? []}
       training={training}
+      nutritionEnabled={nutritionEnabledFrom(prefs as { nutrition_enabled?: boolean | null } | null)}
     />
   );
 }

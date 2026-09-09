@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ACHIEVEMENTS, computeUnlockedKeys, type AchievementStats } from "@/lib/achievements";
+import { hiddenAchievementKeys } from "@/lib/nutritionAccess";
+import { isNutritionEnabledFor } from "@/lib/nutritionServer";
 import { computeStreakFromDates } from "@/lib/streak";
 
 /** Fecha, hora y día de la semana en la zona horaria del usuario, no en la del servidor. */
@@ -115,7 +117,12 @@ export async function POST() {
     emailConfirmed: !!user.email_confirmed_at,
   };
 
-  const unlockedKeys = computeUnlockedKeys(stats);
+  // Con la nutrición apagada, sus insignias no se desbloquean ni se celebran: no se ven
+  // en ningún lado, así que la animación saldría por algo que la persona no puede mirar.
+  // Las que ya estuvieran ganadas se quedan en la base y vuelven a aparecer si enciende
+  // la nutrición otra vez.
+  const ocultas = hiddenAchievementKeys(ACHIEVEMENTS, await isNutritionEnabledFor(supabase, uid));
+  const unlockedKeys = computeUnlockedKeys(stats).filter((k) => !ocultas.has(k));
 
   const alreadyUnlocked = new Set((existing ?? []).map((e: any) => e.achievement_key));
   const newKeys = unlockedKeys.filter((k) => !alreadyUnlocked.has(k));
