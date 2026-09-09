@@ -7,12 +7,15 @@ import { usePalette, type Palette } from "@/lib/theme";
 import { computeStreakFromDates } from "@/lib/streak";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import Link from "next/link";
-import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler, ChevronRight } from "lucide-react";
+import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Ruler, ChevronRight } from "lucide-react";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, weightToKg, kgToWeightDisplay, weightUnitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import { localDateKey, toLocalDateKey } from "@/lib/localDate";
+import ShareStage from "@/components/ShareStage";
+import { VolumeShareCard } from "@/components/ShareCards";
+import type { ShareTone } from "@/lib/shareImage";
 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -404,69 +407,20 @@ function StatBox({ icon, value, label, onClick }: { icon: React.ReactNode; value
   );
 }
 
-const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
-
 function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () => void }) {
-  const palette = usePalette();
   const comparison = getWeightComparison(volume);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [sharing, setSharing] = useState(false);
-
-  async function share() {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: TAG_SUGGESTION });
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "volumen-fittrack.png";
-        link.click();
-      }
-    } catch {
-      alert("No pudimos generar la imagen, intenta de nuevo.");
-    } finally {
-      setSharing(false);
-    }
-  }
+  const [shareTone, setShareTone] = useState<ShareTone>("light");
 
   return (
-    <Modal title="" onClose={onClose} maxWidth={340}>
-      <div ref={cardRef} style={{
-        borderRadius: 20, padding: "28px 20px", textAlign: "center",
-        background: `${palette.bg}66`,
-        border: "1px solid rgba(255,255,255,0.14)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -10px rgba(0,0,0,0.35)",
-        marginBottom: 16,
-      }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: palette.accent,
-        }}>
-          <Award size={22} />
-        </div>
-        <p style={{ fontSize: 11.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Volumen total movido</p>
-        <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{volume.toLocaleString("es-CO")}</div>
-        <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
-        <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>
-        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
-      </div>
-
-      <button onClick={share} disabled={sharing} style={{
-        width: "100%", padding: 13, borderRadius: 12, border: "none",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
-        fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        opacity: sharing ? 0.7 : 1,
-      }}>
-        <Share2 size={15} /> {sharing ? "Generando imagen..." : "Compartir como imagen"}
-      </button>
+    <Modal title="Compartir" onClose={onClose} maxWidth={360}>
+      <ShareStage
+        tone={shareTone}
+        onToneChange={setShareTone}
+        filename="volumen-fittrack.png"
+        hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
+      >
+        <VolumeShareCard tone={shareTone} volume={volume} comparison={comparison} />
+      </ShareStage>
     </Modal>
   );
 }
