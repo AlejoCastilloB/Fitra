@@ -210,7 +210,11 @@ function ClientCard({ client, palette, index }: { client: ClientRow; palette: Pa
 
       <div style={{ display: "flex", gap: 8 }}>
         <Stat palette={palette} icon={<Dumbbell size={12} />} label="Última sesión" value={relativeDay(s.lastWorkoutAt)} />
-        <Stat palette={palette} icon={<Utensils size={12} />} label="Nutrición" value={`${s.daysLoggedFoodThisWeek}/7 días`} hint={s.kcalToday > 0 ? `${Math.round(s.kcalToday).toLocaleString("es-CO")} kcal hoy` : "Sin registro hoy"} />
+        {/* Con la nutrición apagada no se enseña un 0/7 que parece abandono: es que esta
+            persona usa FitTrack solo para entrenar. */}
+        {s.nutritionEnabled && (
+          <Stat palette={palette} icon={<Utensils size={12} />} label="Nutrición" value={`${s.daysLoggedFoodThisWeek}/7 días`} hint={s.kcalToday > 0 ? `${Math.round(s.kcalToday).toLocaleString("es-CO")} kcal hoy` : "Sin registro hoy"} />
+        )}
       </div>
     </Link>
   );

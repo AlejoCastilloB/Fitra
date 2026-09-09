@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isNutritionEnabledFor } from "@/lib/nutritionServer";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
 
 const DAILY_LIMIT = 3;
@@ -8,6 +9,13 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
+
+  // Con la nutrición apagada, Fitra no responde. No es solo cosmética: estas rutas gastan
+  // cuota de IA y la pantalla que las llama ya no existe para esta persona, así que una
+  // llamada aquí solo puede venir de una pestaña vieja o de fuera de la app.
+  if (!(await isNutritionEnabledFor(supabase, user.id))) {
+    return NextResponse.json({ error: "nutricion_desactivada" }, { status: 403 });
+  }
 
   const { likes, dislikes, text, audioBase64, audioMimeType } = await request.json();
   const likesArr: string[] = Array.isArray(likes) ? likes : [];

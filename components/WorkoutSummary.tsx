@@ -9,8 +9,10 @@ import type { LiveExercise } from "@/lib/workoutSession";
 import { Camera, Check, Clock, Flame, NotebookPen, Save, Trophy } from "lucide-react";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import Button from "@/components/Button";
-
-const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+import Modal from "@/components/Modal";
+import ShareStage from "@/components/ShareStage";
+import { WorkoutShareCard } from "@/components/ShareCards";
+import type { ShareTone } from "@/lib/shareImage";
 
 export default function WorkoutSummary({
   workoutLogId, routineName, volume, durationSec, prs, breakdown, exercises, suggestedRoutineName, onDone,
@@ -29,9 +31,9 @@ export default function WorkoutSummary({
   const supabase = createClient();
   const capitalized = routineName.charAt(0).toUpperCase() + routineName.slice(1);
   const comparison = getWeightComparison(volume);
-  const cardRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [sharing, setSharing] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [shareTone, setShareTone] = useState<ShareTone>("light");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -145,30 +147,6 @@ export default function WorkoutSummary({
     setSavingRoutine(false);
   }
 
-  async function share() {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "entreno-fittrack.png", { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: TAG_SUGGESTION });
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "entreno-fittrack.png";
-        link.click();
-      }
-    } catch {
-      alert("No pudimos generar la imagen, intenta de nuevo.");
-    } finally {
-      setSharing(false);
-    }
-  }
-
   const BADGE_LABELS: Record<string, { label: string; color: string }> = {
     normal: { label: "Efectivas", color: palette.accent },
     warmup: { label: "Calentamiento", color: "#FBBF24" },
@@ -185,7 +163,7 @@ export default function WorkoutSummary({
         .ft-emoji-pop { animation: ftEmojiPop .5s cubic-bezier(.16,.8,.24,1) .15s both; }
       `}</style>
 
-      <div ref={cardRef} className="ft-story-card" style={{
+      <div className="ft-story-card" style={{
         borderRadius: 26, padding: "36px 24px 28px", textAlign: "center", marginBottom: 20,
         background: `${palette.bg}66`,
         border: "1px solid rgba(255,255,255,0.14)",
@@ -313,9 +291,30 @@ export default function WorkoutSummary({
         </Button>
       </div>
 
-      <Button variant="primary" fullWidth onClick={share} loading={sharing} loadingLabel="Generando imagen..." style={{ marginBottom: 10 }}>
+      <Button variant="primary" fullWidth onClick={() => setShowShare(true)} style={{ marginBottom: 10 }}>
         Compartir como imagen
       </Button>
+
+      {showShare && (
+        <Modal title="Compartir" onClose={() => setShowShare(false)} maxWidth={380}>
+          <ShareStage
+            tone={shareTone}
+            onToneChange={setShareTone}
+            filename="entreno-fittrack.png"
+            hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
+          >
+            <WorkoutShareCard
+              tone={shareTone}
+              routineName={capitalized}
+              volume={volume}
+              durationSec={editedDurationSec}
+              setCount={Object.values(breakdown).reduce((a, b) => a + b, 0)}
+              prs={prs}
+              comparison={comparison}
+            />
+          </ShareStage>
+        </Modal>
+      )}
 
       {loggedExercises.length > 0 && (
         routineSaved ? (

@@ -7,12 +7,16 @@ import { usePalette, type Palette } from "@/lib/theme";
 import { computeStreakFromDates } from "@/lib/streak";
 import { getWeightComparison } from "@/lib/weightComparisons";
 import Link from "next/link";
-import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Share2, Ruler, ChevronRight } from "lucide-react";
+import { Settings, Camera, Trophy, Dumbbell, Award, Flame, Ruler, ChevronRight } from "lucide-react";
 import Modal from "@/components/Modal";
 import { MEASUREMENT_ZONES, cmToDisplay, displayToCm, unitLabel, weightToKg, kgToWeightDisplay, weightUnitLabel, type UnitSystem } from "@/lib/units";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import { nutritionEnabledFrom, visibleAchievements } from "@/lib/nutritionAccess";
 import { formatDurationLabel } from "@/lib/formatDuration";
 import { localDateKey, toLocalDateKey } from "@/lib/localDate";
+import ShareStage from "@/components/ShareStage";
+import { VolumeShareCard } from "@/components/ShareCards";
+import type { ShareTone } from "@/lib/shareImage";
 
 const DOW_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -37,6 +41,7 @@ export default function ProfilePage() {
   const [selectedHistory, setSelectedHistory] = useState<any | null>(null);
   const [stats, setStats] = useState({ totalWorkouts: 0, totalVolume: 0, totalPRs: 0 });
   const [unlockedCount, setUnlockedCount] = useState(0);
+  const [nutritionEnabled, setNutritionEnabled] = useState(true);
   const [activeDays, setActiveDays] = useState<boolean[]>(Array(7).fill(false));
   const [topPRs, setTopPRs] = useState<any[]>([]);
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
@@ -65,6 +70,7 @@ export default function ProfilePage() {
         { data: nutritionRows },
         { data: prRows, count: prCount },
         { count: achievementCount },
+        { data: prefsRow },
       ] = await Promise.all([
         supabase.from("users").select("display_name, avatar_url, unit_system, measurement_zones").eq("id", id).single(),
         supabase.from("clients").select("current_weight").eq("user_id", id).single(),
@@ -75,8 +81,13 @@ export default function ProfilePage() {
         supabase.from("nutrition_logs").select("id, date, food_name, kcal").eq("client_id", id).order("date", { ascending: false }).limit(20),
         supabase.from("personal_records").select("id, value, date, workout_log_id, exercises(name)", { count: "exact" }).eq("client_id", id).order("date", { ascending: false }).limit(5),
         supabase.from("user_achievements").select("achievement_key", { count: "exact", head: true }).eq("client_id", id),
+        // En su propia consulta a propósito: si se pidiera junto al resto de columnas de
+        // `users` y la migración 008 todavía no hubiera corrido, PostgREST devolvería la
+        // fila entera vacía y el perfil se quedaría sin nombre ni foto.
+        supabase.from("users").select("nutrition_enabled").eq("id", id).single(),
       ]);
       setUnlockedCount(achievementCount ?? 0);
+      setNutritionEnabled(nutritionEnabledFrom(prefsRow as { nutrition_enabled?: boolean | null } | null));
 
       if (userRow) {
         setDisplayName(userRow.display_name || ""); setAvatarUrl(userRow.avatar_url || "");
@@ -119,7 +130,11 @@ export default function ProfilePage() {
 
       const combined = [
         ...(workoutRows ?? []).map((w: any) => ({ type: "workout", id: w.id, date: w.date, title: w.routines?.name || "Entrenamiento", detail: `${Math.round((w.total_volume ?? 0)).toLocaleString("es-CO")} kg · ${formatDurationLabel(w.duration_sec)}` })),
-        ...(nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` })),
+        // Las comidas ya registradas no se borran, pero con nutrición apagada dejan de
+        // aparecer en la actividad: la persona no las está usando.
+        ...(nutritionEnabledFrom(prefsRow as { nutrition_enabled?: boolean | null } | null)
+          ? (nutritionRows ?? []).map((n: any) => ({ type: "nutrition", id: n.id, date: n.date, title: n.food_name || "Comida registrada", detail: `${Math.round(n.kcal ?? 0)} kcal` }))
+          : []),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
       setHistory(combined);
     })();
@@ -194,7 +209,7 @@ export default function ProfilePage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>Logros</div>
-            <div style={{ fontSize: 10.5, color: palette.inkDim }}>{unlockedCount} de {ACHIEVEMENTS.length} insignias desbloqueadas</div>
+            <div style={{ fontSize: 10.5, color: palette.inkDim }}>{unlockedCount} de {visibleAchievements(ACHIEVEMENTS, nutritionEnabled).length} insignias desbloqueadas</div>
           </div>
           <ChevronRight size={16} color={palette.inkDim} style={{ flexShrink: 0 }} />
         </Link>
@@ -404,69 +419,20 @@ function StatBox({ icon, value, label, onClick }: { icon: React.ReactNode; value
   );
 }
 
-const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
-
 function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () => void }) {
-  const palette = usePalette();
   const comparison = getWeightComparison(volume);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [sharing, setSharing] = useState(false);
-
-  async function share() {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "volumen-fittrack.png", { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: TAG_SUGGESTION });
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "volumen-fittrack.png";
-        link.click();
-      }
-    } catch {
-      alert("No pudimos generar la imagen, intenta de nuevo.");
-    } finally {
-      setSharing(false);
-    }
-  }
+  const [shareTone, setShareTone] = useState<ShareTone>("light");
 
   return (
-    <Modal title="" onClose={onClose} maxWidth={340}>
-      <div ref={cardRef} style={{
-        borderRadius: 20, padding: "28px 20px", textAlign: "center",
-        background: `${palette.bg}66`,
-        border: "1px solid rgba(255,255,255,0.14)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px -10px rgba(0,0,0,0.35)",
-        marginBottom: 16,
-      }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: "50%", background: `${palette.accent}22`,
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: palette.accent,
-        }}>
-          <Award size={22} />
-        </div>
-        <p style={{ fontSize: 11.5, color: palette.inkDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Volumen total movido</p>
-        <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>{volume.toLocaleString("es-CO")}</div>
-        <div style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 16 }}>kg desde que empezaste</div>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>{comparison.emoji}</div>
-        <p style={{ fontSize: 13, lineHeight: 1.5 }}>Eso es como mover <strong>{comparison.text}</strong></p>
-        <div style={{ marginTop: 16, fontSize: 9.5, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
-      </div>
-
-      <button onClick={share} disabled={sharing} style={{
-        width: "100%", padding: 13, borderRadius: 12, border: "none",
-        background: `linear-gradient(135deg, ${palette.accent}, ${palette.accentDeep})`, color: palette.bg,
-        fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        opacity: sharing ? 0.7 : 1,
-      }}>
-        <Share2 size={15} /> {sharing ? "Generando imagen..." : "Compartir como imagen"}
-      </button>
+    <Modal title="Compartir" onClose={onClose} maxWidth={360}>
+      <ShareStage
+        tone={shareTone}
+        onToneChange={setShareTone}
+        filename="volumen-fittrack.png"
+        hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
+      >
+        <VolumeShareCard tone={shareTone} volume={volume} comparison={comparison} />
+      </ShareStage>
     </Modal>
   );
 }

@@ -7,22 +7,28 @@ import RoutinesContent from "@/components/RoutinesContent";
 import NutritionContent from "@/components/NutritionContent";
 import FoodAnamnesisGate from "@/components/FoodAnamnesisGate";
 
-export default function ProgressTabs({ anamnesisDone }: { anamnesisDone: boolean }) {
+export default function ProgressTabs({
+  anamnesisDone, nutritionEnabled = true,
+}: { anamnesisDone: boolean; nutritionEnabled?: boolean }) {
   const palette = usePalette();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") === "nutrition" ? "nutrition" : "training";
+  // Sin nutrición, un ?tab=nutrition guardado en favoritos no debe abrir una pestaña que
+  // ya no existe.
+  const initialTab = nutritionEnabled && searchParams.get("tab") === "nutrition" ? "nutrition" : "training";
   const [tab, setTab] = useState<"training" | "nutrition">(initialTab);
 
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 14 }}>Progreso</h1>
 
-      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: palette.inputBg, marginBottom: 20 }}>
-        <button onClick={() => setTab("training")} style={segBtn(tab === "training", palette)}>Entrenamiento</button>
-        <button onClick={() => setTab("nutrition")} style={segBtn(tab === "nutrition", palette)}>Nutrición</button>
-      </div>
+      {nutritionEnabled && (
+        <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: palette.inputBg, marginBottom: 20 }}>
+          <button onClick={() => setTab("training")} style={segBtn(tab === "training", palette)}>Entrenamiento</button>
+          <button onClick={() => setTab("nutrition")} style={segBtn(tab === "nutrition", palette)}>Nutrición</button>
+        </div>
+      )}
 
-      {tab === "training" ? <RoutinesContent /> : (
+      {tab === "training" || !nutritionEnabled ? <RoutinesContent /> : (
         <FoodAnamnesisGate done={anamnesisDone}><NutritionContent /></FoodAnamnesisGate>
       )}
     </div>

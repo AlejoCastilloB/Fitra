@@ -62,6 +62,7 @@ export default async function ClientsPage() {
         stats: stats[c.user_id] ?? {
           workoutsThisWeek: 0, plannedThisWeek: 0,
           lastWorkoutAt: null, daysLoggedFoodThisWeek: 0, kcalToday: 0, activeDaysThisWeek: 0,
+          nutritionEnabled: true,
         },
       }))}
     />

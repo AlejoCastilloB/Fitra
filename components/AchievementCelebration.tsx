@@ -1,42 +1,50 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { usePalette } from "@/lib/theme";
 import { Achievement } from "@/lib/achievements";
-import { Share2, Award, X } from "lucide-react";
+import { Share2, Award, X, ChevronLeft } from "lucide-react";
 import Link from "next/link";
-
-const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+import ShareStage from "@/components/ShareStage";
+import { AchievementShareCard } from "@/components/ShareCards";
+import type { ShareTone } from "@/lib/shareImage";
 
 export default function AchievementCelebration({
   achievement, onClose,
 }: { achievement: Achievement; onClose: () => void }) {
   const palette = usePalette();
-  const cardRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
+  const [shareTone, setShareTone] = useState<ShareTone>("light");
 
-  async function share() {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "insignia-fittrack.png", { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: TAG_SUGGESTION });
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "insignia-fittrack.png";
-        link.click();
-      }
-    } catch {
-      alert("No pudimos generar la imagen, intenta de nuevo.");
-    } finally {
-      setSharing(false);
-    }
+  if (sharing) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column",
+        justifyContent: "center", padding: 24, background: palette.bg, overflowY: "auto",
+      }}>
+        <div style={{ width: "100%", maxWidth: 360, margin: "0 auto" }}>
+          <button onClick={() => setSharing(false)} style={{
+            display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: "0 0 14px",
+            color: palette.inkDim, fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            <ChevronLeft size={16} /> Volver
+          </button>
+          <ShareStage
+            tone={shareTone}
+            onToneChange={setShareTone}
+            filename="insignia-fittrack.png"
+            hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
+          >
+            <AchievementShareCard
+              tone={shareTone}
+              emoji={achievement.emoji}
+              title={achievement.title}
+              description={achievement.description}
+            />
+          </ShareStage>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -58,7 +66,7 @@ export default function AchievementCelebration({
         <X size={18} />
       </button>
 
-      <div ref={cardRef} style={{
+      <div style={{
         display: "flex", flexDirection: "column", alignItems: "center", padding: "36px 32px",
         borderRadius: 28, background: palette.bg,
       }}>
@@ -82,12 +90,12 @@ export default function AchievementCelebration({
 
       <div style={{ marginTop: 24 }} />
 
-      <button onClick={share} disabled={sharing} style={{
+      <button onClick={() => setSharing(true)} style={{
         width: "100%", maxWidth: 320, padding: 14, borderRadius: 14, border: "none", marginBottom: 10,
         background: palette.ink, color: palette.bg, fontWeight: 700, fontSize: 14, cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: sharing ? 0.7 : 1,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
       }}>
-        <Share2 size={16} /> {sharing ? "Generando imagen..." : "Comparte tu insignia"}
+        <Share2 size={16} /> Comparte tu insignia
       </button>
 
       <Link href="/app/achievements" onClick={onClose} style={{

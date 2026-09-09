@@ -16,11 +16,12 @@ function getGreeting() {
 }
 
 export default function TodayScreen({
-  displayName, todaysRoutine, otherRoutines,
+  displayName, todaysRoutine, otherRoutines, nutritionEnabled = true,
 }: {
   displayName: string | null;
   todaysRoutine: RoutineSummary | null;
   otherRoutines: RoutineSummary[];
+  nutritionEnabled?: boolean;
 }) {
   const palette = usePalette();
   const firstName = displayName?.trim().split(" ")[0] || null;
@@ -36,7 +37,10 @@ export default function TodayScreen({
 
       <DayStrip />
 
-      <TodayCards todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name } : null} />
+      <TodayCards
+        todaysRoutine={todaysRoutine ? { id: todaysRoutine.id, name: todaysRoutine.name } : null}
+        nutritionEnabled={nutritionEnabled}
+      />
 
       <h2 style={{ fontSize: 12.5, fontWeight: 700, color: palette.accent, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10, marginTop: 4 }}>
         {todaysRoutine ? "Otras rutinas" : "Tus rutinas"}
