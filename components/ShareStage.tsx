@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePalette } from "@/lib/theme";
 import { Share2, Copy, Check } from "lucide-react";
 import { nodeToPngBlob, shareBlob, copyPngToClipboard, type ShareTone } from "@/lib/shareImage";
+import { SHARE_CARD_WIDTH } from "@/components/ShareCards";
 
 /**
  * El marco de "así va a quedar tu imagen".
@@ -24,7 +25,11 @@ export default function ShareStage({
 }) {
   const palette = usePalette();
   const cardRef = useRef<HTMLDivElement>(null);
+  const marcoRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
+  /** Cuánto hay que encoger la vista previa para que quepa entera sin desplazarse. */
+  const [escala, setEscala] = useState(1);
+  const [altoReal, setAltoReal] = useState(0);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +59,38 @@ export default function ShareStage({
     });
   }
 
+  /**
+   * La tarjeta del entreno con ocho récords mide casi 800 px de alto y siempre 320 de
+   * ancho. Dentro de la ventana no cabía: había que desplazarse para verla entera y los
+   * botones quedaban fuera de la vista.
+   *
+   * Y había algo peor. El nodo que se captura ocupaba todo el ancho de su contenedor, que
+   * en una ventana estrecha es MENOS de 320: la tarjeta se salía y el PNG salía cortado
+   * por un lado. Por eso ahora se mide también el ancho y se encoge por lo que peor vaya.
+   *
+   * Se encoge con transform, que NO cambia el tamaño de maquetación: html-to-image mide
+   * con offsetWidth/offsetHeight, así que el PNG sigue saliendo a tamaño completo. Por eso
+   * el transform va en el padre y no en el nodo que se captura — ese sí se copiaría al
+   * clon y la imagen saldría reducida de verdad.
+   */
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node) return;
+    const medir = () => {
+      const alto = node.offsetHeight;
+      if (!alto) return;
+      setAltoReal(alto);
+      const altoDisponible = Math.min(420, Math.round(window.innerHeight * 0.46));
+      const anchoDisponible = marcoRef.current?.clientWidth ?? SHARE_CARD_WIDTH;
+      setEscala(Math.max(0.4, Math.min(1, altoDisponible / alto, anchoDisponible / SHARE_CARD_WIDTH)));
+    };
+    medir();
+    const observer = new ResizeObserver(medir);
+    observer.observe(node);
+    window.addEventListener("resize", medir);
+    return () => { observer.disconnect(); window.removeEventListener("resize", medir); };
+  }, []);
+
   // Sobre qué se previsualiza: oscuro si el texto va en blanco, y al revés.
   const backdrop = tone === "light" ? "#171B21" : "#EEF1F5";
   const checker = tone === "light" ? "rgba(255,255,255,0.045)" : "rgba(11,16,23,0.05)";
@@ -68,8 +105,20 @@ export default function ShareStage({
         backgroundSize: "22px 22px",
         border: `1px solid ${palette.panelBorder}`,
       }}>
-        <div ref={cardRef}>{children}</div>
+        <div ref={marcoRef} style={{ height: altoReal ? altoReal * escala : undefined, overflow: "hidden" }}>
+          <div style={{ transform: `scale(${escala})`, transformOrigin: "top center" }}>
+            {/* Exactamente el ancho de la tarjeta: si el nodo capturado fuera más estrecho
+                que ella, el PNG saldría cortado. */}
+            <div ref={cardRef} style={{ width: SHARE_CARD_WIDTH, margin: "0 auto" }}>{children}</div>
+          </div>
+        </div>
       </div>
+
+      {escala < 1 && (
+        <p style={{ fontSize: 10.5, color: palette.inkDim, textAlign: "center", marginTop: -4, marginBottom: 10 }}>
+          Vista previa reducida para que quepa. La imagen se genera a tamaño completo.
+        </p>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <span style={{ fontSize: 11.5, color: palette.inkDim, fontWeight: 600 }}>Color del texto</span>

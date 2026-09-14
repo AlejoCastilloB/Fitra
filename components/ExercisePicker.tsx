@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { createClient } from "@/lib/supabase/client";
+import { suggestReplacements, suggestionReason, type ExerciseLike, type ScoredExercise } from "@/lib/exerciseSuggestions";
 import { usePalette, type Palette } from "@/lib/theme";
 import { muscleLabel } from "@/lib/muscleLabels";
 import { equipmentLabel } from "@/lib/equipmentLabels";
 import { useExerciseSearch, useExerciseFilterOptions, type FoundExercise } from "@/lib/useExerciseSearch";
-import { Search, Plus, X, SlidersHorizontal, ArrowLeftRight } from "lucide-react";
+import { Search, Plus, X, SlidersHorizontal, ArrowLeftRight, Sparkles } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 
 export type PickableExercise = FoundExercise;
@@ -16,7 +18,7 @@ export type PickableExercise = FoundExercise;
  * combinables entre sí. Solo consulta la tabla `exercises`.
  */
 export default function ExercisePicker({
-  onPick, onClose, addedCounts = {}, mode = "add", subtitle,
+  onPick, onClose, addedCounts = {}, mode = "add", subtitle, suggestForExerciseId, alreadyInRoutine = [],
 }: {
   onPick: (exercise: PickableExercise) => void;
   onClose: () => void;
@@ -26,6 +28,10 @@ export default function ExercisePicker({
   mode?: "add" | "replace";
   /** Una línea bajo el título, para recordar qué se está cambiando y por qué. */
   subtitle?: string;
+  /** El ejercicio que sale. Con él se calculan los sustitutos que se ofrecen de entrada. */
+  suggestForExerciseId?: string;
+  /** Lo que ya está en la rutina: se sugiere menos, porque rara vez es lo que se busca. */
+  alreadyInRoutine?: string[];
 }) {
   const palette = usePalette();
   const [search, setSearch] = useState("");
@@ -46,6 +52,44 @@ export default function ExercisePicker({
   const { results, loading } = useExerciseSearch({ search, muscle, equipment });
 
   const activeFilters = (muscle ? 1 : 0) + (equipment ? 1 : 0);
+
+  // Los sustitutos que propone la app: mismo músculo, mismo gesto, y con lo que tengas
+  // más a mano. Se calculan una vez y solo se enseñan mientras no haya búsqueda ni
+  // filtros — en cuanto la persona busca algo, manda lo que busca.
+  const [base, setBase] = useState<ExerciseLike | null>(null);
+  const [sugerencias, setSugerencias] = useState<ScoredExercise<FoundExercise>[]>([]);
+
+  useEffect(() => {
+    if (!suggestForExerciseId) return;
+    let cancelado = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: origen } = await supabase
+        .from("exercises")
+        .select("id, name, slug, muscle_group, secondary_muscles, equipment, counts_toward_exercise_id")
+        .eq("id", suggestForExerciseId)
+        .single();
+      if (cancelado || !origen) return;
+
+      // Se traen solo los del mismo músculo principal porque el resto ni siquiera entra
+      // al ranking: cambiar de músculo no es reemplazar un ejercicio.
+      const { data: candidatos } = await supabase
+        .from("exercises")
+        .select("id, name, slug, media_url, measurement_type, muscle_group, secondary_muscles, equipment, counts_toward_exercise_id, trainer_id")
+        .eq("muscle_group", (origen as any).muscle_group)
+        .limit(150);
+      if (cancelado) return;
+
+      setBase(origen as ExerciseLike);
+      setSugerencias(suggestReplacements(origen as ExerciseLike, (candidatos ?? []) as FoundExercise[], {
+        alreadyInRoutine,
+        limit: 6,
+      }));
+    })();
+    return () => { cancelado = true; };
+  }, [suggestForExerciseId]);
+
+  const mostrarSugerencias = sugerencias.length > 0 && !search.trim() && activeFilters === 0;
 
   if (!mounted) return null;
 
@@ -117,6 +161,37 @@ export default function ExercisePicker({
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {mostrarSugerencias && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: palette.accent, fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "2px 2px 4px" }}>
+              <Sparkles size={13} /> Sustitutos sugeridos
+            </div>
+            {sugerencias.map((s) => (
+              <button
+                key={`sug-${s.exercise.id}`} onClick={() => onPick(s.exercise)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px",
+                  borderRadius: 14, background: `${palette.accent}12`,
+                  border: `1px solid ${palette.accent}44`, color: palette.ink, cursor: "pointer",
+                }}
+              >
+                <GifThumb src={s.exercise.media_url} size={44} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.exercise.name}</span>
+                  <span style={{ display: "block", fontSize: 11.5, color: palette.accent, marginTop: 2, fontWeight: 600 }}>
+                    {base ? suggestionReason(base, s) : ""}
+                    {s.exercise.equipment ? ` · ${equipmentLabel(s.exercise.equipment)}` : ""}
+                  </span>
+                </span>
+                <ArrowLeftRight size={17} color={palette.accent} style={{ flexShrink: 0 }} />
+              </button>
+            ))}
+            <div style={{ fontSize: 11, color: palette.inkDim, padding: "10px 2px 2px", borderTop: `1px solid ${palette.panelBorder}`, marginTop: 6 }}>
+              O busca cualquier otro
+            </div>
+          </>
+        )}
+
         {results.map((r) => {
           const veces = addedCounts[r.id] ?? 0;
           return (
