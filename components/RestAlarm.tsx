@@ -7,19 +7,11 @@ import { createClient } from "@/lib/supabase/client";
 import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 import { dueOpenWorkoutReminder, reminderText, FIRST_REMINDER_MINUTES, SECOND_REMINDER_MINUTES, type ReminderStage } from "@/lib/openWorkoutReminders";
 import { startKeepAlive, stopKeepAlive } from "@/lib/keepAliveDuringRest";
-
-const SOUNDS: Record<string, { freq: number; pattern: number[] }> = {
-  clasico: { freq: 880, pattern: [0.35] },
-  suave: { freq: 660, pattern: [0.5] },
-  energico: { freq: 990, pattern: [0.12, 0.12, 0.12] },
-  campana: { freq: 1046, pattern: [0.5] },
-  digital: { freq: 1400, pattern: [0.08, 0.08, 0.08, 0.08] },
-};
+import { playBeeps as sonarPitido, setBeepSound } from "@/lib/beep";
 
 export default function RestAlarm() {
   const { session, now } = useWorkoutSession();
   const uid = useCurrentUser();
-  const soundRef = useRef("clasico");
   const alarmedForRef = useRef<number | null>(null);
   // Qué avisos de "entreno abierto" ya salieron, y para cuál serie. Si cambia la serie,
   // es una pausa nueva y los dos vuelven a estar disponibles.
@@ -29,7 +21,9 @@ export default function RestAlarm() {
     if (!uid) return;
     const supabase = createClient();
     supabase.from("users").select("timer_sound").eq("id", uid).single().then(({ data }) => {
-      if (data?.timer_sound) soundRef.current = data.timer_sound;
+      // Lo deja en lib/beep, de donde lo toman tanto este aviso como el cronómetro de
+      // los ejercicios de tiempo: el mismo sonido en toda la app.
+      setBeepSound(data?.timer_sound);
     });
   }, [uid]);
 
@@ -49,25 +43,7 @@ export default function RestAlarm() {
   }, [uid, session?.restEndAt]);
 
   function playBeeps(times: number) {
-    const s = SOUNDS[soundRef.current] || SOUNDS.clasico;
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      let t = ctx.currentTime;
-      for (let rep = 0; rep < times; rep++) {
-        s.pattern.forEach((dur) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.frequency.value = s.freq;
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          gain.gain.setValueAtTime(0.15, t);
-          osc.start(t);
-          osc.stop(t + dur);
-          t += dur + 0.08;
-        });
-        t += 0.4;
-      }
-    } catch {}
+    sonarPitido(times);
   }
 
   // Mientras corre un descanso se reproduce silencio para que el sistema no suspenda la

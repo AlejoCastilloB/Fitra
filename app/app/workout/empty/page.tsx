@@ -16,6 +16,7 @@ import WorkoutSetRow from "@/components/WorkoutSetRow";
 import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
 import RestTimerRing from "@/components/RestTimerRing";
+import SetProgress from "@/components/SetProgress";
 import ExercisePicker from "@/components/ExercisePicker";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import WorkoutSummary from "@/components/WorkoutSummary";
@@ -189,7 +190,8 @@ export default function EmptyWorkoutPage() {
                   </button>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+                  <SetProgress sets={ex.sets} />
                   {showRestHere ? (
                     <RestTimerRing secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onSkip={skipRest} />
                   ) : editingRestFor === exIdx ? (
