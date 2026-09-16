@@ -3,28 +3,27 @@
 import { usePalette, type Palette } from "@/lib/theme";
 import { Minus, Plus, SkipForward } from "lucide-react";
 
+/**
+ * Los controles del descanso: quitar diez segundos, saltar, o sumar diez.
+ *
+ * El tiempo ya no se enseña aquí. Antes esto era una barra que cruzaba la tarjeta entera
+ * con el número encima, lejos de las series y duplicando el hueco de arriba a la derecha
+ * que solo decía "Descanso 90s". Ahora la cuenta atrás vive en ese hueco, como anillo, y
+ * aquí quedan solo los botones — en el mismo sitio de siempre, para no mover la mano de
+ * quien ya los tiene aprendidos.
+ */
 export default function RestBar({
-  secondsLeft, totalSeconds, onAdjust, onSkip,
-}: { secondsLeft: number; totalSeconds: number; onAdjust: (delta: number) => void; onSkip: () => void }) {
+  onAdjust, onSkip,
+}: { onAdjust: (delta: number) => void; onSkip: () => void }) {
   const palette = usePalette();
-  const pct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
 
   return (
-    <div style={{ margin: "8px 0 16px", padding: "10px 2px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: palette.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>Descansando</span>
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{secondsLeft}s</span>
-      </div>
-      <div style={{ height: 6, borderRadius: 4, background: palette.divider, overflow: "hidden", marginBottom: 10 }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: palette.accent, borderRadius: 4, transition: "width 1s linear" }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14 }}>
-        <button onClick={() => onAdjust(-10)} style={smallBtn(palette)}><Minus size={12} /> 10s</button>
-        <button onClick={onSkip} style={{ ...smallBtn(palette), color: palette.inkDim, borderColor: palette.panelBorder }}>
-          <SkipForward size={12} /> Saltar
-        </button>
-        <button onClick={() => onAdjust(10)} style={smallBtn(palette)}><Plus size={12} /> 10s</button>
-      </div>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, margin: "12px 0 16px" }}>
+      <button onClick={() => onAdjust(-10)} className="ft-touch-y" style={smallBtn(palette)}><Minus size={12} /> 10s</button>
+      <button onClick={onSkip} className="ft-touch-y" style={{ ...smallBtn(palette), color: palette.inkDim, borderColor: palette.panelBorder }}>
+        <SkipForward size={12} /> Saltar
+      </button>
+      <button onClick={() => onAdjust(10)} className="ft-touch-y" style={smallBtn(palette)}><Plus size={12} /> 10s</button>
     </div>
   );
 }
@@ -33,6 +32,6 @@ function smallBtn(palette: Palette): React.CSSProperties {
   return {
     display: "flex", alignItems: "center", gap: 4, background: "none", border: "1px solid",
     borderColor: "currentColor", borderRadius: 10, padding: "7px 12px", color: palette.accent,
-    fontSize: 12, fontWeight: 700, cursor: "pointer",
+    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
   };
 }

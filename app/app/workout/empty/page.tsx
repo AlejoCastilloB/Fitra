@@ -15,6 +15,7 @@ import SetTypePopover from "@/components/SetTypePopover";
 import WorkoutSetRow from "@/components/WorkoutSetRow";
 import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
+import RestTimerRing from "@/components/RestTimerRing";
 import ExercisePicker from "@/components/ExercisePicker";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import WorkoutSummary from "@/components/WorkoutSummary";
@@ -189,7 +190,9 @@ export default function EmptyWorkoutPage() {
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 10 }}>
-                  {editingRestFor === exIdx ? (
+                  {showRestHere ? (
+                    <RestTimerRing secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onSkip={skipRest} />
+                  ) : editingRestFor === exIdx ? (
                     <div style={{ ...pillStyle(palette), color: palette.inkDim }}>
                       <Timer size={13} />
                       <input
@@ -244,9 +247,7 @@ export default function EmptyWorkoutPage() {
                   <Plus size={14} /> Agregar serie
                 </button>
 
-                {showRestHere && (
-                  <RestBar secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onAdjust={adjustRest} onSkip={skipRest} />
-                )}
+                {showRestHere && <RestBar onAdjust={adjustRest} onSkip={skipRest} />}
               </div>
             );
           })}
