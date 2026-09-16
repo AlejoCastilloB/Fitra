@@ -3,6 +3,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { ensureVapidConfigured } from "@/lib/vapid";
+import { markPushDead, isDeadEndpointError } from "@/lib/pushHealth";
 import { parseMealSlots, dueReminder, logWindowFor, DEFAULT_MEAL_SLOTS } from "@/lib/mealReminders";
 
 function localParts(timeZone: string, date: Date) {
@@ -172,9 +173,10 @@ export async function GET(req: Request) {
         );
         sent++;
       } catch (err: any) {
-        if (err?.statusCode === 404 || err?.statusCode === 410) {
-          await admin.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-        }
+        // El endpoint está muerto: se borra Y se marca al usuario para que la app pida
+        // una suscripción nueva al abrirse. Solo borrarla dejaba el navegador subiendo la
+        // misma suscripción muerta una y otra vez, sin recibir nada nunca más.
+        if (isDeadEndpointError(err)) await markPushDead(admin, sub.endpoint);
       }
     }
   }

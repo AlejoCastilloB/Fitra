@@ -12,6 +12,7 @@ import OpenWorkoutBeacon from "@/components/OpenWorkoutBeacon";
 import TimezoneSync from "@/components/TimezoneSync";
 import InviteBanner from "@/components/InviteBanner";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
+import SessionHeartbeat from "@/components/SessionHeartbeat";
 import PrecacheWarmup from "@/components/PrecacheWarmup";
 
 const WARMUP_ROUTES = ["/app/progress", "/app/profile", "/app/nutrition", "/app/nutrition/recipes"];
@@ -62,6 +63,7 @@ export default function AppShell({
       <OpenWorkoutBeacon />
       <TimezoneSync />
       <SessionKeepAlive />
+      <SessionHeartbeat />
       <PrecacheWarmup routes={nutritionEnabled ? WARMUP_ROUTES : WARMUP_ROUTES_SIN_NUTRICION} />
       <InviteBanner />
       {!hideFloatingNav && <HomeFab nutritionEnabled={nutritionEnabled} />}

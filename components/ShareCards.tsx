@@ -11,16 +11,22 @@ import { formatDurationLabel } from "@/lib/formatDuration";
  * fuera, en la pantalla que las usa.
  */
 
+/**
+ * El ancho de la tarjeta que se convierte en PNG, en px.
+ *
+ * Fijo a propósito: con ancho fluido, html-to-image mide el texto un pelo distinto que el
+ * navegador y una línea que en pantalla se parte en dos cabe entera en la imagen, dejando
+ * un hueco. Lo usa ShareStage para saber cuánto encoger la vista previa.
+ */
+export const SHARE_CARD_WIDTH = 320;
+
 const WORDMARK: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" };
 const EYEBROW: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" };
 
 function frame(tone: ShareTone): React.CSSProperties {
   const c = shareInk(tone);
   return {
-    // Ancho fijo a propósito. Con ancho fluido, html-to-image mide el texto un pelo
-    // distinto que el navegador y una línea que en pantalla se parte en dos cabe entera
-    // en el PNG — y queda un hueco donde estaba la segunda línea.
-    width: 320,
+    width: SHARE_CARD_WIDTH,
     boxSizing: "border-box",
     margin: "0 auto",
     padding: "26px 18px 22px",

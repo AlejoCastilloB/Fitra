@@ -641,6 +641,8 @@ export default function RoutineBuilder({
           <ExercisePicker
             mode="replace"
             subtitle={`Sale ${target.name}. El nuevo entra en su mismo sitio y con sus mismas series.`}
+            suggestForExerciseId={target.id}
+            alreadyInRoutine={picked.map((p) => p.id)}
             addedCounts={picked.reduce<Record<string, number>>((acc, p) => {
               acc[p.id] = (acc[p.id] ?? 0) + 1;
               return acc;
