@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useWorkoutSession } from "@/lib/workoutSession";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { createClient } from "@/lib/supabase/client";
-import { ensurePushSubscribed } from "@/lib/push";
 import { REST_NOTIFY_LEAD_MS } from "@/lib/restNotify";
 import { dueOpenWorkoutReminder, reminderText, FIRST_REMINDER_MINUTES, SECOND_REMINDER_MINUTES, type ReminderStage } from "@/lib/openWorkoutReminders";
 import { startKeepAlive, stopKeepAlive } from "@/lib/keepAliveDuringRest";
@@ -32,11 +31,6 @@ export default function RestAlarm() {
     supabase.from("users").select("timer_sound").eq("id", uid).single().then(({ data }) => {
       if (data?.timer_sound) soundRef.current = data.timer_sound;
     });
-  }, [uid]);
-
-  useEffect(() => {
-    if (!uid) return;
-    ensurePushSubscribed();
   }, [uid]);
 
   useEffect(() => {

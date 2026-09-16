@@ -4,6 +4,7 @@ import { GET as checkMeals } from "../check-meals/route";
 import { GET as checkRests } from "../check-rests/route";
 import { GET as checkProgress } from "../check-progress/route";
 import { GET as checkWorkouts } from "../check-workouts/route";
+import { GET as checkInactive } from "../check-inactive/route";
 
 export const maxDuration = 60;
 
@@ -37,6 +38,7 @@ export async function GET(req: Request) {
     ["rests", checkRests],
     ["progress", checkProgress],
     ["workouts", checkWorkouts],
+    ["inactive", checkInactive],
   ];
 
   const results: Record<string, unknown> = {};

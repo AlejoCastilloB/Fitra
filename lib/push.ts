@@ -7,10 +7,24 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-async function subscribe(): Promise<PushSubscription | null> {
+/**
+ * La suscripción de este navegador, creándola si no hay.
+ *
+ * Con `force` se tira primero la que hubiera. Hace falta cuando el servidor avisa de que
+ * el endpoint está muerto: reutilizar la guardada sería volver a subir exactamente la
+ * misma suscripción que ya falló, que es lo que mantenía a la gente sin notificaciones
+ * para siempre sin que nadie se enterara.
+ */
+async function subscribe(force = false): Promise<PushSubscription | null> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
   const registration = await navigator.serviceWorker.ready;
   let sub = await registration.pushManager.getSubscription();
+
+  if (sub && force) {
+    try { await sub.unsubscribe(); } catch {}
+    sub = null;
+  }
+
   if (!sub) {
     sub = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -39,13 +53,22 @@ export async function requestPushPermissionAndSubscribe(): Promise<boolean> {
   return true;
 }
 
-// re-registra la suscripción sin pedir permiso, solo si ya estaba concedido antes.
-export async function ensurePushSubscribed(): Promise<void> {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+/**
+ * Re-registra la suscripción sin pedir permiso, solo si ya estaba concedido antes.
+ *
+ * Con `force` la rehace desde cero en vez de reutilizar la que tenga el navegador.
+ * Devuelve true si quedó una suscripción registrada en el servidor.
+ */
+export async function ensurePushSubscribed(force = false): Promise<boolean> {
+  if (!("Notification" in window) || Notification.permission !== "granted") return false;
   try {
-    const sub = await subscribe();
-    if (sub) await sendSubscriptionToServer(sub);
-  } catch {}
+    const sub = await subscribe(force);
+    if (!sub) return false;
+    await sendSubscriptionToServer(sub);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function unsubscribeFromPush(): Promise<void> {
