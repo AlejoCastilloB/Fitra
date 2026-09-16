@@ -18,6 +18,8 @@ import SetTypePopover from "@/components/SetTypePopover";
 import WorkoutSetRow from "@/components/WorkoutSetRow";
 import RpePopover from "@/components/RpePopover";
 import RestBar from "@/components/RestBar";
+import RestTimerRing from "@/components/RestTimerRing";
+import SetProgress from "@/components/SetProgress";
 import WarmupCalculator from "@/components/WarmupCalculator";
 import WorkoutSettingsSheet from "@/components/WorkoutSettingsSheet";
 import WorkoutSummary from "@/components/WorkoutSummary";
@@ -516,8 +518,11 @@ export default function WorkoutPage() {
                     que hacía parecer que el ajuste no funcionaba. La calculadora sigue
                     existiendo y sale sola al escribir el primer peso, si el ajuste está
                     encendido. */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 10 }}>
-                  {editingRestFor === exIdx ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+                  <SetProgress sets={ex.sets} />
+                  {showRestHere ? (
+                    <RestTimerRing secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onSkip={skipRest} />
+                  ) : editingRestFor === exIdx ? (
                     <div style={{ ...pillStyle(palette), color: palette.inkDim }}>
                       <Timer size={13} />
                       <input
@@ -581,9 +586,7 @@ export default function WorkoutPage() {
                   <Plus size={14} /> Agregar serie
                 </button>
 
-                {showRestHere && (
-                  <RestBar secondsLeft={restLeft} totalSeconds={ex.restSeconds ?? 90} onAdjust={adjustRest} onSkip={skipRest} />
-                )}
+                {showRestHere && <RestBar onAdjust={adjustRest} onSkip={skipRest} />}
               </div>
             );
           })}

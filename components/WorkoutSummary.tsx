@@ -11,8 +11,10 @@ import { formatDurationLabel } from "@/lib/formatDuration";
 import Button from "@/components/Button";
 import Modal from "@/components/Modal";
 import ShareStage from "@/components/ShareStage";
-import { WorkoutShareCard } from "@/components/ShareCards";
+import { WorkoutShareCard, availableStyles, type ShareStyle, type WorkoutShareData } from "@/components/ShareCards";
 import type { ShareTone } from "@/lib/shareImage";
+import { computeStreakFromDates } from "@/lib/streak";
+import { startOfLocalWeek } from "@/lib/localDate";
 
 export default function WorkoutSummary({
   workoutLogId, routineName, volume, durationSec, prs, breakdown, exercises, suggestedRoutineName, onDone,
@@ -34,6 +36,10 @@ export default function WorkoutSummary({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [showShare, setShowShare] = useState(false);
   const [shareTone, setShareTone] = useState<ShareTone>("light");
+  const [shareStyle, setShareStyle] = useState<ShareStyle>("resumen");
+  /** Racha y días de esta semana. Solo hacen falta para compartir, así que se piden al
+   *  abrir la ventana y no al terminar el entreno. */
+  const [streak, setStreak] = useState<{ weeks: number; weekDays: boolean[] } | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -55,6 +61,17 @@ export default function WorkoutSummary({
   const [saveRoutineError, setSaveRoutineError] = useState<string | null>(null);
 
   const loggedExercises = exercises.filter((ex) => ex.sets.some((s) => s.done));
+
+  const datosParaCompartir: WorkoutShareData = {
+    routineName: capitalized,
+    volume,
+    durationSec: editedDurationSec,
+    setCount: Object.values(breakdown).reduce((a, b) => a + b, 0),
+    prs,
+    comparison,
+    streakWeeks: streak?.weeks ?? null,
+    weekDays: streak?.weekDays ?? null,
+  };
 
   async function handleAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -78,6 +95,32 @@ export default function WorkoutSummary({
 
     setPhotoUrl(pub.publicUrl);
     setUploadingPhoto(false);
+  }
+
+  /**
+   * Las fechas de todos los entrenos, para la racha y para los días de esta semana.
+   *
+   * La racha se calcula aquí y no en el servidor porque `computeStreakFromDates` sin zona
+   * horaria usa el reloj del proceso — y aquí el proceso es el teléfono de la persona,
+   * que es justo el reloj correcto.
+   */
+  async function cargarRacha() {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+    const { data } = await supabase.from("workout_logs").select("date").eq("client_id", auth.user.id);
+    const fechas = (data ?? []).map((w: any) => w.date as string);
+
+    const lunes = startOfLocalWeek();
+    const weekDays = [false, false, false, false, false, false, false];
+    fechas.forEach((f) => {
+      const d = new Date(f);
+      if (d < lunes) return;
+      // getDay() pone el domingo en 0; aquí la semana empieza el lunes, como en el resto
+      // de la app.
+      weekDays[(d.getDay() + 6) % 7] = true;
+    });
+
+    setStreak({ weeks: computeStreakFromDates(fechas), weekDays });
   }
 
   async function saveDetails() {
@@ -291,7 +334,7 @@ export default function WorkoutSummary({
         </Button>
       </div>
 
-      <Button variant="primary" fullWidth onClick={() => setShowShare(true)} style={{ marginBottom: 10 }}>
+      <Button variant="primary" fullWidth onClick={() => { setShowShare(true); cargarRacha(); }} style={{ marginBottom: 10 }}>
         Compartir como imagen
       </Button>
 
@@ -302,16 +345,11 @@ export default function WorkoutSummary({
             onToneChange={setShareTone}
             filename="entreno-fittrack.png"
             hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
+            styles={availableStyles(datosParaCompartir)}
+            styleId={shareStyle}
+            onStyleChange={(id) => setShareStyle(id as ShareStyle)}
           >
-            <WorkoutShareCard
-              tone={shareTone}
-              routineName={capitalized}
-              volume={volume}
-              durationSec={editedDurationSec}
-              setCount={Object.values(breakdown).reduce((a, b) => a + b, 0)}
-              prs={prs}
-              comparison={comparison}
-            />
+            <WorkoutShareCard tone={shareTone} style={shareStyle} data={datosParaCompartir} />
           </ShareStage>
         </Modal>
       )}

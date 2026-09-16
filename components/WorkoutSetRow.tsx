@@ -5,6 +5,7 @@ import { useSwipeReveal } from "@/lib/useSwipeReveal";
 import { getSetBadge } from "@/lib/setBadges";
 import { LiveExercise, LiveSet } from "@/lib/workoutSession";
 import { Check, Trash2 } from "lucide-react";
+import ExerciseTimer from "@/components/ExerciseTimer";
 
 const DELETE_WIDTH = 84;
 
@@ -49,6 +50,16 @@ export default function WorkoutSetRow({
   }
   if (exercise.measurement_type === "time" || exercise.measurement_type === "time_distance") {
     inputs.push(<SetInput key="t" value={s.time_sec} placeholder={s.target?.time_sec} onChange={(v) => onChangeField("time_sec", v)} />);
+    // Aguantando una plancha no se puede contar de cabeza y teclear el número: el
+    // cronómetro lo escribe al parar.
+    inputs.push(
+      <ExerciseTimer
+        key="crono"
+        targetSeconds={s.target?.time_sec}
+        disabled={s.done}
+        onFinish={(segundos) => onChangeField("time_sec", segundos)}
+      />
+    );
   }
   if (exercise.measurement_type === "distance" || exercise.measurement_type === "time_distance") {
     inputs.push(<SetInput key="d" value={s.distance_m} placeholder={s.target?.distance_m} onChange={(v) => onChangeField("distance_m", v)} />);

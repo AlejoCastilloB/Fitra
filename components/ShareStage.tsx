@@ -15,13 +15,17 @@ import { SHARE_CARD_WIDTH } from "@/components/ShareCards";
  * texto blanco sobre el fondo claro de la app sería invisible.
  */
 export default function ShareStage({
-  tone, onToneChange, filename, children, hint,
+  tone, onToneChange, filename, children, hint, styles, styleId, onStyleChange,
 }: {
   tone: ShareTone;
   onToneChange: (t: ShareTone) => void;
   filename: string;
   children: React.ReactNode;
   hint?: string;
+  /** Los estilos entre los que se puede elegir. Sin esto no sale el selector. */
+  styles?: { id: string; label: string }[];
+  styleId?: string;
+  onStyleChange?: (id: string) => void;
 }) {
   const palette = usePalette();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -97,6 +101,30 @@ export default function ShareStage({
 
   return (
     <div>
+      {styles && styles.length > 1 && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+          {styles.map((e) => {
+            const activo = e.id === styleId;
+            return (
+              <button
+                key={e.id}
+                onClick={() => onStyleChange?.(e.id)}
+                className="ft-touch-y"
+                style={{
+                  flexShrink: 0, padding: "7px 13px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit",
+                  fontSize: 12, fontWeight: 700,
+                  border: `1px solid ${activo ? palette.accent : palette.panelBorder}`,
+                  background: activo ? `${palette.accent}1e` : palette.inputBg,
+                  color: activo ? palette.accent : palette.inkDim,
+                }}
+              >
+                {e.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{
         borderRadius: 20, padding: 14, marginBottom: 12,
         background: backdrop,
