@@ -9,7 +9,7 @@ import { equipmentLabel } from "@/lib/equipmentLabels";
 import { useExerciseSearch, useExerciseFilterOptions } from "@/lib/useExerciseSearch";
 import { getSetBadge } from "@/lib/setBadges";
 import { supersetColor } from "@/lib/supersetColors";
-import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal, Timer, Check, Loader2, AlertCircle, ArrowLeftRight } from "lucide-react";
+import { Search, Plus, Trash2, X, GripVertical, Link2, ChevronDown, SlidersHorizontal, Timer, Check, Loader2, AlertCircle, ArrowLeftRight, FileInput } from "lucide-react";
 import GifThumb from "@/components/GifThumb";
 import SetTypePopover from "@/components/SetTypePopover";
 import SupersetPopover from "@/components/SupersetPopover";
@@ -17,6 +17,7 @@ import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import ExercisePicker, { type PickableExercise } from "@/components/ExercisePicker";
 import { carrySets, emptySet, type SetRow } from "@/lib/replaceExercise";
+import RoutineImport, { type ImportedForBuilder } from "@/components/RoutineImport";
 
 /** Un ejercicio dentro de la rutina.
  *
@@ -104,6 +105,7 @@ export default function RoutineBuilder({
   const [detailFor, setDetailFor] = useState<{ id: string; name: string } | null>(null);
   /** La fila que se está cambiando por otro ejercicio, o null si no hay ninguna. */
   const [replacingUid, setReplacingUid] = useState<string | null>(null);
+  const [importando, setImportando] = useState(false);
   const [showDetails, setShowDetails] = useState(!isEditing);
 
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
@@ -131,6 +133,31 @@ export default function RoutineBuilder({
       measurement_type: ex.measurement_type,
       sets: carrySets(p.sets, p.measurement_type, ex.measurement_type),
     }));
+  }
+
+  /**
+   * Mete de golpe lo que vino de una captura o de un texto.
+   *
+   * Se añaden al final en vez de reemplazar lo que haya: importar sobre una rutina a medio
+   * hacer no debería borrar el trabajo previo. El nombre solo se pone si la rutina todavía
+   * no tenía uno — lo que escribió la persona manda sobre lo que leyó el modelo.
+   */
+  function importarEjercicios(ejercicios: ImportedForBuilder[], nombreRutina: string | null) {
+    setPicked((prev) => [
+      ...prev,
+      ...ejercicios.map((e) => ({
+        uid: newUid(),
+        id: e.id,
+        name: e.name,
+        media_url: e.media_url,
+        measurement_type: e.measurement_type,
+        sets: e.sets,
+        notes: e.notes ?? "",
+        restSeconds: e.restSeconds ?? DEFAULT_REST_SECONDS,
+      })),
+    ]);
+    if (nombreRutina && !name.trim()) setName(nombreRutina);
+    setImportando(false);
   }
 
   function removeExercise(id: string) {
@@ -309,6 +336,19 @@ export default function RoutineBuilder({
           <Search size={14} /> Ejercicios
         </button>
       </div>
+
+      <button
+        onClick={() => setImportando(true)}
+        className="ft-touch-y"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", padding: 11,
+          borderRadius: 12, marginBottom: 16, cursor: "pointer", fontFamily: "inherit",
+          border: `1px dashed ${palette.accent}66`, background: `${palette.accent}10`,
+          color: palette.accent, fontSize: 12.5, fontWeight: 700,
+        }}
+      >
+        <FileInput size={14} /> Importar rutina desde texto o captura
+      </button>
 
       {showLibrary && (
         <div className="ft-fade-in-up" style={{ ...palette.glassPanel, padding: 14, marginBottom: 18 }}>
@@ -633,6 +673,10 @@ export default function RoutineBuilder({
       >
         Listo
       </button>
+
+      {importando && (
+        <RoutineImport onImport={importarEjercicios} onClose={() => setImportando(false)} />
+      )}
 
       {replacingUid && (() => {
         const target = picked.find((p) => p.uid === replacingUid);
