@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiQuota, incrementAiUsage } from "@/lib/aiUsage";
-import { normalizeImported, matchExercise, type CatalogExercise } from "@/lib/routineImport";
+import { normalizeDays, matchExercise, type CatalogExercise } from "@/lib/routineImport";
 
 const DAILY_LIMIT = 10;
 
@@ -13,26 +13,35 @@ const MAX_IMAGEN_BASE64 = 6_000_000;
 /**
  * El encargo, escrito para que el modelo no improvise.
  *
- * Dos cosas se le dicen explícitamente porque son las que aparecen en cualquier rutina
+ * Tres cosas se le dicen explícitamente porque son las que aparecen en cualquier rutina
  * escrita y las que más se malinterpretan: el descanso puede venir como "90 seg" o como
- * "2 min", y las repeticiones como rango ("8 - 12"). NO se le pide que las convierta: que
- * devuelva el texto tal cual lo lee y ya lo normaliza lib/routineImport, que es código con
- * pruebas en vez de una instrucción que el modelo puede saltarse.
+ * "2 min", las repeticiones como rango ("8 - 12"), y una rutina puede traer varios días en
+ * la misma hoja. NO se le pide que convierta nada: que devuelva el texto tal cual lo lee y
+ * ya lo normaliza lib/routineImport, que es código con pruebas en vez de una instrucción
+ * que el modelo puede saltarse.
  */
-const INSTRUCCIONES = `Eres un lector de rutinas de gimnasio. Te dan el texto o la captura de pantalla de una rutina y extraes los ejercicios.
+const INSTRUCCIONES = `Eres un lector de rutinas de gimnasio. Te dan el texto o la captura de pantalla de una rutina y extraes los días de entrenamiento con sus ejercicios.
 
 Devuelve SOLO un objeto JSON válido, sin explicaciones y sin markdown, con esta forma exacta:
-{"name": "nombre de la rutina si aparece, si no null", "exercises": [{"name": "...", "sets": "...", "reps": "...", "rest": "...", "notes": "..."}]}
+{"name": "nombre de la rutina si aparece, si no null", "days": [{"name": "nombre del día tal como aparece, si no null", "exercises": [{"name": "...", "sets": "...", "reps": "...", "rest": "...", "notes": "...", "setType": "...", "superset": "..."}]}]}
 
-Reglas:
-- "name" de cada ejercicio: el nombre tal como aparece, sin añadir ni traducir. Si está en inglés, déjalo en inglés.
+Reglas de los días:
+- Una hoja puede traer UN día o VARIOS. Separa un día nuevo cada vez que aparezca un encabezado tipo "Día 1", "Día 2", "Lunes", "Martes", "Empuje", "Tirón", "Pierna", "Full body A", "Semana 1 - Día 3" o similar.
+- "name" del día: el encabezado tal como aparece ("Día 2 - Espalda", "Miércoles"). Si el día no tiene encabezado, null.
+- Si la rutina no está partida en días, devuelve un único día con todos los ejercicios y "name": null.
+- Un mismo ejercicio puede repetirse en días distintos: ponlo en cada día donde aparezca.
+
+Reglas de los ejercicios:
+- "name": el nombre tal como aparece, sin añadir ni traducir. Si está en inglés, déjalo en inglés.
 - "sets": el número de series. Si no aparece, null.
 - "reps": las repeticiones TAL CUAL aparecen. Pueden venir como un número ("10"), como un rango ("8 - 12") o como texto ("al fallo"). No las conviertas ni elijas un valor del rango: copia lo que pone.
 - "rest": el descanso TAL CUAL aparece. Puede venir como "90 seg", "90s", "2 min", "1:30". No lo conviertas a segundos: copia lo que pone. Si no aparece, null.
 - "notes": la descripción, técnica o indicación del ejercicio si la hay. Si no, null.
+- "setType": uno de "normal", "warmup", "dropset" o "failure". Usa "dropset" si dice dropset, drop set o serie descendente; "failure" si dice al fallo, AMRAP o máximas; "warmup" si dice calentamiento, warm-up o serie de aproximación. Si no dice nada, "normal".
+- "superset": la etiqueta del grupo cuando dos o más ejercicios se hacen seguidos sin descanso — superserie, biserie, triserie o circuito. En las rutinas se marca con una letra o un número compartido ("A1" y "A2", "1a" y "1b", "Superserie A"), con una llave que une dos filas, o escribiendo "superserie con el siguiente". Pon la MISMA etiqueta ("A", "B", "1") en todos los ejercicios del grupo. Si el ejercicio va suelto, null.
 - Respeta el ORDEN en el que aparecen.
-- Si una fila es un encabezado, un día de la semana o un total, NO es un ejercicio: omítela.
-- Si no reconoces ningún ejercicio, devuelve {"name": null, "exercises": []}.`;
+- Si una fila es un total, una nota general o una cabecera de tabla, NO es un ejercicio: omítela.
+- Si no reconoces ningún ejercicio, devuelve {"name": null, "days": []}.`;
 
 export const dynamic = "force-dynamic";
 
@@ -139,31 +148,49 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `no pude interpretar la respuesta: ${limpio.slice(0, 200)}` }, { status: 502 });
   }
 
-  const ejercicios = normalizeImported(parsed?.exercises);
-  if (ejercicios.length === 0) {
+  // `parsed.exercises` es el formato anterior, de una sola sesión: se acepta como respaldo
+  // por si el modelo ignora la estructura de días y devuelve la lista plana.
+  const dias = normalizeDays(parsed?.days, parsed?.exercises);
+  if (dias.length === 0) {
     return NextResponse.json({ error: "no encontré ningún ejercicio ahí. Prueba con otra captura o pega el texto." }, { status: 422 });
   }
 
   const biblioteca = await cargarCatalogo(supabase);
 
-  const emparejados = ejercicios.map((e) => {
-    const match = matchExercise(e.name, biblioteca);
-    return {
-      importedName: e.name,
-      sets: e.sets,
-      reps: e.reps,
-      repsMax: e.repsMax,
-      restSeconds: e.restSeconds,
-      notes: e.notes,
-      exerciseId: match?.exercise.id ?? null,
-      matchedName: match?.exercise.name ?? null,
-      confidence: match ? Math.round(match.score * 100) : 0,
-    };
-  });
+  // El mismo nombre aparece en varios días de la misma rutina; emparejarlo una sola vez
+  // ahorra recorrer las mil y pico filas del catálogo una vez por aparición.
+  const cache = new Map<string, ReturnType<typeof matchExercise>>();
+  const emparejar = (nombre: string) => {
+    const clave = nombre.toLowerCase();
+    if (!cache.has(clave)) cache.set(clave, matchExercise(nombre, biblioteca));
+    return cache.get(clave) ?? null;
+  };
+
+  const diasEmparejados = dias.map((d) => ({
+    name: d.name,
+    exercises: d.exercises.map((e) => {
+      const match = emparejar(e.name);
+      return {
+        importedName: e.name,
+        sets: e.sets,
+        reps: e.reps,
+        repsMax: e.repsMax,
+        restSeconds: e.restSeconds,
+        notes: e.notes,
+        setType: e.setType,
+        supersetGroup: e.supersetGroup,
+        exerciseId: match?.exercise.id ?? null,
+        matchedName: match?.exercise.name ?? null,
+        confidence: match ? Math.round(match.score * 100) : 0,
+      };
+    }),
+  }));
+
+  const todos = diasEmparejados.flatMap((d) => d.exercises);
 
   // Los datos que la pantalla necesita para pintar las filas ya identificadas.
-  const ids = emparejados.map((e) => e.exerciseId).filter((id): id is string => !!id);
-  let detalles: Record<string, { media_url?: string; measurement_type: string }> = {};
+  const ids = Array.from(new Set(todos.map((e) => e.exerciseId).filter((id): id is string => !!id)));
+  const detalles: Record<string, { media_url?: string; measurement_type: string }> = {};
   if (ids.length > 0) {
     const { data: filas } = await supabase
       .from("exercises").select("id, media_url, measurement_type").in("id", ids);
@@ -175,8 +202,11 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     routineName: typeof parsed?.name === "string" ? parsed.name.trim() : null,
-    exercises: emparejados.map((e) => ({ ...e, ...(e.exerciseId ? detalles[e.exerciseId] : {}) })),
-    sinIdentificar: emparejados.filter((e) => !e.exerciseId).length,
+    days: diasEmparejados.map((d) => ({
+      name: d.name,
+      exercises: d.exercises.map((e) => ({ ...e, ...(e.exerciseId ? detalles[e.exerciseId] : {}) })),
+    })),
+    sinIdentificar: todos.filter((e) => !e.exerciseId).length,
     remaining: DAILY_LIMIT - usadas,
   });
 }

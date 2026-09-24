@@ -17,7 +17,7 @@ import ExerciseVideoLink from "@/components/ExerciseVideoLink";
 import ExerciseDetailModal from "@/components/ExerciseDetailModal";
 import ExercisePicker, { type PickableExercise } from "@/components/ExercisePicker";
 import { carrySets, emptySet, type SetRow } from "@/lib/replaceExercise";
-import RoutineImport, { type ImportedForBuilder } from "@/components/RoutineImport";
+import RoutineImport, { type ImportedDayForBuilder } from "@/components/RoutineImport";
 
 /** Un ejercicio dentro de la rutina.
  *
@@ -106,6 +106,8 @@ export default function RoutineBuilder({
   /** La fila que se está cambiando por otro ejercicio, o null si no hay ninguna. */
   const [replacingUid, setReplacingUid] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
+  /** Lo que se creó aparte al importar varios días, para poder decirlo. */
+  const [importAviso, setImportAviso] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(!isEditing);
 
   const { results } = useExerciseSearch({ search, muscle: muscleFilter, equipment: equipmentFilter });
@@ -138,26 +140,95 @@ export default function RoutineBuilder({
   /**
    * Mete de golpe lo que vino de una captura o de un texto.
    *
-   * Se añaden al final en vez de reemplazar lo que haya: importar sobre una rutina a medio
-   * hacer no debería borrar el trabajo previo. El nombre solo se pone si la rutina todavía
-   * no tenía uno — lo que escribió la persona manda sobre lo que leyó el modelo.
+   * Una hoja puede traer la semana entera, y un día de entrenamiento es una rutina: el
+   * PRIMER día cae en esta pantalla, donde se ve y se puede retocar antes de que el
+   * autoguardado lo escriba, y los demás se crean aparte sin sacar a nadie de aquí.
+   *
+   * Los ejercicios se añaden al final en vez de reemplazar lo que haya: importar sobre una
+   * rutina a medio hacer no debería borrar el trabajo previo. El nombre solo se pone si la
+   * rutina todavía no tenía uno — lo que escribió la persona manda sobre lo que leyó el
+   * modelo.
    */
-  function importarEjercicios(ejercicios: ImportedForBuilder[], nombreRutina: string | null) {
-    setPicked((prev) => [
-      ...prev,
-      ...ejercicios.map((e) => ({
-        uid: newUid(),
-        id: e.id,
-        name: e.name,
-        media_url: e.media_url,
-        measurement_type: e.measurement_type,
-        sets: e.sets,
-        notes: e.notes ?? "",
-        restSeconds: e.restSeconds ?? DEFAULT_REST_SECONDS,
-      })),
-    ]);
-    if (nombreRutina && !name.trim()) setName(nombreRutina);
+  async function importarDias(dias: ImportedDayForBuilder[], nombreRutina: string | null) {
     setImportando(false);
+    setImportAviso(null);
+    const [primero, ...resto] = dias;
+    if (!primero) return;
+
+    setPicked((prev) => {
+      // Las superseries del día importado se numeran desde 1; si la rutina abierta ya
+      // tenía grupos, se corren para que no se fusionen dos superseries distintas.
+      const usados = prev.map((p) => p.supersetGroup).filter((g): g is number => g != null);
+      const desfase = usados.length ? Math.max(...usados) : 0;
+      return [
+        ...prev,
+        ...primero.exercises.map((e) => ({
+          uid: newUid(),
+          id: e.id,
+          name: e.name,
+          media_url: e.media_url,
+          measurement_type: e.measurement_type,
+          sets: e.sets,
+          notes: e.notes ?? "",
+          restSeconds: e.restSeconds ?? DEFAULT_REST_SECONDS,
+          supersetGroup: e.supersetGroup != null ? e.supersetGroup + desfase : undefined,
+        })),
+      ];
+    });
+
+    if (!name.trim()) setName(primero.name || nombreRutina || "");
+    if (resto.length > 0) await crearRutinasDeDias(resto);
+  }
+
+  /**
+   * Crea una rutina por cada día que no cabe en esta pantalla.
+   *
+   * Se insertan una a una y no en bloque a propósito: si falla la tercera, las dos
+   * primeras ya están creadas y bien, y el aviso dice cuántas salieron. Un insert único
+   * que falla dejaría la importación entera en nada sin decir por dónde se rompió.
+   */
+  async function crearRutinasDeDias(dias: ImportedDayForBuilder[]) {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("sesión expirada");
+
+      const creadas: string[] = [];
+      for (const dia of dias) {
+        const { data: rutina, error } = await supabase.from("routines").insert({
+          trainer_id: role === "trainer" ? auth.user.id : null,
+          created_by: auth.user.id,
+          client_id: role === "client" ? auth.user.id : (clientId || null),
+          source: role,
+          name: dia.name,
+          notes: "",
+          days_of_week: [],
+        }).select().single();
+        if (error || !rutina) throw error ?? new Error("no se pudo crear la rutina");
+
+        const rows = dia.exercises.map((e, i) => ({
+          routine_id: rutina.id,
+          exercise_id: e.id,
+          order_index: i,
+          // Igual que en persist: el descanso viaja dentro del JSON de las series.
+          target_sets: e.sets.map((set) => ({ ...set, rest_sec: e.restSeconds ?? DEFAULT_REST_SECONDS })),
+          notes: e.notes || null,
+          superset_group: e.supersetGroup ?? null,
+        }));
+        const { error: rowsError } = await supabase.from("routine_exercises").insert(rows);
+        if (rowsError) throw rowsError;
+
+        creadas.push(dia.name);
+      }
+
+      setImportAviso(creadas.length === 1
+        ? `Creé también la rutina "${creadas[0]}".`
+        : `Creé también ${creadas.length} rutinas: ${creadas.join(", ")}.`);
+      router.refresh();
+    } catch (e: any) {
+      setSaveError(e?.message
+        ? `No pude crear los otros días: ${e.message}`
+        : "No pude crear los otros días. Revisa tu conexión.");
+    }
   }
 
   function removeExercise(id: string) {
@@ -639,6 +710,17 @@ export default function RoutineBuilder({
         <div style={{ fontSize: 13 }}>{picked.reduce((sum, p) => sum + p.sets.length, 0)} series totales</div>
       </div>
 
+      {importAviso && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 12, marginBottom: 10,
+          background: `${palette.accent}12`, border: `1px solid ${palette.accent}33`,
+          fontSize: 12, lineHeight: 1.5, color: palette.ink,
+        }}>
+          <FileInput size={14} color={palette.accent} style={{ flexShrink: 0 }} />
+          {importAviso}
+        </div>
+      )}
+
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 7, minHeight: 22,
         fontSize: 12, fontWeight: 600, marginBottom: 10,
@@ -675,7 +757,7 @@ export default function RoutineBuilder({
       </button>
 
       {importando && (
-        <RoutineImport onImport={importarEjercicios} onClose={() => setImportando(false)} />
+        <RoutineImport onImport={importarDias} onClose={() => setImportando(false)} />
       )}
 
       {replacingUid && (() => {

@@ -16,7 +16,18 @@ export type RawImportedExercise = {
   reps?: unknown;
   rest?: unknown;
   notes?: unknown;
+  setType?: unknown;
+  superset?: unknown;
 };
+
+/** Lo que devuelve el modelo por cada día. */
+export type RawImportedDay = {
+  name?: unknown;
+  exercises?: unknown;
+};
+
+/** Los tipos de serie que entiende la app. `normal` es el que no hace falta marcar. */
+export type SetType = "normal" | "warmup" | "dropset" | "failure";
 
 export type ImportedExercise = {
   /** El nombre tal como venía en el texto o la imagen. */
@@ -28,7 +39,34 @@ export type ImportedExercise = {
   repsMax?: number;
   restSeconds?: number;
   notes?: string;
+  setType: SetType;
+  /**
+   * Número de superserie dentro de SU día, o undefined si va suelto.
+   *
+   * El modelo devuelve la etiqueta tal como aparece en la rutina ("A", "1", "A1"); aquí se
+   * convierte a los números correlativos que usa la app para pintar los colores.
+   */
+  supersetGroup?: number;
 };
+
+export type ImportedDay = {
+  /** El nombre del día tal como aparece: "Día 1", "Empuje", "Lunes"... */
+  name: string;
+  exercises: ImportedExercise[];
+};
+
+/**
+ * Cómo aparece cada tipo de serie en una rutina escrita.
+ *
+ * Se mira tanto lo que el modelo diga en `setType` como el texto de las repeticiones y de
+ * las notas, porque en una rutina de verdad el dropset no viene en una columna: viene
+ * escrito al lado, como "12 + dropset" o "última serie al fallo".
+ */
+const PISTAS_TIPO: { tipo: SetType; patrones: RegExp }[] = [
+  { tipo: "dropset", patrones: /drop\s*-?\s*set|dropset|descendente|series? descendentes?|strip\s*set/i },
+  { tipo: "failure", patrones: /al\s*fallo|hasta el fallo|to failure|amrap|maximas|máximas/i },
+  { tipo: "warmup", patrones: /calentamiento|warm\s*-?\s*up|aproximaci[oó]n|serie de aproximaci[oó]n/i },
+];
 
 /** Series por defecto cuando el texto no lo dice: lo más común en una rutina escrita. */
 const SERIES_POR_DEFECTO = 3;
@@ -123,6 +161,56 @@ function acotar(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * El tipo de serie, mirando lo que dijo el modelo y también el texto suelto.
+ *
+ * El orden importa: "dropset al fallo" es un dropset, no una serie al fallo, porque el
+ * dropset ya implica llegar al fallo en el último descuelgue.
+ */
+export function parseSetType(declarado: unknown, ...textos: unknown[]): SetType {
+  const candidato = typeof declarado === "string" ? declarado.toLowerCase().trim() : "";
+  if (candidato === "dropset" || candidato === "failure" || candidato === "warmup" || candidato === "normal") {
+    return candidato;
+  }
+
+  const todo = [declarado, ...textos].filter((t): t is string => typeof t === "string").join(" ");
+  for (const { tipo, patrones } of PISTAS_TIPO) {
+    if (patrones.test(todo)) return tipo;
+  }
+  return "normal";
+}
+
+/**
+ * Convierte las etiquetas de superserie en los números correlativos que usa la app.
+ *
+ * Las rutinas las escriben como "A", "A1/A2", "1", "Superserie 1"... Lo único que importa
+ * es qué ejercicios comparten etiqueta, así que se normaliza la etiqueta —quitando el
+ * número de orden dentro del grupo— y se numeran los grupos por orden de aparición.
+ *
+ * Un grupo con un solo ejercicio NO es una superserie: se deja suelto. Pasa cuando el
+ * modelo etiqueta cada ejercicio con una letra distinta creyendo que enumera.
+ */
+export function assignSupersetGroups(etiquetas: (string | undefined)[]): (number | undefined)[] {
+  const normalizada = etiquetas.map((e) => {
+    if (typeof e !== "string") return undefined;
+    // "A1" y "A2" son el mismo grupo A; "superserie 1" es el grupo 1.
+    const limpia = normalizar(e).replace(/superserie|superset|bi-?serie|serie combinada/g, "").trim();
+    const clave = limpia.match(/^([a-z]+)\s*\d*$/)?.[1] ?? limpia.match(/^(\d+)/)?.[1] ?? limpia;
+    return clave || undefined;
+  });
+
+  const cuantos = new Map<string, number>();
+  normalizada.forEach((k) => { if (k) cuantos.set(k, (cuantos.get(k) ?? 0) + 1); });
+
+  const numeroDe = new Map<string, number>();
+  let siguiente = 1;
+  return normalizada.map((k) => {
+    if (!k || (cuantos.get(k) ?? 0) < 2) return undefined;
+    if (!numeroDe.has(k)) numeroDe.set(k, siguiente++);
+    return numeroDe.get(k);
+  });
+}
+
 /** Limpia lo que devolvió el modelo y descarta lo que no tiene nombre. */
 export function normalizeImported(crudos: RawImportedExercise[]): ImportedExercise[] {
   return (Array.isArray(crudos) ? crudos : [])
@@ -131,9 +219,50 @@ export function normalizeImported(crudos: RawImportedExercise[]): ImportedExerci
       if (!name) return null;
       const { reps, repsMax } = parseReps(c.reps);
       const notes = typeof c.notes === "string" && c.notes.trim() ? c.notes.trim() : undefined;
-      return { name, sets: parseSets(c.sets), reps, repsMax, restSeconds: parseRestSeconds(c.rest), notes };
+      return {
+        name, sets: parseSets(c.sets), reps, repsMax, restSeconds: parseRestSeconds(c.rest), notes,
+        setType: parseSetType(c.setType, c.reps, c.notes, c.name),
+      };
     })
     .filter((e): e is ImportedExercise => e !== null);
+}
+
+/**
+ * Los días de la rutina, ya limpios.
+ *
+ * Una rutina subida puede ser un solo día o una semana entera, y eso cambia lo que hay que
+ * crear: un día es una rutina, cinco días son cinco rutinas. Si el modelo no separó días
+ * pero sí devolvió ejercicios, se tratan como un único día sin nombre — que es el caso de
+ * quien pega solo la sesión de hoy.
+ *
+ * Las superseries se numeran DENTRO de cada día: la "A" del lunes y la "A" del miércoles
+ * son grupos distintos.
+ */
+export function normalizeDays(crudos: RawImportedDay[], sueltos?: RawImportedExercise[]): ImportedDay[] {
+  const dias: ImportedDay[] = (Array.isArray(crudos) ? crudos : [])
+    .map((d, i): ImportedDay => {
+      const ejercicios = normalizeImported((d?.exercises ?? []) as RawImportedExercise[]);
+      const grupos = assignSupersetGroups(
+        ((d?.exercises ?? []) as RawImportedExercise[])
+          .filter((c) => typeof c?.name === "string" && c.name.trim())
+          .map((c) => (typeof c.superset === "string" ? c.superset : undefined)),
+      );
+      ejercicios.forEach((e, j) => { e.supersetGroup = grupos[j]; });
+      const nombre = typeof d?.name === "string" && d.name.trim() ? d.name.trim() : `Día ${i + 1}`;
+      return { name: nombre, exercises: ejercicios };
+    })
+    .filter((d) => d.exercises.length > 0);
+
+  if (dias.length > 0) return dias;
+
+  // Sin días pero con ejercicios: es una sesión suelta.
+  const unico = normalizeImported(sueltos ?? []);
+  const grupos = assignSupersetGroups(
+    (sueltos ?? []).filter((c) => typeof c?.name === "string" && c.name.trim())
+      .map((c) => (typeof c.superset === "string" ? c.superset : undefined)),
+  );
+  unico.forEach((e, j) => { e.supersetGroup = grupos[j]; });
+  return unico.length > 0 ? [{ name: "Día 1", exercises: unico }] : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -208,4 +337,78 @@ export function matchExercise(nombre: string, catalogo: CatalogExercise[]): Matc
   }
 
   return mejor && mejor.score >= CONFIANZA_MINIMA ? mejor : null;
+}
+
+// ---------------------------------------------------------------------------
+// De lo leído a lo que guarda la app
+// ---------------------------------------------------------------------------
+
+/**
+ * Qué tipo lleva cada serie de un ejercicio importado.
+ *
+ * Una rutina escrita marca el ejercicio entero, no cada serie: pone "4x10 + dropset" o
+ * "3x8 al fallo". Lo que quiere decir en el gimnasio es distinto según el tipo:
+ *
+ * - Calentamiento: el ejercicio ENTERO es de calentamiento, así que van todas.
+ * - Dropset y al fallo: se hacen en la ÚLTIMA serie. Nadie hace cuatro series seguidas al
+ *   fallo; se llega ahí en la de arriba, después de las de trabajo.
+ *
+ * Es un valor por defecto, no una sentencia: en la revisión se puede cambiar, y dentro de
+ * la rutina cada serie se marca una a una como siempre.
+ */
+export function setTypesFor(sets: number, tipo: SetType): string[] {
+  const cuantas = Math.max(1, sets);
+  if (tipo === "normal") return Array.from({ length: cuantas }, () => "normal");
+  if (tipo === "warmup") return Array.from({ length: cuantas }, () => "warmup");
+  return Array.from({ length: cuantas }, (_, i) => (i === cuantas - 1 ? tipo : "normal"));
+}
+
+/**
+ * Los números de superserie a partir de qué ejercicio va unido al anterior.
+ *
+ * En la pantalla de revisión las superseries se editan con un eslabón entre dos filas
+ * seguidas, que es como funcionan de verdad: una superserie son ejercicios CONSECUTIVOS
+ * que se hacen sin descanso en medio. Partir de los eslabones y recalcular los números
+ * —en vez de editar los números a mano— hace imposible dejar un grupo roto, con un solo
+ * miembro o repartido por la rutina.
+ *
+ * `enlaces[i]` es si el ejercicio i va unido al i-1; `enlaces[0]` se ignora.
+ */
+export function supersetGroupsFromLinks(enlaces: boolean[]): (number | undefined)[] {
+  const grupos: (number | undefined)[] = enlaces.map(() => undefined);
+  let siguiente = 1;
+  for (let i = 1; i < enlaces.length; i++) {
+    if (!enlaces[i]) continue;
+    if (grupos[i - 1] == null) grupos[i - 1] = siguiente++;
+    grupos[i] = grupos[i - 1];
+  }
+  return grupos;
+}
+
+/** Al revés: de los números de grupo a los eslabones que enseña la pantalla. */
+export function linksFromSupersetGroups(grupos: (number | undefined)[]): boolean[] {
+  return grupos.map((g, i) => i > 0 && g != null && g === grupos[i - 1]);
+}
+
+/**
+ * Cómo se llama la rutina de un día.
+ *
+ * El día manda —"Día 2 - Espalda" dice más que nada— y el nombre de la rutina se antepone
+ * solo si aporta algo. Si el día no tiene nombre propio, se numera... salvo cuando la hoja
+ * traía un solo día: ahí "Fuerza · Día 1" sobra y la rutina se llama "Fuerza" y ya está.
+ */
+export function dayRoutineName(
+  nombreRutina: string | null | undefined, nombreDia: string | null | undefined,
+  indice: number, totalDias: number,
+): string {
+  const rutina = (nombreRutina ?? "").trim();
+  const dia = (nombreDia ?? "").trim();
+
+  if (dia && rutina) {
+    // "Fuerza" + "Fuerza día 2" no se repite; "Fuerza" + "Día 2" sí se junta.
+    return normalizar(dia).includes(normalizar(rutina)) ? dia : `${rutina} · ${dia}`;
+  }
+  if (dia) return dia;
+  if (rutina) return totalDias > 1 ? `${rutina} · Día ${indice + 1}` : rutina;
+  return `Día ${indice + 1}`;
 }
