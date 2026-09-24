@@ -38,6 +38,9 @@ export const dynamic = "force-dynamic";
 
 /** Cuántas filas devuelve PostgREST como mucho en una consulta. */
 const PAGINA = 1000;
+/** Tope de páginas. Si algún día una consulta devolviera siempre la misma, el bucle no
+ *  terminaría nunca; con esto para y se queda con lo que haya podido leer. */
+const MAX_PAGINAS = 25;
 
 /**
  * El catálogo entero, página a página.
@@ -49,7 +52,8 @@ const PAGINA = 1000;
  */
 async function cargarCatalogo(supabase: any): Promise<CatalogExercise[]> {
   const todos: CatalogExercise[] = [];
-  for (let desde = 0; ; desde += PAGINA) {
+  for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+    const desde = pagina * PAGINA;
     const { data, error } = await supabase
       .from("exercises").select("id, name, slug").order("id").range(desde, desde + PAGINA - 1);
     if (error || !data || data.length === 0) break;
