@@ -36,6 +36,33 @@ Reglas:
 
 export const dynamic = "force-dynamic";
 
+/** Cuántas filas devuelve PostgREST como mucho en una consulta. */
+const PAGINA = 1000;
+/** Tope de páginas. Si algún día una consulta devolviera siempre la misma, el bucle no
+ *  terminaría nunca; con esto para y se queda con lo que haya podido leer. */
+const MAX_PAGINAS = 25;
+
+/**
+ * El catálogo entero, página a página.
+ *
+ * Una consulta normal devuelve como mucho 1000 filas: es el tope de PostgREST, y no avisa
+ * — simplemente llegan 1000 y parece que eso es todo lo que hay. Con una biblioteca de más
+ * de mil ejercicios, el emparejado no vería los últimos y los daría por "sin identificar"
+ * sin que nada lo delatara.
+ */
+async function cargarCatalogo(supabase: any): Promise<CatalogExercise[]> {
+  const todos: CatalogExercise[] = [];
+  for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+    const desde = pagina * PAGINA;
+    const { data, error } = await supabase
+      .from("exercises").select("id, name, slug").order("id").range(desde, desde + PAGINA - 1);
+    if (error || !data || data.length === 0) break;
+    todos.push(...(data as CatalogExercise[]));
+    if (data.length < PAGINA) break;
+  }
+  return todos;
+}
+
 /**
  * Lee una rutina desde texto pegado o una captura y la devuelve lista para revisar.
  *
@@ -117,9 +144,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "no encontré ningún ejercicio ahí. Prueba con otra captura o pega el texto." }, { status: 422 });
   }
 
-  // El catálogo, solo con lo que hace falta para comparar nombres.
-  const { data: catalogo } = await supabase.from("exercises").select("id, name, slug");
-  const biblioteca = (catalogo ?? []) as CatalogExercise[];
+  const biblioteca = await cargarCatalogo(supabase);
 
   const emparejados = ejercicios.map((e) => {
     const match = matchExercise(e.name, biblioteca);
