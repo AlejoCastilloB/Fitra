@@ -15,8 +15,13 @@ function getTypes(palette: Palette) {
 }
 
 export default function SetTypePopover({
-  current, x, y, onSelect, onClose, onDelete,
-}: { current: string; x: number; y: number; onSelect: (type: string) => void; onClose: () => void; onDelete?: () => void }) {
+  current, x, y, onSelect, onClose, onDelete, zIndex = 100,
+}: {
+  current: string; x: number; y: number;
+  onSelect: (type: string) => void; onClose: () => void; onDelete?: () => void;
+  /** Por encima de quien lo abre. Dentro de un modal hay que subirlo, o sale detrás. */
+  zIndex?: number;
+}) {
   const palette = usePalette();
   const TYPES = getTypes(palette);
   const ref = useRef<HTMLDivElement>(null);
@@ -49,7 +54,7 @@ export default function SetTypePopover({
     <div
       ref={ref}
       style={{
-        position: "fixed", left, top, width, zIndex: 100,
+        position: "fixed", left, top, width, zIndex,
         background: palette.bg, border: `1px solid ${palette.panelBorder}`,
         borderRadius: 14, padding: 6, boxShadow: "0 14px 40px -10px rgba(0,0,0,0.5)",
         animation: "ftPopoverIn .18s cubic-bezier(.16,.8,.24,1) both",
