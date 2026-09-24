@@ -18,7 +18,17 @@ const MUSCLE_ES: Record<string, string> = {
   traps: "Trapecios",
   triceps: "Tríceps",
   "upper-back": "Espalda alta",
+  plyometrics: "Pliometría",
 };
+
+/**
+ * Las categorías que siempre se ofrecen al crear un ejercicio.
+ *
+ * La lista de grupos musculares sale de los ejercicios que YA existen, así que una
+ * categoría nueva no aparecería en ningún desplegable hasta que alguien la escribiera a
+ * mano la primera vez. Estas se ofrecen desde el principio.
+ */
+export const MUSCULOS_SUGERIDOS: string[] = Object.keys(MUSCLE_ES);
 
 export function muscleLabel(value?: string | null): string {
   if (!value) return "—";

@@ -5,7 +5,8 @@ import { usePalette, type Palette } from "@/lib/theme";
 import Modal from "@/components/Modal";
 import ExercisePicker, { type PickableExercise } from "@/components/ExercisePicker";
 import { emptySet, type SetRow } from "@/lib/replaceExercise";
-import { ClipboardPaste, ImagePlus, Sparkles, Trash2, ArrowLeftRight, AlertTriangle, Loader2 } from "lucide-react";
+import ExerciseForm from "@/components/ExerciseForm";
+import { ClipboardPaste, ImagePlus, Sparkles, Trash2, ArrowLeftRight, AlertTriangle, Loader2, Plus } from "lucide-react";
 
 /** Lo que la ruta de IA devuelve por cada ejercicio leído. */
 type FilaImportada = {
@@ -61,6 +62,7 @@ export default function RoutineImport({
   const [filas, setFilas] = useState<FilaImportada[] | null>(null);
   const [nombreRutina, setNombreRutina] = useState<string | null>(null);
   const [eligiendoPara, setEligiendoPara] = useState<number | null>(null);
+  const [creandoPara, setCreandoPara] = useState<number | null>(null);
 
   async function elegirImagen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -113,6 +115,20 @@ export default function RoutineImport({
       confidence: 100,
     });
     setEligiendoPara(null);
+  }
+
+  /** El ejercicio recién creado queda puesto en su fila, sin tener que buscarlo otra vez. */
+  function usarRecienCreado(indice: number, creado: any) {
+    if (creado?.id) {
+      cambiar(indice, {
+        exerciseId: creado.id,
+        matchedName: creado.name,
+        media_url: creado.media_url ?? undefined,
+        measurement_type: creado.measurement_type,
+        confidence: 100,
+      });
+    }
+    setCreandoPara(null);
   }
 
   const identificadas = (filas ?? []).filter((f) => f.exerciseId);
@@ -219,6 +235,7 @@ export default function RoutineImport({
                   palette={palette}
                   onCambiar={(c) => cambiar(i, c)}
                   onElegir={() => setEligiendoPara(i)}
+                  onCrear={() => setCreandoPara(i)}
                   onBorrar={() => borrar(i)}
                 />
               ))}
@@ -259,6 +276,15 @@ export default function RoutineImport({
         )}
       </Modal>
 
+      {creandoPara !== null && filas && (
+        <ExerciseForm
+          existingExercises={[]}
+          initialName={filas[creandoPara].importedName}
+          onSaved={(creado) => usarRecienCreado(creandoPara, creado)}
+          onClose={() => setCreandoPara(null)}
+        />
+      )}
+
       {eligiendoPara !== null && filas && (
         <ExercisePicker
           mode="replace"
@@ -272,12 +298,13 @@ export default function RoutineImport({
 }
 
 function FilaRevision({
-  fila, palette, onCambiar, onElegir, onBorrar,
+  fila, palette, onCambiar, onElegir, onCrear, onBorrar,
 }: {
   fila: FilaImportada;
   palette: Palette;
   onCambiar: (c: Partial<FilaImportada>) => void;
   onElegir: () => void;
+  onCrear: () => void;
   onBorrar: () => void;
 }) {
   const identificado = !!fila.exerciseId;
@@ -304,6 +331,13 @@ function FilaRevision({
         <button onClick={onElegir} aria-label="Cambiar ejercicio" title="Elegir otro de la biblioteca" className="ft-touch" style={iconoBtn(palette)}>
           <ArrowLeftRight size={14} />
         </button>
+        {/* Solo donde hace falta: si no está en la biblioteca, el camino es crearlo, no
+            seguir buscándolo. */}
+        {!identificado && (
+          <button onClick={onCrear} aria-label="Crear este ejercicio" title="Crear este ejercicio en la biblioteca" className="ft-touch" style={{ ...iconoBtn(palette), color: palette.accent, borderColor: `${palette.accent}66` }}>
+            <Plus size={15} />
+          </button>
+        )}
         <button onClick={onBorrar} aria-label="Quitar esta fila" className="ft-touch" style={{ ...iconoBtn(palette), color: palette.danger }}>
           <Trash2 size={14} />
         </button>
