@@ -1,7 +1,15 @@
 "use client";
 
+/**
+ * Las maquetas de pantalla que se enseñan en la landing.
+ *
+ * Están dibujadas con los mismos tokens del tema claro de la app en vez de ser capturas:
+ * una captura envejece con cada cambio de la app y pesa, y en un teléfono se ve borrosa.
+ * Esto es la pantalla de verdad en miniatura, y se mantiene sola.
+ */
+
 import { useState } from "react";
-import { Flame, Sparkles, Trophy, Award, Check, X, SkipForward, ChevronRight } from "lucide-react";
+import { Flame, Sparkles, Trophy, Award, Check, X, SkipForward, ChevronRight, Home, TrendingUp, User } from "lucide-react";
 
 const app = {
   bg: "#F4F5F7",
@@ -169,11 +177,11 @@ function ScreenEntreno() {
   );
 }
 
-function ScreenFitra() {
+function ScreenAsistente() {
   return (
     <div style={{ padding: "36px 16px 18px", display: "flex", flexDirection: "column", gap: 8, height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 800, color: app.ink, marginBottom: 4 }}>
-        <Sparkles size={13} color={app.accent} /> Fitra
+        <Sparkles size={13} color={app.accent} /> Tu asistente
       </div>
       <div style={{ ...glassPanel, padding: "9px 11px", fontSize: 10.5, color: app.ink, alignSelf: "flex-start", maxWidth: "84%", borderBottomLeftRadius: 4 }}>
         Cuéntame qué ingredientes tienes y te sugiero algo rico 👋
@@ -229,74 +237,99 @@ function ScreenProgreso() {
   );
 }
 
-const SLIDES = [
-  { Screen: ScreenInicio, caption: "Tu día, de un vistazo — rutina, calorías y macros en una sola tarjeta." },
-  { Screen: ScreenEntreno, caption: "Marca tus series (con calentamiento y dropsets incluidos), salta el descanso si quieres, o toca un ejercicio para ver su detalle." },
-  { Screen: ScreenFitra, caption: "Fitra te sugiere recetas con su preparación paso a paso, solo con contarle qué tienes." },
-  { Screen: ScreenProgreso, caption: "Racha, récords y volumen — tu progreso real, medido automáticamente." },
+/** Cada bloque de la landing: una pantalla con lo que cuenta. */
+export const SCREENS: { id: string; Screen: () => JSX.Element; tab: number; title: string; text: string }[] = [
+  {
+    id: "inicio",
+    Screen: ScreenInicio,
+    tab: 0,
+    title: "Tu día, de un vistazo",
+    text: "Al abrir la app ves lo que toca hoy: la rutina del día, las calorías que te quedan y tus macros. Sin menús ni pestañas de por medio.",
+  },
+  {
+    id: "entreno",
+    Screen: ScreenEntreno,
+    tab: 0,
+    title: "Entrena sin pelear con la app",
+    text: "Marca cada serie con un toque. Calentamientos, dropsets y superseries se ven como lo que son, el descanso arranca solo al terminar una serie y puedes saltarlo cuando quieras.",
+  },
+  {
+    id: "asistente",
+    Screen: ScreenAsistente,
+    tab: 1,
+    title: "Nutrición sin contar a mano",
+    text: "Tómale una foto al plato y tu asistente calcula calorías y macros. ¿No sabes qué cocinar? Cuéntale qué tienes en la cocina y te arma la receta con su preparación paso a paso.",
+  },
+  {
+    id: "progreso",
+    Screen: ScreenProgreso,
+    tab: 2,
+    title: "Tu progreso, medido solo",
+    text: "Racha, récords personales y volumen total se calculan con lo que vas marcando. No hay nada que apuntar aparte para ver si estás avanzando.",
+  },
 ];
 
-export default function AppTour() {
-  const [active, setActive] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-
-  function go(i: number) {
-    setActive((i + SLIDES.length) % SLIDES.length);
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    setTouchStartX(e.touches[0].clientX);
-  }
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (dx > 40) go(active - 1);
-    else if (dx < -40) go(active + 1);
-    setTouchStartX(null);
-  }
-
-  const { Screen, caption } = SLIDES[active];
-
+/**
+ * El teléfono que enmarca una pantalla.
+ *
+ * Se escala con un transform y el hueco que ocupa se calcula aparte: si se escalara sin
+ * reservar el tamaño, el teléfono encogería pero seguiría ocupando el alto entero y
+ * dejaría un agujero debajo.
+ */
+export function PhoneFrame({ children, tab = 0, scale = 1 }: { children: React.ReactNode; tab?: number; scale?: number }) {
+  const ANCHO = 240;
+  const ALTO = 500;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          width: 240, height: 500, borderRadius: 38, background: "#0A0C10", padding: 12,
-          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.08)",
-          position: "relative",
-        }}
-      >
+    <div style={{ width: ANCHO * scale, height: ALTO * scale, flexShrink: 0 }}>
+      <div style={{
+        width: ANCHO, height: ALTO, borderRadius: 38, background: "#0A0C10", padding: 12,
+        boxShadow: "0 30px 60px -24px rgba(20,24,34,0.45), inset 0 0 0 1px rgba(255,255,255,0.08)",
+        position: "relative", transform: `scale(${scale})`, transformOrigin: "top left",
+      }}>
         <div style={{ width: "100%", height: "100%", borderRadius: 27, background: app.bg, overflow: "hidden", position: "relative" }}>
           <div style={{
             position: "absolute", top: 9, left: "50%", transform: "translateX(-50%)", width: 68, height: 20,
             borderRadius: 999, background: "#0A0C10", zIndex: 2,
             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
           }} />
-          <div key={active} className="ft-step-in" style={{ height: "100%" }}>
-            <Screen />
-          </div>
+          <div style={{ height: "100%", paddingBottom: ALTO_TAB }}>{children}</div>
+          <TabBar activo={tab} />
         </div>
       </div>
+    </div>
+  );
+}
 
-      <p style={{ fontSize: 13, color: "#E7EAEE", textAlign: "center", lineHeight: 1.5, maxWidth: 260, margin: "18px 0 14px", minHeight: 40 }}>
-        {caption}
-      </p>
+/** Alto de la barra de pestañas, descontado del alto útil de la pantalla. */
+const ALTO_TAB = 44;
 
-      <div style={{ display: "flex", gap: 7 }}>
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => go(i)}
-            aria-label={`Ver pantalla ${i + 1}`}
-            style={{
-              width: i === active ? 20 : 7, height: 7, borderRadius: 4, border: "none", cursor: "pointer",
-              background: i === active ? "#B9C2CE" : "rgba(255,255,255,0.18)", transition: "all .25s ease",
-            }}
-          />
-        ))}
-      </div>
+/**
+ * La barra de abajo, igual que la de la app.
+ *
+ * No es decoración: sin ella las pantallas cortas dejaban un hueco blanco al final del
+ * teléfono que parecía un error de maquetación en vez de una app.
+ */
+function TabBar({ activo }: { activo: number }) {
+  const items = [
+    { Icon: Home, label: "Inicio" },
+    { Icon: TrendingUp, label: "Progreso" },
+    { Icon: User, label: "Perfil" },
+  ];
+  return (
+    <div style={{
+      position: "absolute", left: 0, right: 0, bottom: 0, height: ALTO_TAB,
+      display: "flex", alignItems: "center", justifyContent: "space-around",
+      background: "rgba(255,255,255,0.86)", borderTop: `1px solid ${app.panelBorder}`,
+    }}>
+      {items.map(({ Icon, label }, i) => (
+        <div key={label} style={{
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+          color: i === activo ? app.accent : app.inkDim, opacity: i === activo ? 1 : 0.65,
+        }}>
+          <Icon size={14} />
+          <span style={{ fontSize: 7.5, fontWeight: 600 }}>{label}</span>
+        </div>
+      ))}
     </div>
   );
 }
