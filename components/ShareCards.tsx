@@ -9,7 +9,7 @@ import { formatDurationLabel } from "@/lib/formatDuration";
  * Ninguna lleva fondo, ni borde, ni sombra de caja, ni nada tocable: lo que no es
  * contenido queda transparente y la imagen se pega encima de una foto.
  *
- * El estilo visual sigue a la app: FitTrack no es una app de gimnasio con neones — su
+ * El estilo visual sigue a la app: Fitra no es una app de gimnasio con neones — su
  * paleta es gris pizarra. Así que la identidad aquí es tipográfica: números enormes,
  * etiquetas diminutas en versalitas muy espaciadas, líneas de un pixel, y un solo motivo
  * geométrico, el anillo de progreso, que es el mismo del cronómetro de descanso.
@@ -189,7 +189,7 @@ function Resumen({ tone, c, data }: { tone: ShareTone; c: ShareInk; data: Workou
       </div>
 
       <Regla c={c} margin="22px auto 0" />
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>Fitra</div>
     </div>
   );
 }
@@ -211,7 +211,7 @@ function Minimo({ tone, c, data }: { tone: ShareTone; c: ShareInk; data: Workout
         <span>{data.setCount} series</span>
       </div>
 
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 26 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 26 }}>Fitra</div>
     </div>
   );
 }
@@ -259,7 +259,7 @@ function Racha({ tone, c, data }: { tone: ShareTone; c: ShareInk; data: WorkoutS
       </div>
 
       <Regla c={c} margin="20px auto 0" />
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>Fitra</div>
     </div>
   );
 }
@@ -290,7 +290,7 @@ function Records({ tone, c, data }: { tone: ShareTone; c: ShareInk; data: Workou
         {data.routineName} · {formatDurationLabel(data.durationSec)}
       </div>
 
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>Fitra</div>
     </div>
   );
 }
@@ -308,7 +308,7 @@ export function AchievementShareCard({
       <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.15, marginBottom: 10 }}>{title}</div>
       <p style={{ fontSize: 13, lineHeight: 1.5, color: c.dim, maxWidth: 260, margin: "0 auto" }}>{description}</p>
       <Regla c={c} margin="22px auto 0" />
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>Fitra</div>
     </div>
   );
 }
@@ -327,7 +327,7 @@ export function VolumeShareCard({
         Eso es como mover <span style={{ color: c.ink, fontWeight: 700 }}>{comparison.text}</span>
       </p>
       <Regla c={c} margin="22px auto 0" />
-      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>FitTrack</div>
+      <div style={{ ...WORDMARK, color: c.faint, marginTop: 18 }}>Fitra</div>
     </div>
   );
 }

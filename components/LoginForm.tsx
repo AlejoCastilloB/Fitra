@@ -62,7 +62,7 @@ export default function LoginForm() {
         boxShadow: "0 20px 60px -20px rgba(0,0,0,0.35)",
       }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px" }}>Bienvenido de vuelta</h2>
-        <p style={{ color: palette.inkDim, fontSize: 14.5, margin: "0 0 26px" }}>Entra a tu cuenta de FitTrack</p>
+        <p style={{ color: palette.inkDim, fontSize: 14.5, margin: "0 0 26px" }}>Entra a tu cuenta de Fitra</p>
 
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Field

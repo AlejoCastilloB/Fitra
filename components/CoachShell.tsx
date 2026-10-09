@@ -57,7 +57,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
           background: palette.panel, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
           padding: "24px 14px", flexDirection: "column", gap: 4,
         }}>
-          <div style={{ fontWeight: 700, fontSize: 17, padding: "0 10px 24px", letterSpacing: "-0.01em" }}>FitTrack</div>
+          <div style={{ fontWeight: 700, fontSize: 17, padding: "0 10px 24px", letterSpacing: "-0.01em" }}>Fitra</div>
 
           <NavItem href="/coach" icon={<Home size={17} />} label="Hoy" />
           <NavItem href="/coach/clients" icon={<Users size={17} />} label="Clientes" />
@@ -95,7 +95,7 @@ export default function CoachShell({ userEmail, children, initialTheme }: { user
             borderBottom: `1px solid ${palette.panelBorder}`, background: palette.panel,
             backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", position: "sticky", top: 0, zIndex: 40,
           }}>
-            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em" }}>FitTrack</span>
+            <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.01em" }}>Fitra</span>
             <button onClick={() => setMoreOpen(true)} aria-label="Más opciones" style={{
               background: "none", border: "none", color: palette.ink, cursor: "pointer", display: "flex",
             }}>

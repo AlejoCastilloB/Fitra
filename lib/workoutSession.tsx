@@ -47,6 +47,8 @@ type Ctx = {
 };
 
 const WorkoutSessionContext = createContext<Ctx | null>(null);
+// La clave se queda con el nombre viejo a propósito: aquí vive el entrenamiento en
+// curso, y renombrarla se lo borraría a quien esté entrenando justo al desplegar.
 const STORAGE_KEY = "fittrack_active_workout";
 
 let exerciseUidCounter = 0;

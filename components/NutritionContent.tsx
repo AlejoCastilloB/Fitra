@@ -8,7 +8,7 @@ import { Camera, Loader2, Sparkles, Mic, Square, ChevronDown, Droplet, Plus, Sta
 import MacroRing from "@/components/MacroRing";
 import SwipeCarousel from "@/components/SwipeCarousel";
 import Modal from "@/components/Modal";
-import FitraCamera from "@/components/FitraCamera";
+import FoodCamera from "@/components/FoodCamera";
 import Overlay from "@/components/Overlay";
 import Link from "next/link";
 import { DAILY_GOALS } from "@/lib/nutritionGoals";
@@ -149,7 +149,7 @@ export default function NutritionContent() {
       reader.onload = () => {
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          // Suficiente resolución para que Fitra pueda contar unidades (albóndigas, rodajas, etc.)
+          // Suficiente resolución para que el asistente pueda contar unidades (albóndigas, rodajas, etc.)
           // en vez de solo reconocer el tipo de platillo — la precisión de la porción depende de esto.
           const maxDim = 1280;
           const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
@@ -397,7 +397,7 @@ export default function NutritionContent() {
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Nutrición</h1>
       <p style={{ color: palette.inkDim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 18 }}>
-        Toma una foto, escríbelo o graba una nota — Fitra se encarga del resto.
+        Toma una foto, escríbelo o graba una nota — tu asistente se encarga del resto.
       </p>
 
       <div className="ft-pop" style={{ marginBottom: 14 }}>
@@ -469,7 +469,7 @@ export default function NutritionContent() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>Antes de calcular...</div>
               <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.4 }}>
-                Cuéntale qué es, cómo se preparó o cuál parte de la foto comiste — Fitra calcula solo eso.
+                Cuéntale qué es, cómo se preparó o cuál parte de la foto comiste — y calcula solo eso.
               </p>
             </div>
             <button onClick={cancelPending} aria-label="Quitar foto" style={{ background: "none", border: "none", color: palette.inkDim, cursor: "pointer", flexShrink: 0, display: "flex" }}>
@@ -485,7 +485,7 @@ export default function NutritionContent() {
             <p style={{ fontSize: 11.5, color: palette.accent, marginBottom: 14 }}>✓ Nota de voz lista</p>
           ) : (
             <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.4, marginBottom: 14 }}>
-              💡 Si la foto tiene comida de varias personas o no te lo comiste todo, dilo en el audio y Fitra cuenta solo tu parte.
+              💡 Si la foto tiene comida de varias personas o no te lo comiste todo, dilo en el audio y cuenta solo tu parte.
             </p>
           )}
 
@@ -495,7 +495,7 @@ export default function NutritionContent() {
             fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             opacity: analyzing ? 0.7 : 1,
           }}>
-            {analyzing ? <><Loader2 size={16} className="ft-spin" /> Fitra está analizando...</> : <><Sparkles size={16} /> Calcular calorías</>}
+            {analyzing ? <><Loader2 size={16} className="ft-spin" /> Analizando tu plato...</> : <><Sparkles size={16} /> Calcular calorías</>}
           </button>
           <button onClick={cancelPending} disabled={analyzing} style={{ width: "100%", padding: 10, borderRadius: 12, border: "none", background: "none", color: palette.inkDim, fontSize: 12.5, cursor: "pointer" }}>
             Cancelar
@@ -512,7 +512,7 @@ export default function NutritionContent() {
           </button>
 
           {/* Las dos formas de registrar sin usar la cámara. La nota de voz no pide foto:
-              basta con contarle a Fitra qué comiste. */}
+              basta con contar qué comiste. */}
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button onClick={() => { setError(""); setCoachTip(""); fileRef.current?.click(); }} style={secondaryBtn(palette)}>
               <Images size={14} /> Subir foto
@@ -525,9 +525,9 @@ export default function NutritionContent() {
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button onClick={() => setShowSaved(true)} style={secondaryBtn(palette)}><Star size={14} /> Comidas guardadas {savedMeals.length > 0 && `(${savedMeals.length})`}</button>
           </div>
-          <FirstTimeHint id="ask_fitra" text="Fitra te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
+          <FirstTimeHint id="ask_fitra" text="Tu asistente te sugiere recetas con lo que tengas en la cocina — cuéntale por texto o mándale una foto de tus ingredientes." />
           <Link href="/app/nutrition/recipes" onClick={() => markHintSeen("ask_fitra")} style={{ ...secondaryBtn(palette), textDecoration: "none", marginBottom: 16, background: `${palette.accent}18`, borderColor: `${palette.accent}55` }}>
-            <Sparkles size={14} color={palette.accent} /> Preguntarle a Fitra por recetas
+            <Sparkles size={14} color={palette.accent} /> Pedirle una receta al asistente
           </Link>
         </>
       )}
@@ -629,7 +629,7 @@ export default function NutritionContent() {
                       {fixingId === l.id ? (
                         <div>
                           <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                            <Wand2 size={12} /> Ajustar con Fitra
+                            <Wand2 size={12} /> Ajustar con el asistente
                           </div>
                           <p style={{ fontSize: 11.5, color: palette.inkDim, lineHeight: 1.45, marginBottom: 8 }}>
                             Cuéntale qué faltó o qué quedó mal y vuelve a calcular sobre la misma foto.
@@ -706,7 +706,7 @@ export default function NutritionContent() {
       )}
 
       {showCamera && (
-        <FitraCamera
+        <FoodCamera
           onCapture={handleCameraCapture}
           onClose={() => setShowCamera(false)}
           onPickFromGallery={() => fileRef.current?.click()}
@@ -735,9 +735,9 @@ function VoiceLogModal({
 }) {
   const palette = usePalette();
   return (
-    <Modal title="Cuéntale a Fitra qué comiste" onClose={onClose} maxWidth={400}>
+    <Modal title="Cuéntale qué comiste" onClose={onClose} maxWidth={400}>
       <p style={{ fontSize: 12, color: palette.inkDim, lineHeight: 1.5, marginBottom: 14 }}>
-        Sin foto: grábale una nota de voz o escríbelo, y Fitra calcula las calorías y los macros.
+        Sin foto: graba una nota de voz o escríbelo, y tu asistente calcula las calorías y los macros.
       </p>
       <textarea
         value={text} onChange={(e) => onTextChange(e.target.value)}
@@ -757,7 +757,7 @@ function VoiceLogModal({
         fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         opacity: submitting || (!text.trim() && !hasAudio) ? 0.6 : 1,
       }}>
-        {submitting ? <><Loader2 size={16} className="ft-spin" /> Fitra está calculando...</> : <><Sparkles size={16} /> Calcular calorías</>}
+        {submitting ? <><Loader2 size={16} className="ft-spin" /> Calculando...</> : <><Sparkles size={16} /> Calcular calorías</>}
       </button>
     </Modal>
   );

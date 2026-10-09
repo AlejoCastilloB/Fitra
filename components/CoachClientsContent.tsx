@@ -211,7 +211,7 @@ function ClientCard({ client, palette, index }: { client: ClientRow; palette: Pa
       <div style={{ display: "flex", gap: 8 }}>
         <Stat palette={palette} icon={<Dumbbell size={12} />} label="Última sesión" value={relativeDay(s.lastWorkoutAt)} />
         {/* Con la nutrición apagada no se enseña un 0/7 que parece abandono: es que esta
-            persona usa FitTrack solo para entrenar. */}
+            persona usa Fitra solo para entrenar. */}
         {s.nutritionEnabled && (
           <Stat palette={palette} icon={<Utensils size={12} />} label="Nutrición" value={`${s.daysLoggedFoodThisWeek}/7 días`} hint={s.kcalToday > 0 ? `${Math.round(s.kcalToday).toLocaleString("es-CO")} kcal hoy` : "Sin registro hoy"} />
         )}
@@ -311,7 +311,7 @@ function InviteModal({ trainerId, onClose, onInvited }: { trainerId: string; onC
       ) : (
         <div>
           <p style={{ fontSize: 12, color: palette.inkDim, marginBottom: 14, lineHeight: 1.5 }}>
-            Si la persona ya tiene una cuenta en FitTrack, escribe su correo y le va a aparecer una invitación para aceptarte como su entrenador.
+            Si la persona ya tiene una cuenta en Fitra, escribe su correo y le va a aparecer una invitación para aceptarte como su entrenador.
           </p>
           {sentTo ? (
             <div style={{ padding: 12, borderRadius: 10, background: `${palette.accent}18`, color: palette.accent, fontSize: 13, fontWeight: 600, textAlign: "center" }}>

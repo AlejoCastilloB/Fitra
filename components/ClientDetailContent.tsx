@@ -221,8 +221,8 @@ function Field({ label, value, palette }: { label: string; value: string; palett
 /**
  * Encender o apagar la nutrición de este cliente.
  *
- * Mucha gente usa FitTrack solo para entrenar. Apagado, a esta persona le desaparecen la
- * pestaña de comidas, las calorías del inicio, Fitra y —sobre todo— los recordatorios de
+ * Mucha gente usa Fitra solo para entrenar. Apagado, a esta persona le desaparecen la
+ * pestaña de comidas, las calorías del inicio, el asistente y —sobre todo— los recordatorios de
  * comida, que si no le suenan cuatro veces al día sin tener dónde registrar nada.
  *
  * Lo que ya haya registrado no se borra: si se vuelve a encender, sigue ahí.
@@ -269,7 +269,7 @@ function NutritionSwitch({
           </div>
           <p style={{ fontSize: 12, color: palette.inkDim, lineHeight: 1.55 }}>
             {enabled
-              ? "Ve el registro de comidas, las calorías, Fitra y recibe los recordatorios."
+              ? "Ve el registro de comidas, las calorías, el asistente y recibe los recordatorios."
               : "Solo ve la parte de entrenamiento. No recibe recordatorios de comida. Lo que ya registró se conserva."}
           </p>
         </div>

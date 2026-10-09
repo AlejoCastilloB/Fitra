@@ -1,7 +1,7 @@
 /**
  * Quién ve la parte de nutrición.
  *
- * Hay gente que usa FitTrack solo para entrenar. Para ellos, la pestaña de comidas, los
+ * Hay gente que usa Fitra solo para entrenar. Para ellos, la pestaña de comidas, los
  * recordatorios y las insignias de nutrición no son una función de más: son ruido, y
  * encima el teléfono les suena cuatro veces al día pidiendo una foto del almuerzo que
  * nunca van a registrar.

@@ -40,7 +40,7 @@ export const MEAL_COPY: Record<MealSlotKey, { title: string; body: string; noun:
 };
 
 const FOLLOWUP_BODY =
-  "No pasa nada, dile a Fitra qué comiste en una nota de voz y sigue sumando tus macros del día.";
+  "No pasa nada, cuéntale a tu asistente qué comiste en una nota de voz y sigue sumando tus macros del día.";
 
 export const DEFAULT_MEAL_SLOTS: MealSlot[] = [
   { key: "breakfast", label: "Desayuno", time: "07:00", enabled: true },

@@ -70,7 +70,7 @@ export default function InviteBanner() {
         </div>
       </div>
       <p style={{ fontSize: 14, textAlign: "center", lineHeight: 1.5, marginBottom: 20 }}>
-        <strong>{invite.trainerName}</strong> te invitó a vincularte como su cliente en FitTrack.
+        <strong>{invite.trainerName}</strong> te invitó a vincularte como su cliente en Fitra.
       </p>
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={decline} disabled={busy} style={{

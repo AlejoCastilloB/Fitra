@@ -61,7 +61,7 @@ export async function nodeToPngBlob(node: HTMLElement): Promise<Blob> {
   return (await fetch(dataUrl)).blob();
 }
 
-export const TAG_SUGGESTION = "Compartido desde FitTrack — etiquétanos @alejocastillob en tu historia 💪";
+export const TAG_SUGGESTION = "Compartido desde Fitra — etiquétanos @alejocastillob en tu historia 💪";
 
 /** Abre el menú de compartir del teléfono; si no existe, descarga el archivo. */
 export async function shareBlob(blob: Blob, filename: string): Promise<void> {

@@ -301,8 +301,8 @@ export default function ProfileSettingsPage() {
         <ListRow
           label="Usar la parte de nutrición"
           sublabel={nutritionEnabled
-            ? "Registro de comidas, calorías, Fitra y recordatorios"
-            : "Apagada: FitTrack se queda solo con el entrenamiento"}
+            ? "Registro de comidas, calorías, asistente y recordatorios"
+            : "Apagada: Fitra se queda solo con el entrenamiento"}
           right={<Toggle checked={nutritionEnabled} onChange={toggleNutrition} />}
         />
         {nutritionEnabled && (

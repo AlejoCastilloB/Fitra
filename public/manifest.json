@@ -1,6 +1,6 @@
 {
-  "name": "FitTrack",
-  "short_name": "FitTrack",
+  "name": "Fitra",
+  "short_name": "Fitra",
   "description": "Entrenamiento, nutrición y seguimiento de coach en una sola plataforma.",
   "start_url": "/",
   "display": "standalone",

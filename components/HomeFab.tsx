@@ -84,7 +84,7 @@ export default function HomeFab({ nutritionEnabled = true }: { nutritionEnabled?
     ]),
     ...(nutritionEnabled ? [
       { icon: <Camera size={17} />, label: "Registrar comida", href: "/app/progress?tab=nutrition", external: false },
-      { icon: <Sparkles size={17} />, label: "Preguntarle a Fitra", href: "/app/nutrition/recipes", external: false },
+      { icon: <Sparkles size={17} />, label: "Pedirle una receta al asistente", href: "/app/nutrition/recipes", external: false },
     ] : []),
     ...(coachWhatsapp
       ? [{ icon: <Phone size={17} />, label: "Hablar con tu coach", href: `https://wa.me/${coachWhatsapp}`, external: true }]
@@ -98,7 +98,7 @@ export default function HomeFab({ nutritionEnabled = true }: { nutritionEnabled?
           id="fab_menu"
           floating
           text={nutritionEnabled
-            ? "Toca aquí para empezar un entrenamiento, registrar comida, preguntarle a Fitra o hablar con tu coach."
+            ? "Toca aquí para empezar un entrenamiento, registrar comida, pedirle una receta al asistente o hablar con tu coach."
             : "Toca aquí para empezar un entrenamiento o hablar con tu coach."}
         />
       )}
