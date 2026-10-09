@@ -81,7 +81,7 @@ export default function FoodAnamnesisFlow({ onDone }: { onDone: () => void }) {
     <div style={{ maxWidth: 480, margin: "0 auto", paddingBottom: 30 }}>
       <div style={{ textAlign: "center", marginBottom: 22 }}>
         <Sparkles size={22} color={palette.accent} style={{ marginBottom: 8 }} />
-        <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 6 }}>Antes de empezar con Fitra</h1>
+        <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 6 }}>Antes de empezar</h1>
         <p style={{ fontSize: 12.5, color: palette.inkDim, lineHeight: 1.5 }}>
           Cuéntanos un poco de tus gustos alimenticios para que las sugerencias y los cálculos tengan sentido contigo — solo toma un minuto.
         </p>

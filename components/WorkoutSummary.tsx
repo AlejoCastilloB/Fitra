@@ -269,7 +269,7 @@ export default function WorkoutSummary({
           </div>
         )}
 
-        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>FitTrack</div>
+        <div style={{ marginTop: 20, fontSize: 10, color: palette.inkDim, letterSpacing: "0.04em" }}>Fitra</div>
       </div>
 
       <div style={{ marginBottom: 22 }}>
@@ -343,7 +343,7 @@ export default function WorkoutSummary({
           <ShareStage
             tone={shareTone}
             onToneChange={setShareTone}
-            filename="entreno-fittrack.png"
+            filename="entreno-fitra.png"
             hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
             styles={availableStyles(datosParaCompartir)}
             styleId={shareStyle}

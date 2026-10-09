@@ -12,7 +12,7 @@ export default function RootLoading() {
       fontFamily: "system-ui, sans-serif",
     }}>
       <LoadingMark size={52} />
-      <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", color: palette.inkDim }}>FitTrack</span>
+      <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em", color: palette.inkDim }}>Fitra</span>
     </div>
   );
 }

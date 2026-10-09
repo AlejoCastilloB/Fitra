@@ -6,11 +6,11 @@ import { usePalette } from "@/lib/theme";
 import { X, Images, RefreshCw, Sparkles } from "lucide-react";
 
 /**
- * Cámara propia a pantalla completa con overlay de Fitra, en vez del selector nativo.
+ * Cámara propia a pantalla completa con la guía del asistente, en vez del selector nativo.
  * `onPickFromGallery` abre el selector del sistema para subir una foto ya tomada; también
  * sirve de respaldo si `getUserMedia` no está disponible o el permiso se niega.
  */
-export default function FitraCamera({
+export default function FoodCamera({
   onCapture, onClose, onPickFromGallery,
 }: {
   onCapture: (file: File) => void;
@@ -139,7 +139,7 @@ export default function FitraCamera({
           border: "1px solid rgba(255,255,255,0.22)",
         }}>
           <Sparkles size={14} color="#fff" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>Fitra</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>Asistente</span>
         </div>
 
         <button onClick={() => setFacingMode((f) => (f === "environment" ? "user" : "environment"))} aria-label="Cambiar cámara" style={roundBtn}>

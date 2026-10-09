@@ -3,13 +3,13 @@ import PWARegister from "@/components/PWARegister";
 import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata = {
-  title: "FitTrack",
+  title: "Fitra",
   description: "Entrenamiento, nutrición y seguimiento de coach en una sola plataforma.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FitTrack",
+    title: "Fitra",
   },
 };
 

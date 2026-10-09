@@ -428,7 +428,7 @@ function VolumeDetailModal({ volume, onClose }: { volume: number; onClose: () =>
       <ShareStage
         tone={shareTone}
         onToneChange={setShareTone}
-        filename="volumen-fittrack.png"
+        filename="volumen-fitra.png"
         hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
       >
         <VolumeShareCard tone={shareTone} volume={volume} comparison={comparison} />

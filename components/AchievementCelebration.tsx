@@ -32,7 +32,7 @@ export default function AchievementCelebration({
           <ShareStage
             tone={shareTone}
             onToneChange={setShareTone}
-            filename="insignia-fittrack.png"
+            filename="insignia-fitra.png"
             hint="La imagen sale sin fondo, así que puedes pegarla encima de tu foto en la historia."
           >
             <AchievementShareCard
@@ -85,7 +85,7 @@ export default function AchievementCelebration({
         <p style={{ fontSize: 14, color: palette.inkDim, textAlign: "center", marginBottom: 16, maxWidth: 280 }}>
           {achievement.description}
         </p>
-        <span style={{ fontSize: 12, fontWeight: 700, color: palette.accent, letterSpacing: "0.04em" }}>FitTrack</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: palette.accent, letterSpacing: "0.04em" }}>Fitra</span>
       </div>
 
       <div style={{ marginTop: 24 }} />

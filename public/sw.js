@@ -1,5 +1,5 @@
-const CACHE_NAME = "fittrack-v3";
-const STATIC_CACHE_NAME = "fittrack-static-v3";
+const CACHE_NAME = "fitra-v4";
+const STATIC_CACHE_NAME = "fitra-static-v4";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -77,7 +77,7 @@ async function networkFirst(request) {
 
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || "FitTrack";
+  const title = data.title || "Fitra";
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",

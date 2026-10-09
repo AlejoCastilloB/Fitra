@@ -31,6 +31,8 @@ const EQUIPMENT_EMOJI: Record<string, string> = {
   "Plancha/Parrilla": "🥩", "Olla arrocera": "🍚", Sartén: "🫕", Batidora: "🥣",
 };
 
+// Las claves se quedan con el nombre viejo a propósito: viven en el navegador de
+// quien ya usa la app, y renombrarlas le borraría lo que tenga guardado.
 const PENDING_INVITE_KEY = "fittrack_pending_invite";
 const PENDING_ONBOARDING_KEY = "fittrack_pending_onboarding";
 const STEP_COUNT = 14;
@@ -64,7 +66,7 @@ function buildAiContext({
   if (weightKg && heightCm && age) lines.push(`Peso: ${weightKg}kg, altura: ${heightCm}cm, edad: ${age} años.`);
   lines.push(`Nivel de compromiso con el cambio: ${commitment}.`);
   sportsDetails.forEach(({ sport, level: l, experience, includeInPlan }) => {
-    lines.push(`Practica ${sport} (nivel ${l || "no especificado"}, ${experience || "tiempo no especificado"}) — ${includeInPlan ? "quiere incluirlo en su plan de FitTrack" : "prefiere dejarlo en consideración aparte con su coach"}.`);
+    lines.push(`Practica ${sport} (nivel ${l || "no especificado"}, ${experience || "tiempo no especificado"}) — ${includeInPlan ? "quiere incluirlo en su plan de Fitra" : "prefiere dejarlo en consideración aparte con su coach"}.`);
   });
   if (injuries.trim()) lines.push(`Lesiones o molestias reportadas: ${injuries.trim()}.`);
   if (medicalNotes.trim()) lines.push(`Notas médicas: ${medicalNotes.trim()}.`);
@@ -468,7 +470,7 @@ function OnboardingForm() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: palette.inkDim, marginTop: 12, lineHeight: 1.4 }}>
-              FitTrack siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
+              Fitra siempre va a priorizar recomendaciones que puedas sostener en el tiempo, para evitar el efecto rebote.
             </p>
           </AnamnesisStep>
         )}
@@ -603,7 +605,7 @@ function OnboardingForm() {
               </label>
               {signupError && <p style={{ color: "#f87171", fontSize: 12.5 }}>{signupError}</p>}
               <p style={{ fontSize: 11, color: palette.inkDim, lineHeight: 1.5 }}>
-                Te vamos a mandar un correo de confirmación, pero no hace falta que lo confirmes para empezar a usar FitTrack ya mismo.
+                Te vamos a mandar un correo de confirmación, pero no hace falta que lo confirmes para empezar a usar Fitra ya mismo.
               </p>
             </div>
           </AnamnesisStep>
@@ -619,7 +621,7 @@ function OnboardingForm() {
             </div>
             <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>Revisa tu correo</h2>
             <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.5 }}>
-              Te enviamos un link a <strong style={{ color: palette.ink }}>{email}</strong>. Apenas lo abras, quedas dentro de FitTrack con todo lo que nos contaste ya guardado.
+              Te enviamos un link a <strong style={{ color: palette.ink }}>{email}</strong>. Apenas lo abras, quedas dentro de Fitra con todo lo que nos contaste ya guardado.
             </p>
           </div>
         )}
@@ -640,7 +642,7 @@ function OnboardingForm() {
               {displayName ? `¡Listo, ${displayName.trim()}!` : "¡Todo listo!"}
             </h2>
             <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 26 }}>
-              Ya armamos tu perfil. FitTrack va a usar todo esto para darte mejores recomendaciones desde el primer día.
+              Ya armamos tu perfil. Fitra va a usar todo esto para darte mejores recomendaciones desde el primer día.
             </p>
             <button onClick={() => router.push("/app")} disabled={saving} style={{
               width: "100%", padding: 13, borderRadius: 12, border: "none", cursor: "pointer",

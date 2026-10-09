@@ -11,7 +11,7 @@ import Button from "@/components/Button";
 
 type Msg = { role: "user" | "assistant"; content: string; recipe?: Recipe | null; saved?: boolean };
 
-const GREETING: Msg = { role: "assistant", content: "Hola, soy Fitra 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." };
+const GREETING: Msg = { role: "assistant", content: "Hola 👋 Cuéntame qué ingredientes tienes disponibles (por texto o con una foto) y te sugiero una receta rica que te ayude a llegar a tus metas de hoy." };
 const CONTEXT_WINDOW = 20;
 
 export default function RecipeChat() {
@@ -118,7 +118,7 @@ export default function RecipeChat() {
       });
       const data = await res.json();
 
-      if (!res.ok) setError(data.message || data.error || "Error al hablar con Fitra");
+      if (!res.ok) setError(data.message || data.error || "Error al hablar con el asistente");
       else {
         const assistantMsg: Msg = { role: "assistant", content: data.reply, recipe: data.recipe };
         setMessages([...nextMessages, assistantMsg]);
@@ -139,7 +139,7 @@ export default function RecipeChat() {
   async function saveRecipe(msgIdx: number, recipe: Recipe) {
     const { data: auth } = await supabase.auth.getUser();
     await supabase.from("nutrition_logs").insert({
-      client_id: auth.user!.id, food_name: recipe.title, portion: "Receta sugerida por Fitra",
+      client_id: auth.user!.id, food_name: recipe.title, portion: "Receta sugerida por el asistente",
       kcal: recipe.kcal, protein: recipe.protein, carbs: recipe.carbs, fat: recipe.fat,
       source: "manual", recipe_data: recipe,
     });
@@ -163,7 +163,7 @@ export default function RecipeChat() {
         </button>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-            <Sparkles size={14} color={palette.accent} /> Fitra
+            <Sparkles size={14} color={palette.accent} /> Tu asistente
           </div>
           <div style={{ fontSize: 11, color: palette.inkDim }}>Sugerencias de recetas</div>
         </div>
@@ -243,7 +243,7 @@ export default function RecipeChat() {
           <div onClick={(e) => e.stopPropagation()} style={{ ...palette.modalPanel, padding: 22, width: "100%", maxWidth: 340 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>¿Empezar una conversación nueva?</h3>
             <p style={{ fontSize: 12.5, color: palette.inkDim, marginBottom: 18, lineHeight: 1.5 }}>
-              Se borra todo lo que hablaste con Fitra hasta ahora, con sus recetas. No se puede deshacer.
+              Se borra todo lo que hablaste con el asistente hasta ahora, con sus recetas. No se puede deshacer.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <Button variant="ghost" fullWidth onClick={() => setConfirmNew(false)}>Cancelar</Button>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Lightbulb, X } from "lucide-react";
 import { usePalette } from "@/lib/theme";
 
+// Las claves se quedan con el nombre viejo a propósito: viven en el navegador de
+// quien ya usa la app, y renombrarlas le borraría lo que tenga guardado.
 const SEEN_PREFIX = "fittrack_hint_seen_";
 const SEEN_EVENT = "fittrack-hint-seen";
 

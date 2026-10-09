@@ -196,7 +196,7 @@ export default function RoutinesContent() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {routines.map((r, i) => {
               // Solo se pueden borrar las propias: las del coach y las sugeridas por
-              // FitTrack no son de este usuario. Duplicar sí vale para todas.
+              // Fitra no son de este usuario. Duplicar sí vale para todas.
               const own = r.source === "client";
               const actions = [
                 {
@@ -222,7 +222,7 @@ export default function RoutinesContent() {
                         <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
                           {busyId === r.id
                             ? "Trabajando..."
-                            : r.source === "platform" ? "Sugerida por FitTrack" : own ? "Creada por ti" : "Asignada por tu coach"}
+                            : r.source === "platform" ? "Sugerida por Fitra" : own ? "Creada por ti" : "Asignada por tu coach"}
                         </div>
                       </Link>
                       {own && (

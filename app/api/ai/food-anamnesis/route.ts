@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
 
-  // Con la nutrición apagada, Fitra no responde. No es solo cosmética: estas rutas gastan
+  // Con la nutrición apagada, el asistente no responde. No es solo cosmética: estas rutas gastan
   // cuota de IA y la pantalla que las llama ya no existe para esta persona, así que una
   // llamada aquí solo puede venir de una pestaña vieja o de fuera de la app.
   if (!(await isNutritionEnabledFor(supabase, user.id))) {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
   const parts: any[] = [
     {
-      text: `Eres Fitra, el asistente nutricional de FitTrack. El usuario está completando su anamnesis alimentaria antes de empezar a usar la app — te cuenta qué le gusta comer, qué evita, y un resumen (texto o nota de voz) de lo que suele comer en una semana típica (desayunos, almuerzos, cenas, snacks).
+      text: `Eres el asistente de nutrición de Fitra. El usuario está completando su anamnesis alimentaria antes de empezar a usar la app — te cuenta qué le gusta comer, qué evita, y un resumen (texto o nota de voz) de lo que suele comer en una semana típica (desayunos, almuerzos, cenas, snacks).
 
 Tu tarea es condensar todo esto en un perfil alimentario corto (máximo 6 líneas), concreto y útil, que OTRO asistente de IA va a leer después para dar sugerencias de comida realistas — menciona patrones típicos de sus comidas, preferencias claras, y qué evitar. No repitas literalmente lo que dijo, sintetiza.
 

@@ -12,7 +12,7 @@ export default function AddToHomeScreenSlide({ onNext }: { onNext: () => void })
       }}>
         <Smartphone size={26} />
       </div>
-      <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 10 }}>Agrega FitTrack a tu pantalla de inicio</h2>
+      <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 10 }}>Agrega Fitra a tu pantalla de inicio</h2>
       <p style={{ fontSize: 13.5, color: palette.inkDim, lineHeight: 1.6, marginBottom: 22 }}>
         Así la abres como una app normal, sin pasar por el navegador cada vez.
       </p>
@@ -23,7 +23,7 @@ export default function AddToHomeScreenSlide({ onNext }: { onNext: () => void })
       }}>
         <InstructionRow number={1} icon={<Share size={16} />} text="Toca el ícono de compartir en la barra del navegador" />
         <InstructionRow number={2} icon={<SquarePlus size={16} />} text='Elige "Agregar a pantalla de inicio"' />
-        <InstructionRow number={3} icon={<Smartphone size={16} />} text="Confirma, y listo — ya tienes FitTrack como app" />
+        <InstructionRow number={3} icon={<Smartphone size={16} />} text="Confirma, y listo — ya tienes Fitra como app" />
       </div>
 
       <button onClick={onNext} style={{

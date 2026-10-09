@@ -71,7 +71,7 @@ function RoutineRow({ routine, isLast }: { routine: RoutineSummary; isLast: bool
       <div>
         <div style={{ fontSize: 14, fontWeight: 600 }}>{routine.name}</div>
         <div style={{ fontSize: 11, color: palette.inkDim, marginTop: 2 }}>
-          {routine.source === "platform" ? "Sugerida por FitTrack" : routine.source === "client" ? "Creada por ti" : "Asignada por tu coach"}
+          {routine.source === "platform" ? "Sugerida por Fitra" : routine.source === "client" ? "Creada por ti" : "Asignada por tu coach"}
         </div>
       </div>
       <ChevronRight size={15} color={palette.inkDim} />

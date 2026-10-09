@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "no autenticado" }, { status: 401 });
 
-  // Con la nutrición apagada, Fitra no responde. No es solo cosmética: estas rutas gastan
+  // Con la nutrición apagada, el asistente no responde. No es solo cosmética: estas rutas gastan
   // cuota de IA y la pantalla que las llama ya no existe para esta persona, así que una
   // llamada aquí solo puede venir de una pestaña vieja o de fuera de la app.
   if (!(await isNutritionEnabledFor(supabase, user.id))) {
@@ -58,12 +58,12 @@ export async function POST(request: Request) {
 
   const { exceeded, today } = await checkAiQuota(supabase, user.id, "food_log", DAILY_LIMIT);
   if (exceeded) {
-    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis de Fitra hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
+    return NextResponse.json({ error: "quota_exceeded", message: `Ya usaste tus ${DAILY_LIMIT} análisis del asistente hoy. Vuelve mañana o regístralo manual.` }, { status: 429 });
   }
 
   const personalization = personalizationPromptBlock(await getPersonalizationContext(supabase, user.id));
 
-  // Se puede registrar una comida sin foto, contándosela a Fitra por voz o por texto. En
+  // Se puede registrar una comida sin foto, contándosela al asistente por voz o por texto. En
   // ese caso las instrucciones de "mide la porción que ves" no aplican y confunden: hay
   // que pedirle que calcule sobre lo que el usuario describe.
   const willHaveImage = !!imageBase64 || !!existingLog?.photo_url;
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
   const parts: any[] = [
     {
-        text: `Eres Fitra, el asistente nutricional de FitTrack. Tu tono es siempre positivo, cercano y motivador — nunca juzgas al usuario.
+        text: `Eres el asistente de nutrición de Fitra. Tu tono es siempre positivo, cercano y motivador — nunca juzgas al usuario.
 
 ${portionRules}
 
