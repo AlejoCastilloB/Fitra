@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mímica de Verbos</title>
+<style>
+  :root{
+    --bg:#f6f4ff; --card:#ffffff; --text:#1e1b3a; --muted:#6b6890;
+    --primary:#6c4cf1; --primary-d:#5238c9; --ok:#12a150; --warn:#e8590c; --line:#e3dfff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14122b; --card:#1f1c3d; --text:#f1efff; --muted:#a29ec9; --line:#322e5e; --primary:#8f77ff; --primary-d:#7a60f0; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;justify-content:center;padding:20px 16px}
+  main{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+  h1{margin:0;text-align:center;font-size:1.6rem}
+  h1 span{color:var(--primary)}
+  .sub{text-align:center;color:var(--muted);margin:-8px 0 0;font-size:.95rem}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .label{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;font-weight:600}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--text);
+    padding:7px 12px;border-radius:999px;cursor:pointer;font-size:.9rem;font-family:inherit}
+  .chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+  .stage{background:var(--card);border:2px dashed var(--primary);border-radius:22px;
+    min-height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:20px;gap:8px;position:relative}
+  .cat{font-size:.85rem;color:var(--muted)}
+  .verb{font-size:clamp(2.2rem,11vw,3.6rem);font-weight:800;letter-spacing:-.02em;word-break:break-word}
+  .verb.hidden{filter:blur(14px);user-select:none}
+  .hint{color:var(--muted);font-size:.9rem}
+  .timer{font-variant-numeric:tabular-nums;font-size:2rem;font-weight:700}
+  .timer.low{color:var(--warn)}
+  .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+  .bar>i{display:block;height:100%;width:100%;background:var(--primary);transition:width 1s linear}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button.big{border:0;border-radius:14px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;
+    font-family:inherit;color:#fff;background:var(--primary)}
+  button.big:hover{background:var(--primary-d)}
+  button.big.ok{background:var(--ok)}
+  button.big.skip{background:var(--warn)}
+  button.big.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  button.big.full{grid-column:1/-1}
+  .score{display:flex;justify-content:space-around;text-align:center}
+  .score b{display:block;font-size:1.7rem}
+  .score small{color:var(--muted)}
+  select{font-family:inherit;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+  footer{text-align:center;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>🎭 Mímica de <span>Verbos</span></h1>
+  <p class="sub">Actúa el verbo sin hablar. ¡Que los demás adivinen!</p>
+
+  <section class="panel">
+    <div class="label">Categoría</div>
+    <div class="row" id="cats"></div>
+    <div class="label" style="margin-top:12px">Dificultad</div>
+    <div class="row" id="diffs"></div>
+    <div class="label" style="margin-top:12px">Tiempo por turno</div>
+    <div class="row">
+      <select id="time">
+        <option value="0">Sin límite</option>
+        <option value="30">30 segundos</option>
+        <option value="45">45 segundos</option>
+        <option value="60" selected>60 segundos</option>
+        <option value="90">90 segundos</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="stage" id="stage">
+    <div class="cat" id="vcat">Pulsa “Nuevo verbo” para empezar</div>
+    <div class="verb" id="verb">🎬</div>
+    <div class="hint" id="hint">Solo el que actúa debe ver la pantalla</div>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <span class="label" style="margin:0">Tiempo</span>
+      <span class="timer" id="clock">--</span>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+  </section>
+
+  <div class="btns">
+    <button class="big full" id="next">🎲 Nuevo verbo</button>
+    <button class="big ghost" id="peek">👁️ Ocultar / mostrar</button>
+    <button class="big ghost" id="reset">♻️ Reiniciar</button>
+    <button class="big ok" id="ok" disabled>✅ ¡Adivinado!</button>
+    <button class="big skip" id="skip" disabled>⏭️ Pasar</button>
+  </div>
+
+  <section class="panel score">
+    <div><b id="sOk">0</b><small>Aciertos</small></div>
+    <div><b id="sSkip">0</b><small>Pasados</small></div>
+    <div><b id="sLeft">0</b><small>Quedan</small></div>
+  </section>
+
+  <footer>Atajos: Espacio = nuevo · Enter = adivinado · S = pasar · H = ocultar</footer>
+</main>
+
+<script>
+// d: 1 fácil, 2 medio, 3 difícil
+const DATA = {
+  "Acciones diarias": [
+    ["Cepillarse los dientes",1],["Peinarse",1],["Ducharse",1],["Dormir",1],["Bostezar",1],
+    ["Afeitarse",1],["Maquillarse",2],["Planchar",2],["Barrer",1],["Cocinar",1],
+    ["Lavar los platos",1],["Tender la cama",2],["Atarse los zapatos",2],["Vestirse",1],["Estornudar",1],
+    ["Regar las plantas",2],["Tomar café",1],["Abrir una puerta con llave",2],["Sacar la basura",2],["Hacer la compra",2]
+  ],
+  "Deportes": [
+    ["Nadar",1],["Correr",1],["Saltar la cuerda",1],["Jugar al tenis",1],["Hacer boxeo",1],
+    ["Lanzar una jabalina",2],["Esquiar",2],["Surfear",2],["Montar a caballo",2],["Levantar pesas",1],
+    ["Jugar al golf",2],["Hacer yoga",2],["Patinar",1],["Escalar una pared",2],["Remar",2],
+    ["Practicar esgrima",3],["Jugar al baloncesto",1],["Lanzar un penalti",2],["Hacer ciclismo",1],["Hacer snowboard",3]
+  ],
+  "Trabajo y oficina": [
+    ["Escribir en el teclado",1],["Hablar por teléfono",1],["Presentar en una pizarra",2],["Imprimir",2],["Firmar un contrato",2],
+    ["Pedir un aumento",3],["Tomar notas",1],["Hacer una videollamada",2],["Grapar papeles",2],["Archivar documentos",3],
+    ["Negociar",3],["Dar un discurso",2],["Esperar la impresora",3],["Silenciar el micrófono",3],["Llegar tarde a la reunión",3],
+    ["Fingir que trabajas",3],["Entregar un informe",2],["Brindar con el equipo",2],["Dibujar un organigrama",3],["Estar en el tráfico",2]
+  ],
+  "Animales": [
+    ["Volar como un pájaro",1],["Nadar como un pez",1],["Rugir como un león",1],["Saltar como un canguro",1],["Arrastrarse como una serpiente",2],
+    ["Trepar como un mono",1],["Cavar como un perro",2],["Ladrar",1],["Maullar",1],["Galopar",2],
+    ["Aletear",2],["Hibernar",3],["Picotear",2],["Cazar un ratón",3],["Ronronear",2],
+    ["Gatear",1],["Nadar como un delfín",2],["Mover la cola",2],["Dormir como un murciélago",3],["Cacarear",2]
+  ],
+  "Cocina": [
+    ["Batir huevos",1],["Cortar cebolla llorando",2],["Amasar pan",2],["Hornear",2],["Servir sopa",2],
+    ["Probar la sal",2],["Pelar papas",2],["Exprimir un limón",2],["Voltear una tortilla",2],["Abrir una lata",2],
+    ["Rallar queso",2],["Moler café",3],["Descorchar vino",3],["Quemar la comida",2],["Mezclar una ensalada",2],
+    ["Freír",1],["Hervir agua",2],["Lamerse los dedos",2],["Usar el rodillo",2],["Preparar sushi",3]
+  ],
+  "Divertidos": [
+    ["Tocar la guitarra",1],["Bailar salsa",1],["Cantar en karaoke",1],["Sacarse una selfie",1],["Tomar una foto",1],
+    ["Pescar",1],["Conducir un coche",1],["Manejar una moto",2],["Dirigir una orquesta",2],["Hacer malabares",2],
+    ["Ser un robot",2],["Caminar sobre la luna",3],["Hacer magia",2],["Ser un zombi",1],["Escalar el Everest",3],
+    ["Pintar un cuadro",1],["Fotografiar un paisaje",2],["Bucear con tiburones",3],["Pilotar un avión",3],["Montar una tienda de campaña",3]
+  ]
+};
+
+const state = {
+  cats: new Set(Object.keys(DATA)),
+  diffs: new Set([1,2,3]),
+  pool: [], current: null,
+  ok: 0, skip: 0, hidden: false,
+  timeLeft: 0, total: 0, timer: null
+};
+const $ = id => document.getElementById(id);
+const DIFF_NAMES = {1:"Fácil",2:"Medio",3:"Difícil"};
+
+// --- filtros ---
+function makeChip(container, text, pressed, onToggle){
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = text; b.setAttribute("aria-pressed", pressed);
+  b.onclick = () => { const p = b.getAttribute("aria-pressed")==="true"; b.setAttribute("aria-pressed", !p); onToggle(!p); };
+  container.appendChild(b);
+}
+Object.keys(DATA).forEach(c => makeChip($("cats"), c, true, on => { on ? state.cats.add(c) : state.cats.delete(c); buildPool(); }));
+[1,2,3].forEach(d => makeChip($("diffs"), DIFF_NAMES[d], true, on => { on ? state.diffs.add(d) : state.diffs.delete(d); buildPool(); }));
+
+function buildPool(){
+  state.pool = [];
+  for(const [cat, list] of Object.entries(DATA)){
+    if(!state.cats.has(cat)) continue;
+    for(const [v,d] of list) if(state.diffs.has(d)) state.pool.push({v,cat,d});
+  }
+  shuffle(state.pool);
+  $("sLeft").textContent = state.pool.length;
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+
+// --- turno ---
+function showVerb(item){
+  state.current = item;
+  $("verb").textContent = item ? item.v : "🎉";
+  $("vcat").textContent = item ? `${item.cat} · ${DIFF_NAMES[item.d]}` : "¡Se acabaron los verbos!";
+  $("hint").textContent = item ? "Actúa sin hablar ni hacer sonidos" : "Pulsa Reiniciar para volver a jugar";
+  $("ok").disabled = $("skip").disabled = !item;
+  setHidden(false);
+  $("sLeft").textContent = state.pool.length;
+}
+function nextVerb(resetClock = true){
+  if(!state.pool.length){ stopTimer(); showVerb(null); return; }
+  showVerb(state.pool.pop());
+  if(resetClock) startTimer();
+}
+function setHidden(h){ state.hidden = h; $("verb").classList.toggle("hidden", h); }
+
+// --- temporizador ---
+function stopTimer(){ clearInterval(state.timer); state.timer = null; }
+function startTimer(){
+  stopTimer();
+  state.total = state.timeLeft = parseInt($("time").value, 10);
+  if(!state.total){ $("clock").textContent = "∞"; $("clock").classList.remove("low"); $("bar").style.width = "100%"; return; }
+  renderClock();
+  state.timer = setInterval(() => {
+    state.timeLeft--; renderClock();
+    if(state.timeLeft <= 0){
+      stopTimer();
+      $("hint").textContent = "⏰ ¡Se acabó el tiempo!";
+      beep();
+    }
+  }, 1000);
+}
+function renderClock(){
+  const t = Math.max(0, state.timeLeft);
+  $("clock").textContent = `${Math.floor(t/60)}:${String(t%60).padStart(2,"0")}`;
+  $("clock").classList.toggle("low", t <= 10);
+  $("bar").style.width = (t / state.total * 100) + "%";
+}
+function beep(){
+  try{
+    const c = new (window.AudioContext||window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 660; g.gain.value = .15;
+    o.start(); o.stop(c.currentTime + .4);
+  }catch(e){}
+}
+
+// --- botones ---
+$("next").onclick  = () => nextVerb();
+$("ok").onclick    = () => { if(!state.current) return; state.ok++;   $("sOk").textContent = state.ok;     nextVerb(); };
+$("skip").onclick  = () => { if(!state.current) return; state.skip++; $("sSkip").textContent = state.skip; nextVerb(false); };
+$("peek").onclick  = () => setHidden(!state.hidden);
+$("reset").onclick = () => {
+  stopTimer(); state.ok = state.skip = 0; state.current = null;
+  $("sOk").textContent = $("sSkip").textContent = 0;
+  buildPool(); showVerb(null);
+  $("vcat").textContent = "Pulsa “Nuevo verbo” para empezar"; $("verb").textContent = "🎬";
+  $("hint").textContent = "Solo el que actúa debe ver la pantalla";
+  $("clock").textContent = "--"; $("bar").style.width = "100%";
+};
+$("time").onchange = () => { if(state.current) startTimer(); };
+
+document.addEventListener("keydown", e => {
+  if(e.target.tagName === "SELECT") return;
+  if(e.code === "Space"){ e.preventDefault(); nextVerb(); }
+  else if(e.key === "Enter") $("ok").click();
+  else if(e.key.toLowerCase() === "s") $("skip").click();
+  else if(e.key.toLowerCase() === "h") $("peek").click();
+});
+
+buildPool();
+</script>
+</body>
+</html>
