@@ -1,0 +1,399 @@
+<title>Mímica de Verbos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: una sola columna centrada. Inicio (ajustes) -> Juego (tarjeta grande del verbo) -> Resumen. */
+  :root{
+    --bg:#eef2f0; --surface:#ffffff; --ink:#12302a; --muted:#52706a; --line:#d3dfdb;
+    --accent:#d1431b; --accent-ink:#ffffff;
+    --ok:#1d7f70; --ok-ink:#ffffff;
+    --stage:#12382f; --stage-ink:#f4fbf8; --stage-soft:#a9d3c8; --stage-line:#2c5c50;
+    --warn:#b4540a;
+    --font-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+    --font-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1b18; --surface:#162622; --ink:#e8f3ef; --muted:#93b3aa; --line:#27403a;
+      --accent:#ff7a50; --accent-ink:#2a0e04;
+      --ok:#4cc7ae; --ok-ink:#06231d;
+      --stage:#1b4a3e; --stage-ink:#f4fbf8; --stage-soft:#b4ded3; --stage-line:#34705f;
+      --warn:#ffb36b; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1b18; --surface:#162622; --ink:#e8f3ef; --muted:#93b3aa; --line:#27403a;
+    --accent:#ff7a50; --accent-ink:#2a0e04;
+    --ok:#4cc7ae; --ok-ink:#06231d;
+    --stage:#1b4a3e; --stage-ink:#f4fbf8; --stage-soft:#b4ded3; --stage-line:#34705f;
+    --warn:#ffb36b; color-scheme:dark;
+  }
+
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;
+    padding-inline:16px;padding-block:24px;min-height:100%}
+  .app{max-width:620px;margin-inline:auto;display:flex;flex-direction:column;gap:16px}
+  h1,h2{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.02em}
+  h1{font-size:clamp(2rem,8vw,2.8rem);font-weight:800;line-height:1.05}
+  h2{font-size:1.4rem;font-weight:800}
+  p{margin:0}
+  .lead{color:var(--muted)}
+  .langs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .tag{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--muted)}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;
+    display:flex;flex-direction:column;gap:12px}
+  .label{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+  .chip{font:inherit;font-size:.92rem;color:var(--ink);background:transparent;border:1px solid var(--line);
+    border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px}
+  .chip:hover{border-color:var(--ok)}
+  .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .chip.all{border-style:dashed}
+  select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;min-height:40px}
+  .switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:.95rem}
+  .switch input{width:20px;height:20px;accent-color:var(--ok)}
+
+  button{font:inherit}
+  .btn{border:0;border-radius:12px;padding:14px 18px;font-weight:700;font-size:1.02rem;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:2px;min-height:56px;text-align:center}
+  .btn small{font-weight:400;font-size:.8rem;opacity:.85}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.accent{background:var(--accent);color:var(--accent-ink)}
+  .btn.ok{background:var(--ok);color:var(--ok-ink)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn:hover:not(:disabled){filter:brightness(1.07)}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+  /* Juego */
+  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .counts{display:flex;gap:14px;font-size:.9rem;color:var(--muted)}
+  .counts b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .stage{background:var(--stage);color:var(--stage-ink);border-radius:20px;padding:26px 20px;
+    min-height:300px;display:flex;flex-direction:column;justify-content:center;gap:18px;position:relative}
+  .stage .meta{font-size:.82rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--stage-soft)}
+  .verb-es{font-family:var(--font-display);font-weight:800;font-size:clamp(2.2rem,11vw,3.7rem);
+    line-height:1.05;letter-spacing:-.025em;text-wrap:balance;overflow-wrap:anywhere}
+  .verb-es.blur{filter:blur(14px);user-select:none}
+  .trans{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--stage-line);padding-top:14px}
+  .trans div{display:flex;gap:12px;align-items:baseline;min-width:0}
+  .trans b{flex:none;width:2.2rem;font-size:.75rem;letter-spacing:.08em;color:var(--stage-soft)}
+  .trans span{font-size:1.2rem;overflow-wrap:anywhere}
+  .note{font-size:.9rem;color:var(--stage-soft)}
+  .clock{display:flex;align-items:center;gap:12px}
+  .clock .t{font-variant-numeric:tabular-nums;font-weight:700;font-size:1.3rem;min-width:3.4rem}
+  .clock .t.low{color:var(--warn)}
+  .bar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+  .bar i{display:block;height:100%;width:100%;background:var(--ok);transition:width 1s linear}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .actions .wide{grid-column:1/-1}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .tools .chip{font-size:.85rem;min-height:36px;padding:6px 12px}
+
+  /* Resumen */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:14px}
+  .stat b{display:block;font-family:var(--font-display);font-size:2.2rem;font-weight:800;font-variant-numeric:tabular-nums}
+  .stat span{color:var(--muted);font-size:.9rem}
+  .hist{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+  .hist li{border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:.9rem}
+
+  @media (prefers-reduced-motion: reduce){ .bar i{transition:none} }
+</style>
+
+<main class="app">
+
+  <!-- INICIO -->
+  <section id="sStart" class="app" style="gap:16px">
+    <header>
+      <h1>Mímica de Verbos</h1>
+      <p class="lead" style="margin-top:8px">Elige temas, sorteen un verbo y actúenlo sin hablar. Los demás adivinan.</p>
+      <div class="langs"><span class="tag">Español</span><span class="tag">Português</span><span class="tag">English</span></div>
+    </header>
+
+    <div class="panel">
+      <div class="label">1 · Temas</div>
+      <div class="row" id="themes"></div>
+      <div class="label" style="margin-top:6px">2 · Dificultad</div>
+      <div class="row" id="diffs"></div>
+      <div class="label" style="margin-top:6px">3 · Tiempo por verbo</div>
+      <div class="row">
+        <select id="time" aria-label="Tiempo por verbo">
+          <option value="0">Sin límite</option>
+          <option value="30">30 segundos</option>
+          <option value="45">45 segundos</option>
+          <option value="60">60 segundos</option>
+          <option value="90">90 segundos</option>
+        </select>
+      </div>
+      <label class="switch"><input type="checkbox" id="trans" checked> Mostrar traducción en portugués e inglés</label>
+    </div>
+
+    <p class="lead" id="poolInfo"></p>
+    <button class="btn accent" id="start"><span>Empezar a jugar</span></button>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="sPlay" class="app" style="gap:14px" hidden>
+    <div class="top">
+      <div class="tools">
+        <button class="chip" id="peek" type="button">Ocultar verbo</button>
+        <button class="chip" id="toggleTrans" type="button">Traducción: sí</button>
+      </div>
+      <div class="counts"><span>Adivinados <b id="cOk">0</b></span><span>Cambiados <b id="cSkip">0</b></span></div>
+    </div>
+
+    <div class="stage" aria-live="polite">
+      <div class="meta" id="vMeta">Tema</div>
+      <div class="verb-es" id="vEs">…</div>
+      <div class="trans" id="vTrans">
+        <div><b>PT</b><span id="vPt"></span></div>
+        <div><b>EN</b><span id="vEn"></span></div>
+      </div>
+      <div class="note" id="note">Solo quien actúa debe mirar la pantalla.</div>
+    </div>
+
+    <div class="clock">
+      <span class="t" id="clock">--</span>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn accent wide" id="another" type="button">Otro verbo<small>Cambia este verbo por uno nuevo</small></button>
+      <button class="btn ok" id="ok" type="button">¡Lo adivinaron!<small>Suma un punto y sigue</small></button>
+      <button class="btn ghost" id="exit" type="button">Salir<small>Ver el resumen</small></button>
+    </div>
+    <p class="lead" style="font-size:.85rem;text-align:center">Atajos: Espacio = otro verbo · Enter = adivinado · Esc = salir · H = ocultar</p>
+  </section>
+
+  <!-- RESUMEN -->
+  <section id="sEnd" class="app" style="gap:16px" hidden>
+    <h2>Resumen de la partida</h2>
+    <div class="stats">
+      <div class="stat"><b id="eOk">0</b><span>Verbos adivinados</span></div>
+      <div class="stat"><b id="eSkip">0</b><span>Verbos cambiados</span></div>
+    </div>
+    <div class="panel" id="histBox">
+      <div class="label">Los que adivinaron</div>
+      <ul class="hist" id="hist"></ul>
+    </div>
+    <div class="actions">
+      <button class="btn accent" id="again" type="button">Jugar otra vez<small>Mismos temas</small></button>
+      <button class="btn ghost" id="home" type="button">Cambiar temas<small>Volver al inicio</small></button>
+    </div>
+  </section>
+</main>
+
+<script>
+// [español, português, English, dificultad 1-3]
+const THEMES = {
+  "Animales": [
+    ["Volar","Voar","Fly",1],["Nadar","Nadar","Swim",1],["Rugir","Rugir","Roar",1],["Saltar","Pular","Jump",1],
+    ["Arrastrarse","Rastejar","Crawl",2],["Trepar","Escalar","Climb",1],["Cavar","Cavar","Dig",2],["Ladrar","Latir","Bark",1],
+    ["Galopar","Galopar","Gallop",2],["Picotear","Bicar","Peck",2],["Hibernar","Hibernar","Hibernate",3],["Ronronear","Ronronar","Purr",2],
+    ["Cazar","Caçar","Hunt",2],["Aletear","Bater as asas","Flap wings",2]
+  ],
+  "Profesiones": [
+    ["Cocinar","Cozinhar","Cook",1],["Pintar una pared","Pintar uma parede","Paint a wall",1],["Cortar el pelo","Cortar o cabelo","Cut hair",2],
+    ["Pilotar un avión","Pilotar um avião","Fly a plane",2],["Operar a un paciente","Operar um paciente","Perform surgery",3],
+    ["Apagar un incendio","Apagar um incêndio","Put out a fire",2],["Dar una clase","Dar uma aula","Teach a class",2],
+    ["Arreglar un coche","Consertar um carro","Fix a car",2],["Fotografiar","Fotografar","Take photos",1],
+    ["Atender el teléfono","Atender o telefone","Answer the phone",1],["Construir una pared","Construir uma parede","Build a wall",2],
+    ["Revisar un diente","Examinar um dente","Examine a tooth",3],["Programar","Programar","Write code",3]
+  ],
+  "Deportes": [
+    ["Surfear","Surfar","Surf",2],["Esquiar","Esquiar","Ski",2],["Boxear","Boxear","Box",1],["Saltar la cuerda","Pular corda","Jump rope",1],
+    ["Patinar","Patinar","Skate",1],["Levantar pesas","Levantar pesos","Lift weights",1],["Remar","Remar","Row",2],
+    ["Jugar al golf","Jogar golfe","Play golf",2],["Practicar esgrima","Praticar esgrima","Fence",3],["Cobrar un penalti","Cobrar um pênalti","Take a penalty",2],
+    ["Escalar una pared","Escalar uma parede","Climb a wall",2],["Montar en bicicleta","Andar de bicicleta","Ride a bike",1],["Jugar al tenis","Jogar tênis","Play tennis",1]
+  ],
+  "Cocina": [
+    ["Batir huevos","Bater ovos","Beat eggs",1],["Amasar","Sovar a massa","Knead dough",2],["Cortar cebolla","Cortar cebola","Chop onions",1],
+    ["Exprimir un limón","Espremer um limão","Squeeze a lemon",2],["Voltear una tortilla","Virar uma omelete","Flip an omelette",2],
+    ["Pelar papas","Descascar batatas","Peel potatoes",2],["Rallar queso","Ralar queijo","Grate cheese",2],["Descorchar vino","Abrir um vinho","Open a wine bottle",3],
+    ["Hervir agua","Ferver água","Boil water",2],["Probar la sal","Provar o sal","Taste for salt",2],["Freír","Fritar","Fry",1],["Servir sopa","Servir sopa","Serve soup",2]
+  ],
+  "Hogar": [
+    ["Barrer","Varrer","Sweep",1],["Planchar","Passar roupa","Iron clothes",2],["Lavar los platos","Lavar a louça","Wash dishes",1],
+    ["Tender la cama","Arrumar a cama","Make the bed",2],["Regar las plantas","Regar as plantas","Water plants",2],["Colgar un cuadro","Pendurar um quadro","Hang a picture",2],
+    ["Aspirar","Passar aspirador","Vacuum",1],["Cepillarse los dientes","Escovar os dentes","Brush teeth",1],["Ducharse","Tomar banho","Take a shower",1],
+    ["Atarse los zapatos","Amarrar os sapatos","Tie shoes",2],["Abrir con llave","Abrir com a chave","Unlock a door",2],["Sacar la basura","Levar o lixo para fora","Take out the trash",2]
+  ],
+  "Oficina": [
+    ["Escribir a máquina","Digitar","Type",1],["Hablar por teléfono","Falar ao telefone","Talk on the phone",1],["Imprimir","Imprimir","Print",2],
+    ["Firmar un contrato","Assinar um contrato","Sign a contract",2],["Presentar en la pizarra","Apresentar no quadro","Present at the whiteboard",2],
+    ["Grapar papeles","Grampear papéis","Staple papers",2],["Hablar con el micrófono apagado","Falar com o microfone desligado","Talk while on mute",3],
+    ["Negociar","Negociar","Negotiate",3],["Llegar tarde a una reunión","Chegar atrasado a uma reunião","Arrive late to a meeting",3],
+    ["Tomar notas","Anotar","Take notes",1],["Brindar","Brindar","Make a toast",2],["Entrar a una videollamada","Entrar em uma videochamada","Join a video call",2]
+  ],
+  "Emociones": [
+    ["Llorar","Chorar","Cry",1],["Reír","Rir","Laugh",1],["Enojarse","Ficar com raiva","Get angry",1],["Asustarse","Assustar-se","Get scared",1],
+    ["Sorprenderse","Surpreender-se","Be surprised",1],["Aburrirse","Entediar-se","Get bored",2],["Sentir vergüenza","Sentir vergonha","Feel embarrassed",3],
+    ["Celebrar","Comemorar","Celebrate",1],["Suspirar","Suspirar","Sigh",2],["Dudar","Duvidar","Doubt",3],["Enamorarse","Apaixonar-se","Fall in love",2],["Tener celos","Ter ciúmes","Be jealous",3]
+  ],
+  "Viajes": [
+    ["Hacer la maleta","Fazer a mala","Pack a suitcase",1],["Comprar un pasaje","Comprar uma passagem","Buy a ticket",2],["Tomar una foto","Tirar uma foto","Take a photo",1],
+    ["Armar una carpa","Montar uma barraca","Pitch a tent",3],["Bucear","Mergulhar","Dive",2],["Conducir un coche","Dirigir um carro","Drive a car",1],
+    ["Perderse","Perder-se","Get lost",2],["Leer un mapa","Ler um mapa","Read a map",2],["Hacer fila","Ficar na fila","Wait in line",2],
+    ["Pedir indicaciones","Pedir direções","Ask for directions",3],["Caminar por la montaña","Caminhar na montanha","Hike",2],["Tomar el sol","Tomar sol","Sunbathe",1]
+  ],
+  "Música y arte": [
+    ["Tocar la guitarra","Tocar violão","Play guitar",1],["Tocar el piano","Tocar piano","Play piano",1],["Bailar salsa","Dançar salsa","Dance salsa",1],
+    ["Cantar en karaoke","Cantar no karaokê","Sing karaoke",1],["Tocar la batería","Tocar bateria","Play drums",2],["Tocar la trompeta","Tocar trompete","Play trumpet",2],
+    ["Pintar un cuadro","Pintar um quadro","Paint a picture",1],["Esculpir","Esculpir","Sculpt",3],["Actuar en teatro","Atuar no teatro","Act on stage",2],
+    ["Hacer malabares","Fazer malabarismo","Juggle",2],["Hacer magia","Fazer mágica","Do magic",2],["Grabar un video","Gravar um vídeo","Film a video",2]
+  ],
+  "Fantasía y cine": [
+    ["Ser un robot","Ser um robô","Be a robot",1],["Ser un zombi","Ser um zumbi","Be a zombie",1],["Caminar en la luna","Andar na lua","Walk on the moon",2],
+    ["Volar como superhéroe","Voar como super-herói","Fly like a superhero",1],["Ser un fantasma","Ser um fantasma","Be a ghost",1],
+    ["Pelear con espada","Lutar com espada","Sword fight",2],["Lanzar un hechizo","Lançar um feitiço","Cast a spell",2],["Ser un pirata","Ser um pirata","Be a pirate",1],
+    ["Huir de un dinosaurio","Fugir de um dinossauro","Run from a dinosaur",2],["Cazar fantasmas","Caçar fantasmas","Hunt ghosts",3],
+    ["Caminar en cámara lenta","Andar em câmera lenta","Walk in slow motion",2],["Ser un mago","Ser um mago","Be a wizard",2]
+  ]
+};
+const DIFF = {1:"Fácil",2:"Media",3:"Difícil"};
+const KEY = "mimica-verbos-v1";
+const $ = id => document.getElementById(id);
+
+const S = {
+  themes: new Set(["Animales","Profesiones","Deportes"]),
+  diffs: new Set([1,2,3]),
+  time: 60, trans: true,
+  pool: [], cur: null, ok: 0, skip: 0, guessed: [],
+  hidden: false, left: 0, total: 0, timer: null
+};
+
+// ---- ajustes guardados (opcional) ----
+try{
+  const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if(saved){
+    const t = (saved.themes||[]).filter(x => THEMES[x]); if(t.length) S.themes = new Set(t);
+    const d = (saved.diffs||[]).filter(x => DIFF[x]); if(d.length) S.diffs = new Set(d);
+    if(typeof saved.time === "number") S.time = saved.time;
+    if(typeof saved.trans === "boolean") S.trans = saved.trans;
+  }
+}catch(e){}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify({themes:[...S.themes],diffs:[...S.diffs],time:S.time,trans:S.trans})); }catch(e){}
+}
+
+// ---- pantalla de inicio ----
+function chip(parent, text, pressed, cls, onClick){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = text;
+  b.setAttribute("aria-pressed", pressed); b.onclick = onClick; parent.appendChild(b); return b;
+}
+function renderChips(){
+  const tBox = $("themes"); tBox.innerHTML = "";
+  const all = Object.keys(THEMES).every(k => S.themes.has(k));
+  chip(tBox, "Todos los temas", all, "all", () => { S.themes = all ? new Set() : new Set(Object.keys(THEMES)); renderChips(); });
+  Object.keys(THEMES).forEach(k => chip(tBox, k, S.themes.has(k), "", () => {
+    S.themes.has(k) ? S.themes.delete(k) : S.themes.add(k); renderChips();
+  }));
+  const dBox = $("diffs"); dBox.innerHTML = "";
+  [1,2,3].forEach(d => chip(dBox, DIFF[d], S.diffs.has(d), "", () => {
+    if(S.diffs.has(d) && S.diffs.size === 1) return;
+    S.diffs.has(d) ? S.diffs.delete(d) : S.diffs.add(d); renderChips();
+  }));
+  const n = buildPool().length;
+  $("poolInfo").textContent = n ? `${n} verbos disponibles con esta selección.` : "Elige al menos un tema para empezar.";
+  $("start").disabled = !n;
+  $("time").value = String(S.time); $("trans").checked = S.trans;
+}
+function buildPool(){
+  const out = [];
+  for(const [theme, list] of Object.entries(THEMES)){
+    if(!S.themes.has(theme)) continue;
+    for(const [es,pt,en,d] of list) if(S.diffs.has(d)) out.push({es,pt,en,d,theme});
+  }
+  return out;
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function show(id){ ["sStart","sPlay","sEnd"].forEach(s => $(s).hidden = s !== id); window.scrollTo(0,0); }
+
+// ---- juego ----
+function startGame(){
+  save();
+  S.pool = shuffle(buildPool()); S.ok = S.skip = 0; S.guessed = []; S.cur = null;
+  $("cOk").textContent = $("cSkip").textContent = 0;
+  show("sPlay"); applyTrans(); nextVerb();
+}
+function nextVerb(){
+  let note = "Solo quien actúa debe mirar la pantalla.";
+  if(!S.pool.length){ S.pool = shuffle(buildPool()); note = "Ya salieron todos los verbos; los mezclamos de nuevo."; }
+  const v = S.cur = S.pool.pop();
+  $("vMeta").textContent = `${v.theme} · ${DIFF[v.d]}`;
+  $("vEs").textContent = v.es; $("vPt").textContent = v.pt; $("vEn").textContent = v.en;
+  $("note").textContent = note;
+  setHidden(false); startTimer();
+}
+function setHidden(h){
+  S.hidden = h; $("vEs").classList.toggle("blur", h);
+  $("vTrans").style.visibility = h ? "hidden" : "visible";
+  $("peek").textContent = h ? "Mostrar verbo" : "Ocultar verbo";
+}
+function applyTrans(){
+  $("vTrans").hidden = !S.trans;
+  $("toggleTrans").textContent = "Traducción: " + (S.trans ? "sí" : "no");
+}
+
+// ---- cronómetro ----
+function stopTimer(){ clearInterval(S.timer); S.timer = null; }
+function startTimer(){
+  stopTimer(); S.total = S.left = S.time;
+  if(!S.total){ $("clock").textContent = "∞"; $("clock").classList.remove("low"); $("bar").style.width = "100%"; return; }
+  drawClock();
+  S.timer = setInterval(() => {
+    S.left--; drawClock();
+    if(S.left <= 0){ stopTimer(); $("note").textContent = "Se acabó el tiempo. Pulsa “Otro verbo” para seguir."; beep(); }
+  }, 1000);
+}
+function drawClock(){
+  const t = Math.max(0, S.left);
+  $("clock").textContent = `${Math.floor(t/60)}:${String(t%60).padStart(2,"0")}`;
+  $("clock").classList.toggle("low", t <= 10);
+  $("bar").style.width = (t / S.total * 100) + "%";
+}
+function beep(){
+  try{
+    const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 660; g.gain.value = .15; o.start(); o.stop(c.currentTime + .4);
+  }catch(e){}
+}
+
+// ---- salir / resumen ----
+function endGame(){
+  stopTimer();
+  $("eOk").textContent = S.ok; $("eSkip").textContent = S.skip;
+  const ul = $("hist"); ul.innerHTML = "";
+  S.guessed.forEach(v => { const li = document.createElement("li"); li.textContent = v; ul.appendChild(li); });
+  $("histBox").hidden = !S.guessed.length;
+  show("sEnd");
+}
+
+// ---- eventos ----
+$("start").onclick = startGame;
+$("time").onchange = e => { S.time = parseInt(e.target.value, 10); save(); };
+$("trans").onchange = e => { S.trans = e.target.checked; save(); };
+$("another").onclick = () => { if(S.cur){ S.skip++; $("cSkip").textContent = S.skip; } nextVerb(); };
+$("ok").onclick = () => { if(!S.cur) return; S.ok++; S.guessed.push(S.cur.es); $("cOk").textContent = S.ok; nextVerb(); };
+$("exit").onclick = endGame;
+$("peek").onclick = () => setHidden(!S.hidden);
+$("toggleTrans").onclick = () => { S.trans = !S.trans; applyTrans(); save(); };
+$("again").onclick = startGame;
+$("home").onclick = () => { renderChips(); show("sStart"); };
+
+document.addEventListener("keydown", e => {
+  if($("sPlay").hidden || e.target.tagName === "SELECT") return;
+  if(e.code === "Space"){ e.preventDefault(); $("another").click(); }
+  else if(e.key === "Enter"){ e.preventDefault(); $("ok").click(); }
+  else if(e.key === "Escape") $("exit").click();
+  else if(e.key.toLowerCase() === "h") $("peek").click();
+});
+
+renderChips();
+</script>
