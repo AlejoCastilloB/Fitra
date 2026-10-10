@@ -217,7 +217,10 @@ const THEMES = {
     ["Volar","Voar","Fly",1],["Nadar","Nadar","Swim",1],["Rugir","Rugir","Roar",1],["Saltar","Pular","Jump",1],
     ["Arrastrarse","Rastejar","Crawl",2],["Trepar","Escalar","Climb",1],["Cavar","Cavar","Dig",2],["Ladrar","Latir","Bark",1],
     ["Galopar","Galopar","Gallop",2],["Picotear","Bicar","Peck",2],["Hibernar","Hibernar","Hibernate",3],["Ronronear","Ronronar","Purr",2],
-    ["Cazar","Caçar","Hunt",2],["Aletear","Bater as asas","Flap wings",2]
+    ["Cazar","Caçar","Hunt",2],["Aletear","Bater as asas","Flap wings",2],
+    ["Correr","Correr","Run",1],["Dormir","Dormir","Sleep",1],["Comer","Comer","Eat",1],["Beber","Beber","Drink",1],
+    ["Caminar","Caminhar","Walk",1],["Maullar","Miar","Meow",1],["Morder","Morder","Bite",1],["Lamer","Lamber","Lick",1],
+    ["Rascarse","Coçar-se","Scratch",1],["Sacudirse","Sacudir-se","Shake off",2],["Mugir","Mugir","Moo",2],["Piar","Piar","Chirp",2]
   ],
   "Profesiones": [
     ["Cocinar","Cozinhar","Cook",1],["Pintar una pared","Pintar uma parede","Paint a wall",1],["Cortar el pelo","Cortar o cabelo","Cut hair",2],
@@ -225,56 +228,104 @@ const THEMES = {
     ["Apagar un incendio","Apagar um incêndio","Put out a fire",2],["Dar una clase","Dar uma aula","Teach a class",2],
     ["Arreglar un coche","Consertar um carro","Fix a car",2],["Fotografiar","Fotografar","Take photos",1],
     ["Atender el teléfono","Atender o telefone","Answer the phone",1],["Construir una pared","Construir uma parede","Build a wall",2],
-    ["Revisar un diente","Examinar um dente","Examine a tooth",3],["Programar","Programar","Write code",3]
+    ["Revisar un diente","Examinar um dente","Examine a tooth",3],["Programar","Programar","Write code",3],
+    ["Conducir un autobús","Dirigir um ônibus","Drive a bus",1],["Limpiar ventanas","Limpar janelas","Clean windows",1],
+    ["Escribir un libro","Escrever um livro","Write a book",2],["Cuidar niños","Cuidar de crianças","Babysit",1],
+    ["Tomar la temperatura","Medir a temperatura","Take a temperature",2],["Cultivar la tierra","Cultivar a terra","Farm the land",2],
+    ["Pescar","Pescar","Fish",1],["Repartir cartas","Entregar cartas","Deliver mail",2],["Taladrar","Furar","Drill",2],
+    ["Dirigir el tráfico","Controlar o trânsito","Direct traffic",2],["Atender a un cliente","Atender um cliente","Serve a customer",1],
+    ["Vender frutas","Vender frutas","Sell fruit",2],["Dibujar","Desenhar","Draw",1]
   ],
   "Deportes": [
     ["Surfear","Surfar","Surf",2],["Esquiar","Esquiar","Ski",2],["Boxear","Boxear","Box",1],["Saltar la cuerda","Pular corda","Jump rope",1],
     ["Patinar","Patinar","Skate",1],["Levantar pesas","Levantar pesos","Lift weights",1],["Remar","Remar","Row",2],
     ["Jugar al golf","Jogar golfe","Play golf",2],["Practicar esgrima","Praticar esgrima","Fence",3],["Cobrar un penalti","Cobrar um pênalti","Take a penalty",2],
-    ["Escalar una pared","Escalar uma parede","Climb a wall",2],["Montar en bicicleta","Andar de bicicleta","Ride a bike",1],["Jugar al tenis","Jogar tênis","Play tennis",1]
+    ["Escalar una pared","Escalar uma parede","Climb a wall",2],["Montar en bicicleta","Andar de bicicleta","Ride a bike",1],["Jugar al tenis","Jogar tênis","Play tennis",1],
+    ["Correr una maratón","Correr uma maratona","Run a marathon",1],["Lanzar una pelota","Lançar uma bola","Throw a ball",1],
+    ["Atrapar una pelota","Pegar uma bola","Catch a ball",1],["Patear una pelota","Chutar uma bola","Kick a ball",1],
+    ["Jugar al baloncesto","Jogar basquete","Play basketball",1],["Jugar al voleibol","Jogar vôlei","Play volleyball",2],
+    ["Hacer estiramientos","Alongar-se","Stretch",1],["Hacer flexiones","Fazer flexões","Do push-ups",1],
+    ["Hacer abdominales","Fazer abdominais","Do sit-ups",2],["Hacer yoga","Fazer ioga","Do yoga",2],
+    ["Tirarse a la piscina","Mergulhar na piscina","Dive into a pool",2],["Saltar obstáculos","Pular obstáculos","Jump hurdles",2]
   ],
   "Cocina": [
     ["Batir huevos","Bater ovos","Beat eggs",1],["Amasar","Sovar a massa","Knead dough",2],["Cortar cebolla","Cortar cebola","Chop onions",1],
     ["Exprimir un limón","Espremer um limão","Squeeze a lemon",2],["Voltear una tortilla","Virar uma omelete","Flip an omelette",2],
     ["Pelar papas","Descascar batatas","Peel potatoes",2],["Rallar queso","Ralar queijo","Grate cheese",2],["Descorchar vino","Abrir um vinho","Open a wine bottle",3],
-    ["Hervir agua","Ferver água","Boil water",2],["Probar la sal","Provar o sal","Taste for salt",2],["Freír","Fritar","Fry",1],["Servir sopa","Servir sopa","Serve soup",2]
+    ["Hervir agua","Ferver água","Boil water",2],["Probar la sal","Provar o sal","Taste for salt",2],["Freír","Fritar","Fry",1],["Servir sopa","Servir sopa","Serve soup",2],
+    ["Cortar pan","Cortar pão","Slice bread",1],["Revolver","Mexer","Stir",1],["Hornear un pastel","Assar um bolo","Bake a cake",2],
+    ["Lavar frutas","Lavar frutas","Wash fruit",1],["Poner la mesa","Pôr a mesa","Set the table",1],
+    ["Comer con cuchara","Comer com colher","Eat with a spoon",1],["Tomar café","Tomar café","Drink coffee",1],
+    ["Servir jugo","Servir suco","Pour juice",1],["Abrir el refrigerador","Abrir a geladeira","Open the fridge",1],
+    ["Soplar sopa caliente","Soprar sopa quente","Blow on hot soup",2],["Preparar un sándwich","Fazer um sanduíche","Make a sandwich",1],
+    ["Usar el microondas","Usar o micro-ondas","Use the microwave",2],["Comer espagueti","Comer espaguete","Eat spaghetti",2]
   ],
   "Hogar": [
     ["Barrer","Varrer","Sweep",1],["Planchar","Passar roupa","Iron clothes",2],["Lavar los platos","Lavar a louça","Wash dishes",1],
     ["Tender la cama","Arrumar a cama","Make the bed",2],["Regar las plantas","Regar as plantas","Water plants",2],["Colgar un cuadro","Pendurar um quadro","Hang a picture",2],
     ["Aspirar","Passar aspirador","Vacuum",1],["Cepillarse los dientes","Escovar os dentes","Brush teeth",1],["Ducharse","Tomar banho","Take a shower",1],
-    ["Atarse los zapatos","Amarrar os sapatos","Tie shoes",2],["Abrir con llave","Abrir com a chave","Unlock a door",2],["Sacar la basura","Levar o lixo para fora","Take out the trash",2]
+    ["Atarse los zapatos","Amarrar os sapatos","Tie shoes",2],["Abrir con llave","Abrir com a chave","Unlock a door",2],["Sacar la basura","Levar o lixo para fora","Take out the trash",2],
+    ["Abrir la puerta","Abrir a porta","Open the door",1],["Cerrar la ventana","Fechar a janela","Close the window",1],
+    ["Encender la luz","Acender a luz","Turn on the light",1],["Dormir la siesta","Tirar uma soneca","Take a nap",1],
+    ["Despertarse","Acordar","Wake up",1],["Lavarse las manos","Lavar as mãos","Wash hands",1],["Peinarse","Pentear-se","Comb hair",1],
+    ["Secarse el pelo","Secar o cabelo","Dry hair",2],["Ver televisión","Assistir TV","Watch TV",1],["Leer un libro","Ler um livro","Read a book",1],
+    ["Limpiar el piso","Limpar o chão","Mop the floor",1],["Tocar el timbre","Tocar a campainha","Ring the doorbell",2],
+    ["Ponerse un abrigo","Vestir um casaco","Put on a coat",1]
   ],
   "Oficina": [
     ["Escribir a máquina","Digitar","Type",1],["Hablar por teléfono","Falar ao telefone","Talk on the phone",1],["Imprimir","Imprimir","Print",2],
     ["Firmar un contrato","Assinar um contrato","Sign a contract",2],["Presentar en la pizarra","Apresentar no quadro","Present at the whiteboard",2],
     ["Grapar papeles","Grampear papéis","Staple papers",2],["Hablar con el micrófono apagado","Falar com o microfone desligado","Talk while on mute",3],
     ["Negociar","Negociar","Negotiate",3],["Llegar tarde a una reunión","Chegar atrasado a uma reunião","Arrive late to a meeting",3],
-    ["Tomar notas","Anotar","Take notes",1],["Brindar","Brindar","Make a toast",2],["Entrar a una videollamada","Entrar em uma videochamada","Join a video call",2]
+    ["Tomar notas","Anotar","Take notes",1],["Brindar","Brindar","Make a toast",2],["Entrar a una videollamada","Entrar em uma videochamada","Join a video call",2],
+    ["Leer un correo","Ler um e-mail","Read an email",1],["Escribir un correo","Escrever um e-mail","Write an email",1],
+    ["Sentarse","Sentar-se","Sit down",1],["Saludar","Cumprimentar","Greet",1],["Dar la mano","Apertar a mão","Shake hands",1],
+    ["Levantar la mano","Levantar a mão","Raise your hand",1],["Contar dinero","Contar dinheiro","Count money",2],
+    ["Mirar el reloj","Olhar o relógio","Check the time",1],["Pensar","Pensar","Think",1],["Tomar un descanso","Fazer uma pausa","Take a break",1],
+    ["Cargar una caja","Carregar uma caixa","Carry a box",1],["Explicar","Explicar","Explain",2],["Hacer clic con el mouse","Clicar com o mouse","Click the mouse",1]
   ],
   "Emociones": [
     ["Llorar","Chorar","Cry",1],["Reír","Rir","Laugh",1],["Enojarse","Ficar com raiva","Get angry",1],["Asustarse","Assustar-se","Get scared",1],
     ["Sorprenderse","Surpreender-se","Be surprised",1],["Aburrirse","Entediar-se","Get bored",2],["Sentir vergüenza","Sentir vergonha","Feel embarrassed",3],
-    ["Celebrar","Comemorar","Celebrate",1],["Suspirar","Suspirar","Sigh",2],["Dudar","Duvidar","Doubt",3],["Enamorarse","Apaixonar-se","Fall in love",2],["Tener celos","Ter ciúmes","Be jealous",3]
+    ["Celebrar","Comemorar","Celebrate",1],["Suspirar","Suspirar","Sigh",2],["Dudar","Duvidar","Doubt",3],["Enamorarse","Apaixonar-se","Fall in love",2],["Tener celos","Ter ciúmes","Be jealous",3],
+    ["Sonreír","Sorrir","Smile",1],["Gritar","Gritar","Shout",1],["Abrazar","Abraçar","Hug",1],["Mandar un beso","Mandar um beijo","Blow a kiss",1],
+    ["Temblar de frío","Tremer de frio","Shiver",1],["Estar cansado","Estar cansado","Be tired",1],["Estar emocionado","Estar animado","Be excited",2],
+    ["Estar triste","Ficar triste","Be sad",1],["Estar confundido","Ficar confuso","Be confused",2],["Aplaudir","Aplaudir","Clap",1],
+    ["Saludar con la mano","Acenar","Wave",1],["Asentir","Concordar com a cabeça","Nod",1],["Negar con la cabeza","Negar com a cabeça","Shake your head",1]
   ],
   "Viajes": [
     ["Hacer la maleta","Fazer a mala","Pack a suitcase",1],["Comprar un pasaje","Comprar uma passagem","Buy a ticket",2],["Tomar una foto","Tirar uma foto","Take a photo",1],
     ["Armar una carpa","Montar uma barraca","Pitch a tent",3],["Bucear","Mergulhar","Dive",2],["Conducir un coche","Dirigir um carro","Drive a car",1],
     ["Perderse","Perder-se","Get lost",2],["Leer un mapa","Ler um mapa","Read a map",2],["Hacer fila","Ficar na fila","Wait in line",2],
-    ["Pedir indicaciones","Pedir direções","Ask for directions",3],["Caminar por la montaña","Caminhar na montanha","Hike",2],["Tomar el sol","Tomar sol","Sunbathe",1]
+    ["Pedir indicaciones","Pedir direções","Ask for directions",3],["Caminar por la montaña","Caminhar na montanha","Hike",2],["Tomar el sol","Tomar sol","Sunbathe",1],
+    ["Esperar el autobús","Esperar o ônibus","Wait for the bus",1],["Subir al tren","Embarcar no trem","Board a train",2],
+    ["Volar en avión","Voar de avião","Fly on a plane",1],["Cargar la maleta","Carregar a mala","Carry a suitcase",1],
+    ["Mostrar el pasaporte","Mostrar o passaporte","Show your passport",2],["Nadar en la playa","Nadar na praia","Swim at the beach",1],
+    ["Hacer una fogata","Fazer uma fogueira","Make a campfire",2],["Tomar un taxi","Pegar um táxi","Take a taxi",1],
+    ["Comprar recuerdos","Comprar lembranças","Buy souvenirs",2],["Pedir comida","Pedir comida","Order food",1],
+    ["Dormir en una hamaca","Dormir na rede","Sleep in a hammock",2],["Remar en un bote","Remar em um barco","Row a boat",2],
+    ["Mirar el paisaje","Olhar a paisagem","Enjoy the view",1]
   ],
   "Música y arte": [
     ["Tocar la guitarra","Tocar violão","Play guitar",1],["Tocar el piano","Tocar piano","Play piano",1],["Bailar salsa","Dançar salsa","Dance salsa",1],
     ["Cantar en karaoke","Cantar no karaokê","Sing karaoke",1],["Tocar la batería","Tocar bateria","Play drums",2],["Tocar la trompeta","Tocar trompete","Play trumpet",2],
     ["Pintar un cuadro","Pintar um quadro","Paint a picture",1],["Esculpir","Esculpir","Sculpt",3],["Actuar en teatro","Atuar no teatro","Act on stage",2],
-    ["Hacer malabares","Fazer malabarismo","Juggle",2],["Hacer magia","Fazer mágica","Do magic",2],["Grabar un video","Gravar um vídeo","Film a video",2]
+    ["Hacer malabares","Fazer malabarismo","Juggle",2],["Hacer magia","Fazer mágica","Do magic",2],["Grabar un video","Gravar um vídeo","Film a video",2],
+    ["Cantar","Cantar","Sing",1],["Silbar","Assobiar","Whistle",1],["Escuchar música","Ouvir música","Listen to music",1],["Bailar","Dançar","Dance",1],
+    ["Dibujar un retrato","Desenhar um retrato","Draw a portrait",2],["Tocar el violín","Tocar violino","Play violin",2],
+    ["Tocar la flauta","Tocar flauta","Play flute",2],["Tocar el tambor","Tocar tambor","Beat a drum",1],["Colorear","Colorir","Color in",1],
+    ["Escribir un poema","Escrever um poema","Write a poem",2],["Hacer origami","Fazer origami","Fold origami",2],["Sacarse una selfie","Tirar uma selfie","Take a selfie",1]
   ],
   "Fantasía y cine": [
     ["Ser un robot","Ser um robô","Be a robot",1],["Ser un zombi","Ser um zumbi","Be a zombie",1],["Caminar en la luna","Andar na lua","Walk on the moon",2],
     ["Volar como superhéroe","Voar como super-herói","Fly like a superhero",1],["Ser un fantasma","Ser um fantasma","Be a ghost",1],
     ["Pelear con espada","Lutar com espada","Sword fight",2],["Lanzar un hechizo","Lançar um feitiço","Cast a spell",2],["Ser un pirata","Ser um pirata","Be a pirate",1],
     ["Huir de un dinosaurio","Fugir de um dinossauro","Run from a dinosaur",2],["Cazar fantasmas","Caçar fantasmas","Hunt ghosts",3],
-    ["Caminar en cámara lenta","Andar em câmera lenta","Walk in slow motion",2],["Ser un mago","Ser um mago","Be a wizard",2]
+    ["Caminar en cámara lenta","Andar em câmera lenta","Walk in slow motion",2],["Ser un mago","Ser um mago","Be a wizard",2],
+    ["Ser un bebé","Ser um bebê","Be a baby",1],["Ser un gigante","Ser um gigante","Be a giant",1],["Ser un astronauta","Ser um astronauta","Be an astronaut",1],
+    ["Ser un vaquero","Ser um vaqueiro","Be a cowboy",1],["Ser un ninja","Ser um ninja","Be a ninja",1],["Ser un mono","Ser um macaco","Be a monkey",1],
+    ["Ser un payaso","Ser um palhaço","Be a clown",1],["Ser un rey","Ser um rei","Be a king",1],["Ser un vampiro","Ser um vampiro","Be a vampire",1],
+    ["Caminar como un pato","Andar como um pato","Walk like a duck",1],["Ser un detective","Ser um detetive","Be a detective",2],["Ser una abuela","Ser uma vovó","Be a grandma",2]
   ]
 };
 const DIFF = {1:"Fácil",2:"Media",3:"Difícil"};
