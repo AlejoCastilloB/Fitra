@@ -58,9 +58,14 @@
   .switch input{width:20px;height:20px;accent-color:var(--ok)}
 
   button{font:inherit}
-  .btn{border:0;border-radius:12px;padding:14px 18px;font-weight:700;font-size:1.02rem;cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:2px;min-height:56px;text-align:center}
-  .btn small{font-weight:400;font-size:.8rem;opacity:.85}
+  .ico{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .btn{border:0;border-radius:14px;padding:12px 16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:12px;min-height:64px;text-align:left}
+  .btn .txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .btn .txt b{font-size:1.05rem;font-weight:700;line-height:1.2}
+  .btn small{font-weight:400;font-size:.82rem;opacity:.9;line-height:1.25}
+  .chip .ico{width:18px;height:18px}
+  .chip{display:inline-flex;align-items:center;gap:6px}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn.accent{background:var(--accent);color:var(--accent-ink)}
   .btn.ok{background:var(--ok);color:var(--ok-ink)}
@@ -115,35 +120,38 @@
     </header>
 
     <div class="panel">
-      <div class="label">1 · Temas</div>
+      <div class="label">1 · Temas / Temas / Themes</div>
       <div class="row" id="themes"></div>
-      <div class="label" style="margin-top:6px">2 · Dificultad</div>
+      <div class="label" style="margin-top:6px">2 · Dificultad / Dificuldade / Difficulty</div>
       <div class="row" id="diffs"></div>
-      <div class="label" style="margin-top:6px">3 · Tiempo por verbo</div>
+      <div class="label" style="margin-top:6px">3 · Tiempo / Tempo / Time</div>
       <div class="row">
         <select id="time" aria-label="Tiempo por verbo">
-          <option value="0">Sin límite</option>
-          <option value="30">30 segundos</option>
-          <option value="45">45 segundos</option>
-          <option value="60">60 segundos</option>
-          <option value="90">90 segundos</option>
+          <option value="0">♾️ Sin límite · Sem limite · No limit</option>
+          <option value="30">⏱️ 30 s</option>
+          <option value="45">⏱️ 45 s</option>
+          <option value="60">⏱️ 60 s</option>
+          <option value="90">⏱️ 90 s</option>
         </select>
       </div>
-      <label class="switch"><input type="checkbox" id="trans" checked> Mostrar traducción en portugués e inglés</label>
+      <label class="switch"><input type="checkbox" id="trans" checked> 🌐 Mostrar traducción · Mostrar tradução · Show translation (PT · EN)</label>
     </div>
 
     <p class="lead" id="poolInfo"></p>
-    <button class="btn accent" id="start"><span>Empezar a jugar</span></button>
+    <button class="btn accent" id="start" type="button">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
+      <span class="txt"><b>Empezar a jugar</b><small>Começar a jogar · Start playing</small></span>
+    </button>
   </section>
 
   <!-- JUEGO -->
   <section id="sPlay" class="app" style="gap:14px" hidden>
     <div class="top">
       <div class="tools">
-        <button class="chip" id="peek" type="button">Ocultar verbo</button>
-        <button class="chip" id="toggleTrans" type="button">Traducción: sí</button>
+        <button class="chip" id="peek" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="peekTxt">Ocultar verbo</span></button>
+        <button class="chip" id="toggleTrans" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span id="transTxt">Traducción: sí</span></button>
       </div>
-      <div class="counts"><span>Adivinados <b id="cOk">0</b></span><span>Cambiados <b id="cSkip">0</b></span></div>
+      <div class="counts"><span>✅ <b id="cOk">0</b></span><span>🔄 <b id="cSkip">0</b></span></div>
     </div>
 
     <div class="stage" aria-live="polite">
@@ -162,9 +170,18 @@
     </div>
 
     <div class="actions">
-      <button class="btn accent wide" id="another" type="button">Otro verbo<small>Cambia este verbo por uno nuevo</small></button>
-      <button class="btn ok" id="ok" type="button">¡Lo adivinaron!<small>Suma un punto y sigue</small></button>
-      <button class="btn ghost" id="exit" type="button">Salir<small>Ver el resumen</small></button>
+      <button class="btn accent wide" id="another" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+        <span class="txt"><b>Otro verbo</b><small>Outro verbo · Another verb</small></span>
+      </button>
+      <button class="btn ok" id="ok" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+        <span class="txt"><b>¡Adivinado!</b><small>Acertaram! · Got it!</small></span>
+      </button>
+      <button class="btn ghost" id="exit" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5v16h4"/><path d="M16 8l4 4-4 4"/><path d="M20 12H9"/></svg>
+        <span class="txt"><b>Salir</b><small>Sair · Exit</small></span>
+      </button>
     </div>
     <p class="lead" style="font-size:.85rem;text-align:center">Atajos: Espacio = otro verbo · Enter = adivinado · Esc = salir · H = ocultar</p>
   </section>
@@ -173,16 +190,22 @@
   <section id="sEnd" class="app" style="gap:16px" hidden>
     <h2>Resumen de la partida</h2>
     <div class="stats">
-      <div class="stat"><b id="eOk">0</b><span>Verbos adivinados</span></div>
-      <div class="stat"><b id="eSkip">0</b><span>Verbos cambiados</span></div>
+      <div class="stat"><b id="eOk">0</b><span>✅ Adivinados · Acertos · Guessed</span></div>
+      <div class="stat"><b id="eSkip">0</b><span>🔄 Cambiados · Trocados · Swapped</span></div>
     </div>
     <div class="panel" id="histBox">
-      <div class="label">Los que adivinaron</div>
+      <div class="label">Los que adivinaron / Acertaram / Guessed</div>
       <ul class="hist" id="hist"></ul>
     </div>
     <div class="actions">
-      <button class="btn accent" id="again" type="button">Jugar otra vez<small>Mismos temas</small></button>
-      <button class="btn ghost" id="home" type="button">Cambiar temas<small>Volver al inicio</small></button>
+      <button class="btn accent" id="again" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
+        <span class="txt"><b>Jugar otra vez</b><small>Jogar de novo · Play again</small></span>
+      </button>
+      <button class="btn ghost" id="home" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>
+        <span class="txt"><b>Cambiar temas</b><small>Trocar temas · Change themes</small></span>
+      </button>
     </div>
   </section>
 </main>
@@ -255,6 +278,14 @@ const THEMES = {
   ]
 };
 const DIFF = {1:"Fácil",2:"Media",3:"Difícil"};
+const DIFF_LONG = {1:"🟢 Fácil · Easy",2:"🟡 Media · Médio · Medium",3:"🔴 Difícil · Hard"};
+const DIFF_DOT = {1:"🟢",2:"🟡",3:"🔴"};
+const TEMOJI = {"Animales":"🐾","Profesiones":"👷","Deportes":"⚽","Cocina":"🍳","Hogar":"🏠","Oficina":"💼",
+  "Emociones":"😮","Viajes":"✈️","Música y arte":"🎸","Fantasía y cine":"🎬"};
+const TNAMES = {"Animales":"Animales · Animais · Animals","Profesiones":"Profesiones · Profissões · Jobs","Deportes":"Deportes · Esportes · Sports",
+  "Cocina":"Cocina · Cozinha · Cooking","Hogar":"Hogar · Casa · Home","Oficina":"Oficina · Escritório · Office",
+  "Emociones":"Emociones · Emoções · Emotions","Viajes":"Viajes · Viagens · Travel","Música y arte":"Música y arte · Música e arte · Music & art",
+  "Fantasía y cine":"Fantasía y cine · Fantasia e cinema · Fantasy & film"};
 const KEY = "mimica-verbos-v1";
 const $ = id => document.getElementById(id);
 
@@ -289,12 +320,12 @@ function chip(parent, text, pressed, cls, onClick){
 function renderChips(){
   const tBox = $("themes"); tBox.innerHTML = "";
   const all = Object.keys(THEMES).every(k => S.themes.has(k));
-  chip(tBox, "Todos los temas", all, "all", () => { S.themes = all ? new Set() : new Set(Object.keys(THEMES)); renderChips(); });
-  Object.keys(THEMES).forEach(k => chip(tBox, k, S.themes.has(k), "", () => {
+  chip(tBox, "🎲 Todos · Todos · All", all, "all", () => { S.themes = all ? new Set() : new Set(Object.keys(THEMES)); renderChips(); });
+  Object.keys(THEMES).forEach(k => chip(tBox, `${TEMOJI[k]} ${TNAMES[k]}`, S.themes.has(k), "", () => {
     S.themes.has(k) ? S.themes.delete(k) : S.themes.add(k); renderChips();
   }));
   const dBox = $("diffs"); dBox.innerHTML = "";
-  [1,2,3].forEach(d => chip(dBox, DIFF[d], S.diffs.has(d), "", () => {
+  [1,2,3].forEach(d => chip(dBox, DIFF_LONG[d], S.diffs.has(d), "", () => {
     if(S.diffs.has(d) && S.diffs.size === 1) return;
     S.diffs.has(d) ? S.diffs.delete(d) : S.diffs.add(d); renderChips();
   }));
@@ -326,7 +357,7 @@ function nextVerb(){
   let note = "Solo quien actúa debe mirar la pantalla.";
   if(!S.pool.length){ S.pool = shuffle(buildPool()); note = "Ya salieron todos los verbos; los mezclamos de nuevo."; }
   const v = S.cur = S.pool.pop();
-  $("vMeta").textContent = `${v.theme} · ${DIFF[v.d]}`;
+  $("vMeta").textContent = `${TEMOJI[v.theme]} ${v.theme} · ${DIFF_DOT[v.d]} ${DIFF[v.d]}`;
   $("vEs").textContent = v.es; $("vPt").textContent = v.pt; $("vEn").textContent = v.en;
   $("note").textContent = note;
   setHidden(false); startTimer();
@@ -334,11 +365,11 @@ function nextVerb(){
 function setHidden(h){
   S.hidden = h; $("vEs").classList.toggle("blur", h);
   $("vTrans").style.visibility = h ? "hidden" : "visible";
-  $("peek").textContent = h ? "Mostrar verbo" : "Ocultar verbo";
+  $("peekTxt").textContent = h ? "Mostrar · Mostrar · Show" : "Ocultar · Ocultar · Hide";
 }
 function applyTrans(){
   $("vTrans").hidden = !S.trans;
-  $("toggleTrans").textContent = "Traducción: " + (S.trans ? "sí" : "no");
+  $("transTxt").textContent = S.trans ? "PT · EN: sí · sim · on" : "PT · EN: no · não · off";
 }
 
 // ---- cronómetro ----
